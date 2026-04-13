@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snippd — Security &amp; Compliance</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:#fff;color:#0f172a;font-size:13px;line-height:1.7}
+  .cover{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0C9E54 100%);color:#fff;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:60px 40px;page-break-after:always}
+  .cover-logo{font-size:72px;font-weight:800;letter-spacing:-3px;margin-bottom:8px;color:#C5FFBC}
+  .cover-sub{font-size:22px;font-weight:500;color:rgba(255,255,255,0.7);margin-bottom:40px}
+  .cover-doc{font-size:34px;font-weight:800;color:#fff;margin-bottom:16px;border:2px solid rgba(197,255,188,0.5);padding:12px 32px;border-radius:8px;display:inline-block}
+  .cover-warn{background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:8px;padding:16px 24px;margin-top:32px;max-width:560px}
+  .cover-warn p{color:rgba(255,255,255,0.9);font-size:12px;margin:0}
+  .cover-meta{font-size:13px;color:rgba(255,255,255,0.5);margin-top:24px}
+  .cover-meta span{display:inline-block;margin:0 16px}
+  .toc{padding:60px 80px;page-break-after:always}
+  .toc h2{font-size:24px;font-weight:800;color:#0C9E54;margin-bottom:32px;border-bottom:2px solid #C5FFBC;padding-bottom:12px}
+  .toc-section{margin-bottom:8px}
+  .toc-section a{text-decoration:none;color:#0f172a;font-weight:500;font-size:14px}
+  .toc-num{color:#0C9E54;font-weight:700;margin-right:8px}
+  .toc-sub{padding-left:24px;margin-top:4px}
+  .toc-sub a{font-size:12.5px;color:#475569;font-weight:400}
+  .page{padding:60px 80px;page-break-after:always}
+  .page:last-child{page-break-after:auto}
+  h1{font-size:30px;font-weight:800;color:#0f172a;margin-bottom:6px}
+  .page-eyebrow{font-size:10px;font-weight:700;letter-spacing:3px;color:#ef4444;text-transform:uppercase;margin-bottom:8px}
+  .page-divider{height:3px;background:linear-gradient(90deg,#ef4444,#f59e0b,#0C9E54,transparent);margin-bottom:32px;border-radius:2px}
+  h2{font-size:18px;font-weight:700;color:#0f172a;margin-top:36px;margin-bottom:12px;padding-left:12px;border-left:4px solid #ef4444}
+  h2.green{border-left-color:#0C9E54}
+  h3{font-size:14px;font-weight:700;color:#1e293b;margin-top:24px;margin-bottom:8px}
+  h4{font-size:13px;font-weight:600;color:#334155;margin-top:16px;margin-bottom:6px}
+  p{margin-bottom:12px;color:#334155}
+  ul{margin-bottom:12px;padding-left:20px}
+  ul li{color:#334155;margin-bottom:4px}
+  ol{margin-bottom:12px;padding-left:20px}
+  ol li{color:#334155;margin-bottom:6px}
+  code{font-family:'JetBrains Mono',monospace;font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:3px;color:#0C9E54}
+  pre{font-family:'JetBrains Mono',monospace;font-size:11px;background:#0f172a;color:#e2e8f0;padding:20px;border-radius:8px;margin:16px 0;white-space:pre-wrap;line-height:1.6}
+  .callout{background:#f0fdf4;border-left:4px solid #0C9E54;padding:16px 20px;border-radius:0 8px 8px 0;margin:16px 0}
+  .callout-warn{background:#fffbeb;border-left:4px solid #f59e0b}
+  .callout-danger{background:#fef2f2;border-left:4px solid #ef4444}
+  .callout-info{background:#eff6ff;border-left:4px solid #3b82f6}
+  .callout strong{color:#0f172a}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12px}
+  th{background:#0f172a;color:#fff;padding:10px 14px;text-align:left;font-weight:600;font-size:11px;letter-spacing:0.5px}
+  td{padding:9px 14px;border-bottom:1px solid #e2e8f0;color:#334155;vertical-align:top}
+  tr:nth-child(even) td{background:#f8fafc}
+  .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:0.5px}
+  .badge-green{background:#dcfce7;color:#166534}
+  .badge-blue{background:#dbeafe;color:#1e40af}
+  .badge-orange{background:#ffedd5;color:#9a3412}
+  .badge-red{background:#fee2e2;color:#991b1b}
+  .badge-gray{background:#f1f5f9;color:#475569}
+  .badge-yellow{background:#fef9c3;color:#854d0e}
+  .sev{display:inline-block;padding:3px 10px;border-radius:4px;font-weight:700;font-size:11px}
+  .sev-critical{background:#7f1d1d;color:#fca5a5}
+  .sev-high{background:#7c2d12;color:#fdba74}
+  .sev-medium{background:#78350f;color:#fde68a}
+  .sev-low{background:#1e3a5f;color:#93c5fd}
+  .playbook{background:#0f172a;border-radius:12px;padding:24px;margin:16px 0;color:#e2e8f0}
+  .playbook h4{color:#C5FFBC;margin-bottom:12px;font-size:14px}
+  .playbook ol{padding-left:20px}
+  .playbook ol li{margin-bottom:6px;font-size:12px;color:#cbd5e1}
+  .playbook .trigger{display:inline-block;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-bottom:8px}
+  .checklist-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #e2e8f0}
+  .check-icon{width:20px;height:20px;min-width:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:1px}
+  .check-done{background:#dcfce7;color:#166534}
+  .check-todo{background:#fee2e2;color:#991b1b}
+  .check-warn{background:#fef9c3;color:#854d0e}
+  .check-text{flex:1;font-size:12.5px;color:#334155}
+  .check-text strong{color:#0f172a}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:16px 0}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:16px 0}
+  .metric-box{border:2px solid #e2e8f0;border-radius:12px;padding:18px;text-align:center}
+  .metric-num{font-size:28px;font-weight:800;color:#0C9E54}
+  .metric-lbl{font-size:11px;color:#64748b;margin-top:4px}
+  footer{text-align:center;padding:20px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;margin-top:40px}
+  @media (max-width:768px){
+    body{font-size:12px}
+    .cover{padding:48px 20px;min-height:auto}
+    .cover-logo{font-size:44px;letter-spacing:-2px}
+    .cover-sub{font-size:16px}
+    .cover-doc{font-size:20px;padding:10px 18px}
+    .cover-meta span{display:block;margin:4px 0}
+    .toc{padding:32px 20px}
+    .page{padding:32px 20px}
+    h1{font-size:22px}
+    h2{font-size:15px;margin-top:24px}
+    h3{font-size:13px}
+    .two-col,.three-col{grid-template-columns:1fr}
+    .env-row{flex-direction:column;gap:4px}
+    .env-key{min-width:auto;word-break:break-all}
+    .env-where{min-width:auto}
+    table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    pre{font-size:10px;padding:14px}
+    .kpi-num{font-size:22px}
+    .step{gap:10px}
+    .step-num{width:28px;height:28px;min-width:28px;font-size:11px}
+  }
+  @media print{.page{page-break-after:always}body{font-size:12px}}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-logo">snippd</div>
+  <div class="cover-sub">Smart Grocery Intelligence Platform</div>
+  <div style="margin:40px 0">
+    <div class="cover-doc">SECURITY &amp; COMPLIANCE</div>
+  </div>
+  <p style="color:rgba(255,255,255,0.7);font-size:15px;max-width:580px;line-height:1.8">
+    Comprehensive security architecture, threat model, compliance requirements, incident response playbooks, and operational hardening checklists for the Snippd platform.
+  </p>
+  <div class="cover-warn">
+    <p>⚠️ <strong>RESTRICTED DOCUMENT</strong> — Contains sensitive security architecture details. Do not share outside the security team. Store encrypted at rest.</p>
+  </div>
+  <div class="cover-meta">
+    <span>Version 1.0</span>
+    <span>April 2026</span>
+    <span>Classification: RESTRICTED</span>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <div class="toc-section"><span class="toc-num">1.</span><a href="#threat">Threat Model</a></div>
+  <div class="toc-section"><span class="toc-num">2.</span><a href="#layers">Security Layers (Defense in Depth)</a></div>
+  <div class="toc-section"><span class="toc-num">3.</span><a href="#auth">Authentication &amp; Session Security</a></div>
+  <div class="toc-section"><span class="toc-num">4.</span><a href="#data">Data Security &amp; Encryption</a></div>
+  <div class="toc-section"><span class="toc-num">5.</span><a href="#monitoring">Security Monitoring Pipeline</a></div>
+  <div class="toc-section"><span class="toc-num">6.</span><a href="#events">Security Event Taxonomy (Full)</a></div>
+  <div class="toc-section"><span class="toc-num">7.</span><a href="#playbooks">Incident Response Playbooks</a></div>
+  <div class="toc-section"><span class="toc-num">8.</span><a href="#compliance">Compliance &amp; Privacy</a></div>
+  <div class="toc-section"><span class="toc-num">9.</span><a href="#hardening">Hardening Checklists</a></div>
+  <div class="toc-section"><span class="toc-num">10.</span><a href="#secrets">Secret Management</a></div>
+  <div class="toc-section"><span class="toc-num">11.</span><a href="#testing">Security Testing Plan</a></div>
+</div>
+
+<!-- 1. THREAT MODEL -->
+<div class="page" id="threat">
+  <div class="page-eyebrow">Section 1 · Security &amp; Compliance</div>
+  <h1>Threat Model</h1>
+  <div class="page-divider"></div>
+
+  <p>The Snippd threat model follows the STRIDE framework applied to a mobile grocery app handling user financial data (budgets, spending, payment-adjacent credits), personal data (dietary preferences, household composition), and authentication credentials.</p>
+
+  <h2>Assets to Protect</h2>
+  <table>
+    <tr><th>Asset</th><th>Sensitivity</th><th>Risk if Compromised</th></tr>
+    <tr><td>User authentication credentials</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Account takeover, identity theft</td></tr>
+    <tr><td>Supabase service_role key</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Full database read/write bypass RLS — complete data breach</td></tr>
+    <tr><td>Security ingest secret</td><td><span class="sev sev-high">HIGH</span></td><td>Ability to inject false security events, suppress real ones</td></tr>
+    <tr><td>Gemini API key</td><td><span class="sev sev-high">HIGH</span></td><td>Financial abuse (API cost), data leakage via model inputs</td></tr>
+    <tr><td>Resend API key</td><td><span class="sev sev-high">HIGH</span></td><td>Email impersonation, phishing from getsnippd.com domain</td></tr>
+    <tr><td>User financial data (budgets, spending)</td><td><span class="sev sev-high">HIGH</span></td><td>Privacy violation, regulatory exposure</td></tr>
+    <tr><td>User PII (name, email, household)</td><td><span class="sev sev-high">HIGH</span></td><td>Privacy violation, CCPA/GDPR liability</td></tr>
+    <tr><td>Stash credits / referral credits</td><td><span class="sev sev-medium">MEDIUM</span></td><td>Financial fraud, referral abuse</td></tr>
+    <tr><td>Field encryption key (FIELD_ENC_KEY)</td><td><span class="sev sev-high">HIGH</span></td><td>Decrypt sensitive fields at rest</td></tr>
+    <tr><td>Dietary/health preferences</td><td><span class="sev sev-medium">MEDIUM</span></td><td>Privacy violation, potential discrimination risk</td></tr>
+  </table>
+
+  <h2>Threat Actors</h2>
+  <div class="two-col">
+    <div class="callout callout-danger">
+      <strong>External Attacker</strong><br>
+      Unauthenticated actor targeting login endpoints, attempting credential stuffing, injection attacks, or API abuse to extract data or earn fraudulent credits.
+    </div>
+    <div class="callout callout-danger">
+      <strong>Malicious Insider / Compromised Account</strong><br>
+      Authenticated user attempting IDOR to access other households' data, escalate privileges, or abuse the referral/coupon system.
+    </div>
+    <div class="callout callout-warn">
+      <strong>Automated Bot / Scraper</strong><br>
+      Automated systems targeting the deal feed, creating fake accounts for referral fraud, or scraping product/pricing data.
+    </div>
+    <div class="callout callout-warn">
+      <strong>Developer Workflow Attack</strong><br>
+      Supply chain attacks, malicious package releases, prompt injection via AI tools, or repo config bypass targeting developer machines with prod credentials.
+    </div>
+  </div>
+
+  <h2>STRIDE Analysis</h2>
+  <table>
+    <tr><th>Threat</th><th>Risk</th><th>Mitigation</th></tr>
+    <tr><td><strong>Spoofing</strong> (identity)</td><td><span class="sev sev-high">HIGH</span></td><td>Supabase Auth JWT, TOTP MFA, SecureStore tokens</td></tr>
+    <tr><td><strong>Tampering</strong> (data)</td><td><span class="sev sev-high">HIGH</span></td><td>RLS policies, Postgres triggers, row_hash GENERATED column, audit logs</td></tr>
+    <tr><td><strong>Repudiation</strong></td><td><span class="sev sev-medium">MEDIUM</span></td><td>Append-only audit_logs, security_events with row_hash, no client DELETE</td></tr>
+    <tr><td><strong>Information Disclosure</strong></td><td><span class="sev sev-high">HIGH</span></td><td>RLS deny-by-default, field encryption, no service_role in client</td></tr>
+    <tr><td><strong>Denial of Service</strong></td><td><span class="sev sev-medium">MEDIUM</span></td><td>Rate limiting per endpoint, auto-block CRITICAL IPs, Supabase platform limits</td></tr>
+    <tr><td><strong>Elevation of Privilege</strong></td><td><span class="sev sev-high">HIGH</span></td><td>RLS admin helper, RBAC household roles, is_security_admin() check</td></tr>
+  </table>
+</div>
+
+<!-- 2. LAYERS -->
+<div class="page" id="layers">
+  <div class="page-eyebrow">Section 2</div>
+  <h1>Security Layers — Defense in Depth</h1>
+  <div class="page-divider"></div>
+
+  <table>
+    <tr><th>#</th><th>Layer</th><th>Implementation</th><th>Gaps / Improvements</th></tr>
+    <tr><td>1</td><td><strong>Transport</strong></td><td>TLS 1.3 enforced by Supabase and Expo; all API calls over HTTPS</td><td>Add certificate pinning in app (expo-ssl-pinning)</td></tr>
+    <tr><td>2</td><td><strong>Authentication</strong></td><td>Supabase Auth (PKCE), email/password + TOTP MFA</td><td>Enforce MFA for all users (not optional)</td></tr>
+    <tr><td>3</td><td><strong>Token Storage</strong></td><td>Expo SecureStore → iOS Keychain / Android Keystore</td><td>Current — no gap</td></tr>
+    <tr><td>4</td><td><strong>Session Management</strong></td><td>30-min inactivity logout (sessionGuard.js PanResponder)</td><td>Add background app → foreground re-auth prompt</td></tr>
+    <tr><td>5</td><td><strong>Field Encryption</strong></td><td>AES-256-GCM via Web Crypto API (fieldEncryption.js)</td><td>Migrate FIELD_ENC_KEY from .env to Supabase vault</td></tr>
+    <tr><td>6</td><td><strong>Database Access Control</strong></td><td>RLS deny-by-default on all tables; anon key in client (never service_role)</td><td>Audit all RLS policies quarterly</td></tr>
+    <tr><td>7</td><td><strong>Input Validation</strong></td><td>validate.js + sanitise() in security-ingest Edge Function</td><td>Add server-side validation to gemini-proxy inputs</td></tr>
+    <tr><td>8</td><td><strong>Rate Limiting</strong></td><td>check_rate_limit() Postgres RPC, rolling window per user+endpoint</td><td>Add global IP-based rate limit at Edge Function level</td></tr>
+    <tr><td>9</td><td><strong>Security Monitoring</strong></td><td>SecurityMonitor.js → security-ingest → security-alert → Resend email</td><td>Add Slack/PagerDuty webhook for CRITICAL events</td></tr>
+    <tr><td>10</td><td><strong>Audit Trail</strong></td><td>Postgres DML triggers + AuditLogger.log() app events → system_audit_logs</td><td>Export logs to SIEM (future)</td></tr>
+    <tr><td>11</td><td><strong>Blocking</strong></td><td>Auto-block CRITICAL IPs in blocked_indicators (24h)</td><td>Add user-level blocks for BRUTE_FORCE_SUCCESS</td></tr>
+    <tr><td>12</td><td><strong>Domain Allow-listing</strong></td><td>approved_domains table + SecurityMonitor.trackOutboundDomain()</td><td>Enforce in all Edge Functions via guardedFetch wrapper</td></tr>
+  </table>
+</div>
+
+<!-- 3. AUTH -->
+<div class="page" id="auth">
+  <div class="page-eyebrow">Section 3</div>
+  <h1>Authentication &amp; Session Security</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Authentication Flow</h2>
+  <ol>
+    <li><strong>Sign Up:</strong> Email + password → Supabase Auth creates <code>auth.users</code> row → trigger creates <code>profiles</code> row → email verification sent</li>
+    <li><strong>Sign In:</strong> Email + password → Supabase PKCE flow → JWT issued → stored in SecureStore</li>
+    <li><strong>MFA Challenge:</strong> If <code>mfa_enabled=true</code> on profile → navigate to MFAVerifyScreen → TOTP code entry → <code>supabase.auth.mfa.challengeAndVerify()</code></li>
+    <li><strong>Session Persistence:</strong> <code>autoRefreshToken: true</code> silently refreshes JWTs before expiry</li>
+    <li><strong>Inactivity Logout:</strong> sessionGuard.js monitors touch events via PanResponder; resets timer on any touch; after 30 minutes of inactivity → <code>supabase.auth.signOut()</code></li>
+  </ol>
+
+  <h2>MFA Implementation</h2>
+  <table>
+    <tr><th>Step</th><th>API Call</th><th>Screen</th></tr>
+    <tr><td>Enroll</td><td><code>supabase.auth.mfa.enroll({factorType:'totp'})</code></td><td>MFASetupScreen</td></tr>
+    <tr><td>Display QR</td><td>URI from enroll response → react-native-qrcode-svg</td><td>MFASetupScreen</td></tr>
+    <tr><td>Confirm enrollment</td><td><code>supabase.auth.mfa.challengeAndVerify({factorId, code})</code></td><td>MFASetupScreen</td></tr>
+    <tr><td>Verify on login</td><td><code>supabase.auth.mfa.challengeAndVerify({factorId, code})</code></td><td>MFAVerifyScreen</td></tr>
+    <tr><td>List factors</td><td><code>supabase.auth.mfa.listFactors()</code></td><td>EditProfileScreen</td></tr>
+    <tr><td>Unenroll</td><td><code>supabase.auth.mfa.unenroll({factorId})</code></td><td>EditProfileScreen</td></tr>
+  </table>
+
+  <div class="callout callout-warn">
+    <strong>Security Gap:</strong> MFA is currently optional (users can skip setup). Production hardening should enforce MFA for all accounts or at minimum for accounts with >$0 stash credits or STACK_MANAGER role.
+  </div>
+
+  <h2>Session Security Details</h2>
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Token type</td><td>JWT (Supabase issued)</td></tr>
+    <tr><td>Storage</td><td>iOS Keychain / Android Keystore via Expo SecureStore</td></tr>
+    <tr><td>Auto-refresh</td><td>Yes — silently refreshed before expiry</td></tr>
+    <tr><td>Inactivity timeout</td><td>30 minutes</td></tr>
+    <tr><td>Background lock</td><td>Not implemented — improvement needed</td></tr>
+    <tr><td>Concurrent sessions</td><td>Allowed (Supabase default)</td></tr>
+    <tr><td>Session revocation</td><td>supabase.auth.signOut() — revokes current token</td></tr>
+  </table>
+
+  <h2>Brute Force Detection</h2>
+  <p>Client-side detection in <code>SecurityMonitor.trackLoginFailure()</code>:</p>
+  <ul>
+    <li>In-memory map keyed by <code>ip:route</code></li>
+    <li>First failure → fires <code>LOGIN_FAILED</code> event</li>
+    <li>5+ failures within 5-minute window → fires <code>BRUTE_FORCE_IN_PROGRESS</code> (MEDIUM severity)</li>
+    <li>Successful login after 3+ failures → fires <code>BRUTE_FORCE_SUCCESS</code> (HIGH severity) → email alert</li>
+    <li>Window resets after 5 minutes of inactivity</li>
+  </ul>
+
+  <div class="callout callout-danger">
+    <strong>Limitation:</strong> Client-side brute force tracking is per-session (in-memory). A server-side check using the <code>api_rate_limit_log</code> table should also be used to detect cross-session or distributed brute force attacks.
+  </div>
+</div>
+
+<!-- 4. DATA SECURITY -->
+<div class="page" id="data">
+  <div class="page-eyebrow">Section 4</div>
+  <h1>Data Security &amp; Encryption</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Field-Level Encryption</h2>
+  <p>Sensitive fields are encrypted client-side using AES-256-GCM before being stored in Supabase. The encryption key is currently sourced from <code>EXPO_PUBLIC_FIELD_ENC_KEY</code>.</p>
+  <pre>
+// lib/fieldEncryption.js
+encryptField(plaintext: string) → { ciphertext, iv, tag }
+decryptField({ ciphertext, iv, tag }) → plaintext
+
+Algorithm : AES-256-GCM
+Key source : process.env.EXPO_PUBLIC_FIELD_ENC_KEY (32 bytes hex)
+IV         : 12 bytes random per encryption (stored with ciphertext)
+Tag        : 16 bytes GCM auth tag (tamper detection)
+  </pre>
+
+  <div class="callout callout-danger">
+    <strong>CRITICAL Gap:</strong> The encryption key is in <code>EXPO_PUBLIC_</code> prefix, meaning it's bundled into the client app binary and extractable via reverse engineering. Production requires the key to live in Supabase vault and encryption/decryption to occur server-side or via a key-derivation service.
+  </div>
+
+  <h2>Data Classification</h2>
+  <table>
+    <tr><th>Data</th><th>Classification</th><th>Storage</th><th>Encryption</th></tr>
+    <tr><td>Auth tokens (JWT)</td><td><span class="sev sev-critical">CRITICAL</span></td><td>SecureStore (device)</td><td>OS keychain encryption</td></tr>
+    <tr><td>Password</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Supabase Auth (bcrypt)</td><td>bcrypt hash — never stored plain</td></tr>
+    <tr><td>Budget / spending data</td><td><span class="sev sev-high">HIGH</span></td><td>Supabase DB</td><td>TLS in transit; field encryption where applied</td></tr>
+    <tr><td>Dietary preferences</td><td><span class="sev sev-high">HIGH</span></td><td>profiles.dietary_tags</td><td>TLS in transit</td></tr>
+    <tr><td>Household members / family data</td><td><span class="sev sev-high">HIGH</span></td><td>household_members</td><td>TLS in transit; RLS enforced</td></tr>
+    <tr><td>Receipt images</td><td><span class="sev sev-high">HIGH</span></td><td>Supabase Storage</td><td>AES-256 at rest (Supabase managed)</td></tr>
+    <tr><td>Security events</td><td><span class="sev sev-high">HIGH</span></td><td>security_events table</td><td>TLS in transit; admin-only RLS</td></tr>
+    <tr><td>Audit logs</td><td><span class="sev sev-medium">MEDIUM</span></td><td>system_audit_logs</td><td>TLS in transit; no client access</td></tr>
+    <tr><td>Referral codes</td><td><span class="sev sev-medium">MEDIUM</span></td><td>profiles.referral_code</td><td>TLS in transit</td></tr>
+    <tr><td>Chef persona</td><td><span class="sev sev-low">LOW</span></td><td>profiles.chef_persona</td><td>TLS in transit</td></tr>
+  </table>
+
+  <h2>Data Retention</h2>
+  <table>
+    <tr><th>Table</th><th>Retention Policy</th><th>Deletion Method</th></tr>
+    <tr><td>security_events (LOW, resolved)</td><td>30 days</td><td>fn_purge_low_severity_events() cron</td></tr>
+    <tr><td>security_events (MEDIUM+)</td><td>1 year</td><td>Manual / scheduled purge</td></tr>
+    <tr><td>system_audit_logs</td><td>2 years</td><td>Scheduled purge (not yet implemented)</td></tr>
+    <tr><td>blocked_indicators</td><td>Per expires_at</td><td>security-escalate job sets active=false</td></tr>
+    <tr><td>trip_results</td><td>Indefinite (user's history)</td><td>On account deletion</td></tr>
+    <tr><td>profiles</td><td>Indefinite (while active)</td><td>On account deletion request (GDPR right to erasure)</td></tr>
+  </table>
+</div>
+
+<!-- 5. MONITORING PIPELINE -->
+<div class="page" id="monitoring">
+  <div class="page-eyebrow">Section 5</div>
+  <h1>Security Monitoring Pipeline</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Pipeline Architecture</h2>
+  <pre>
+App (SecurityMonitor.js)
+    │
+    │  POST /security-ingest
+    │  x-security-token: PUBLIC_TOKEN
+    ▼
+[security-ingest Edge Function]
+    ├── 1. Auth: verify x-security-token
+    ├── 2. Sanitize: strip non-ASCII, truncate
+    ├── 3. Fingerprint: SHA-256(event_type|user_id|ip|route|window_bucket)
+    ├── 4. Dedup: count_events_in_window() RPC
+    │       └── if LOW/MEDIUM duplicate in window → return 'deduplicated'
+    ├── 5. IP Block check: is_blocked() RPC
+    │       └── if blocked → return 'blocked'
+    ├── 6. Score severity: CRITICAL_TYPES → 95, HIGH → 75, MEDIUM → 45, LOW → 5
+    │       └── Repeat escalation: MEDIUM+10 → HIGH, HIGH+5 → CRITICAL
+    ├── 7. INSERT security_events
+    ├── 8. if CRITICAL + ip → upsert blocked_indicators (24h)
+    └── 9. if alert_required → async POST /security-alert
+
+[security-alert Edge Function]
+    ├── 1. Fetch full event from security_events
+    ├── 2. Cooldown check (CRITICAL=60s, HIGH=300s, MEDIUM=3600s)
+    ├── 3. Build email (HTML + text)
+    ├── 4. Create security_alerts record (PENDING)
+    ├── 5. POST Resend API → ddavis@getsnippd.com
+    └── 6. Update alert status (SENT/FAILED) + log to alert_deliveries
+
+[security-escalate Cron — every 5 min]
+    ├── 1. Retry FAILED alerts (exp. backoff, max 3)
+    ├── 2. Volume escalation: MEDIUM ≥10/hr → inject ESCALATED_VOLUME_PATTERN HIGH
+    ├── 3. Health check: if 0 events in 30 min → direct Resend alert (pipeline bypass)
+    └── 4. Expire stale blocked_indicators (active=false)
+  </pre>
+
+  <h2>Alert Cooldown Windows</h2>
+  <table>
+    <tr><th>Severity</th><th>Cooldown</th><th>Reasoning</th></tr>
+    <tr><td><span class="sev sev-critical">CRITICAL</span></td><td>60 seconds</td><td>Immediate repeated alerting — operator must act now</td></tr>
+    <tr><td><span class="sev sev-high">HIGH</span></td><td>5 minutes</td><td>Urgent but allows burst deduplication</td></tr>
+    <tr><td><span class="sev sev-medium">MEDIUM</span></td><td>1 hour</td><td>Digest-level — avoid alert fatigue</td></tr>
+    <tr><td><span class="sev sev-low">LOW</span></td><td>24 hours (no email)</td><td>Suppressed — log only</td></tr>
+  </table>
+
+  <h2>Pipeline Health Monitoring</h2>
+  <p>The <code>security-escalate</code> job includes a dead-man's switch: if no security events have been recorded in 30 minutes, it sends a CRITICAL health failure email <strong>directly via Resend</strong> (bypassing the normal pipeline, which may itself be broken). This ensures monitoring tampering is detected even if the ingest function is down.</p>
+</div>
+
+<!-- 6. EVENT TAXONOMY -->
+<div class="page" id="events">
+  <div class="page-eyebrow">Section 6</div>
+  <h1>Security Event Taxonomy (Complete)</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Authentication Events</h2>
+  <table>
+    <tr><th>Event Type</th><th>Severity</th><th>Trigger</th></tr>
+    <tr><td>LOGIN_FAILED</td><td><span class="sev sev-low">LOW</span></td><td>Single failed login attempt</td></tr>
+    <tr><td>LOGIN_SUCCESS_AFTER_FAILS</td><td><span class="sev sev-high">HIGH</span></td><td>Login succeeds after 1-2 prior failures</td></tr>
+    <tr><td>BRUTE_FORCE_IN_PROGRESS</td><td><span class="sev sev-medium">MEDIUM</span></td><td>5+ failures within 5-minute window</td></tr>
+    <tr><td>BRUTE_FORCE_SUCCESS</td><td><span class="sev sev-high">HIGH</span></td><td>Login succeeds after 3+ failures (possible brute force)</td></tr>
+    <tr><td>NEW_DEVICE_LOGIN</td><td><span class="sev sev-medium">MEDIUM</span></td><td>Login from unrecognized device fingerprint</td></tr>
+    <tr><td>GEO_ANOMALY</td><td><span class="sev sev-medium">MEDIUM</span></td><td>Login from unusual geographic location</td></tr>
+    <tr><td>MFA_DISABLE_ATTEMPT</td><td><span class="sev sev-medium">MEDIUM</span></td><td>User attempts to disable MFA</td></tr>
+    <tr><td>MFA_DISABLE_ADMIN</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Admin MFA disabled</td></tr>
+    <tr><td>PASSWORD_RESET_REPEATED</td><td><span class="sev sev-medium">MEDIUM</span></td><td>Multiple password reset requests in short window</td></tr>
+    <tr><td>SESSION_HIJACK_INDICATOR</td><td><span class="sev sev-high">HIGH</span></td><td>Token used from different IP/UA than issued</td></tr>
+  </table>
+
+  <h2 class="green">Access Control Events</h2>
+  <table>
+    <tr><th>Event Type</th><th>Severity</th><th>Trigger</th></tr>
+    <tr><td>IDOR_ATTEMPT</td><td><span class="sev sev-medium">MEDIUM</span></td><td>User accesses resource belonging to different user</td></tr>
+    <tr><td>IDOR_CONFIRMED</td><td><span class="sev sev-high">HIGH</span></td><td>IDOR attempt succeeded (data returned)</td></tr>
+    <tr><td>UNAUTHORIZED_ADMIN_ACCESS</td><td><span class="sev sev-high">HIGH</span></td><td>Non-admin accessing admin routes</td></tr>
+    <tr><td>PRIVILEGE_ESCALATION_ATTEMPT</td><td><span class="sev sev-high">HIGH</span></td><td>Attempt to change own role</td></tr>
+    <tr><td>PRIVILEGE_ESCALATION_CONFIRMED</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Role successfully escalated without authorization</td></tr>
+    <tr><td>ROLE_CHANGE</td><td><span class="sev sev-medium">MEDIUM</span></td><td>Any household role change</td></tr>
+    <tr><td>BROKEN_ACCESS_CONTROL</td><td><span class="sev sev-high">HIGH</span></td><td>RLS bypass or access control failure detected</td></tr>
+    <tr><td>MASS_ASSIGNMENT_ATTEMPT</td><td><span class="sev sev-high">HIGH</span></td><td>Request body contains unexpected privileged fields</td></tr>
+  </table>
+
+  <h2 class="green">Injection Events</h2>
+  <table>
+    <tr><th>Event Type</th><th>Severity</th><th>Pattern Detected</th></tr>
+    <tr><td>SQL_INJECTION_ATTEMPT</td><td><span class="sev sev-high">HIGH</span></td><td><code>UNION SELECT</code>, <code>DROP TABLE</code>, etc.</td></tr>
+    <tr><td>INJECTION_PAYLOAD_SIGNATURE</td><td><span class="sev sev-medium">MEDIUM</span></td><td>Any of SQL/XSS/path traversal/command/Log4Shell patterns</td></tr>
+    <tr><td>XSS_PAYLOAD_DETECTED</td><td><span class="sev sev-medium">MEDIUM</span></td><td><code>&lt;script</code>, <code>javascript:</code>, <code>onerror=</code></td></tr>
+    <tr><td>SSRF_ATTEMPT</td><td><span class="sev sev-high">HIGH</span></td><td>Internal metadata URLs, localhost in outbound requests</td></tr>
+    <tr><td>COMMAND_INJECTION_ATTEMPT</td><td><span class="sev sev-high">HIGH</span></td><td><code>exec(</code>, <code>system(</code>, <code>subprocess.</code></td></tr>
+    <tr><td>PATH_TRAVERSAL_ATTEMPT</td><td><span class="sev sev-high">HIGH</span></td><td><code>../</code>, <code>%2e%2e%2f</code>, <code>%252e%252e</code></td></tr>
+  </table>
+
+  <h2 class="green">Exfiltration &amp; Developer Tool Events</h2>
+  <table>
+    <tr><th>Event Type</th><th>Severity</th><th>Trigger</th></tr>
+    <tr><td>SECRET_EXFILTRATION_ATTEMPT</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Credential patterns in outbound data</td></tr>
+    <tr><td>SERVICE_ROLE_KEY_EXPOSED</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Supabase service_role key detected in any payload</td></tr>
+    <tr><td>SECRET_IN_REQUEST_BODY</td><td><span class="sev sev-high">HIGH</span></td><td>JWT, Stripe key, AWS key, GitHub token in request</td></tr>
+    <tr><td>COMMAND_EXECUTION_UNTRUSTED</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Command executed from untrusted source in AI workflow</td></tr>
+    <tr><td>REPO_TRUST_BYPASS_CONFIRMED</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Confirmed bypass of repository trust controls</td></tr>
+    <tr><td>OUTBOUND_ATTACKER_ENDPOINT</td><td><span class="sev sev-critical">CRITICAL</span></td><td>Outbound call to known attacker-controlled endpoint</td></tr>
+    <tr><td>UNAPPROVED_DOMAIN_CALL</td><td><span class="sev sev-high">HIGH</span></td><td>Call to domain not in approved_domains allowlist</td></tr>
+    <tr><td>PROMPT_INJECTION_ATTEMPT</td><td><span class="sev sev-medium">MEDIUM</span></td><td>Suspicious instruction-like patterns in AI inputs</td></tr>
+  </table>
+</div>
+
+<!-- 7. PLAYBOOKS -->
+<div class="page" id="playbooks">
+  <div class="page-eyebrow">Section 7</div>
+  <h1>Incident Response Playbooks</h1>
+  <div class="page-divider"></div>
+
+  <div class="playbook">
+    <div class="trigger">BRUTE_FORCE_SUCCESS</div>
+    <h4>Playbook: Brute Force Success</h4>
+    <ol>
+      <li>Receive HIGH alert email → confirm event in security_events table</li>
+      <li>Immediately invalidate all sessions for the affected user: Supabase Dashboard → Auth → Users → Sign Out All Devices</li>
+      <li>Temporarily disable account (set <code>profiles.is_blocked=true</code> if field exists, or use Supabase Auth admin ban)</li>
+      <li>Block the source IP: <code>INSERT INTO blocked_indicators (indicator_type, indicator_value, reason, severity, expires_at) VALUES ('IP', '&lt;ip&gt;', 'Brute force success', 'HIGH', now()+interval '7 days')</code></li>
+      <li>Email affected user: "We detected unusual sign-in activity. Your account has been temporarily secured."</li>
+      <li>Review all actions taken by this account in the last 24h via system_audit_logs</li>
+      <li>If financial data accessed: document scope and assess notification requirements</li>
+      <li>Restore account access with forced password reset + MFA enrollment</li>
+    </ol>
+  </div>
+
+  <div class="playbook">
+    <div class="trigger">SERVICE_ROLE_KEY_EXPOSED / SECRET_EXFILTRATION_ATTEMPT</div>
+    <h4>Playbook: Secret/Credential Exposure — EMERGENCY</h4>
+    <ol>
+      <li>STOP all deployments immediately</li>
+      <li>Rotate Supabase service_role key: Dashboard → Settings → API → Rotate Keys</li>
+      <li>Update all Supabase Edge Function secrets with new key: <code>supabase secrets set SUPABASE_SERVICE_ROLE_KEY=&lt;new&gt;</code></li>
+      <li>Rotate all other potentially exposed secrets (Gemini, Resend, SECURITY_INGEST_SECRET)</li>
+      <li>Check git history for committed secrets: <code>git log --all -S "service_role"</code></li>
+      <li>If committed: use git-filter-repo to purge, force-push, invalidate all forks</li>
+      <li>Review audit logs for any unauthorized DB access during exposure window</li>
+      <li>Document exposure window, actions taken, data accessed → for compliance reporting</li>
+    </ol>
+  </div>
+
+  <div class="playbook">
+    <div class="trigger">ADMIN_ACCOUNT_TAKEOVER</div>
+    <h4>Playbook: Admin Account Takeover — EMERGENCY</h4>
+    <ol>
+      <li>Immediately revoke all sessions for the admin account</li>
+      <li>Disable admin account in Supabase Auth</li>
+      <li>Rotate SECURITY_INGEST_SECRET (attacker may have visibility into monitoring)</li>
+      <li>Review all changes made by the admin account in last 72h via system_audit_logs</li>
+      <li>Check if any new admin accounts were created or privileges escalated</li>
+      <li>Verify security monitoring pipeline integrity (check escalate job is still running)</li>
+      <li>Re-enable admin access only after forensic review and MFA re-enrollment</li>
+    </ol>
+  </div>
+
+  <div class="playbook">
+    <div class="trigger">MONITORING_TAMPERING</div>
+    <h4>Playbook: Security Monitoring Tampering — EMERGENCY</h4>
+    <ol>
+      <li>Treat as highest-priority incident — attacker may be actively covering tracks</li>
+      <li>Verify security-ingest edge function is running: test with manual POST</li>
+      <li>Check pg_cron job for security-escalate: <code>SELECT * FROM cron.job WHERE jobname LIKE 'security%'</code></li>
+      <li>Review Supabase Edge Function logs for unauthorized restarts or configuration changes</li>
+      <li>Verify SECURITY_INGEST_SECRET has not been changed</li>
+      <li>Check blocked_indicators table for unauthorized entries or mass deactivation</li>
+      <li>Re-deploy all security Edge Functions from known-good source</li>
+      <li>Escalate to incident response team — assume breach until proven otherwise</li>
+    </ol>
+  </div>
+
+  <div class="playbook">
+    <div class="trigger">REFERRAL_FRAUD_ATTEMPT</div>
+    <h4>Playbook: Referral / Credit Fraud</h4>
+    <ol>
+      <li>Identify affected referrals: <code>SELECT * FROM referrals WHERE fraud_score &gt; 50</code></li>
+      <li>Block all pending credit releases for flagged referrals: set <code>referrer_credits_status='blocked'</code></li>
+      <li>Review account creation patterns for bulk signups from same IP/device</li>
+      <li>Check for identical dietary preferences or device fingerprints across accounts</li>
+      <li>Permanently ban confirmed fraud accounts and reclaim awarded credits</li>
+      <li>Increase fraud_score threshold if pattern is novel</li>
+    </ol>
+  </div>
+</div>
+
+<!-- 8. COMPLIANCE -->
+<div class="page" id="compliance">
+  <div class="page-eyebrow">Section 8</div>
+  <h1>Compliance &amp; Privacy</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Data Privacy (CCPA / GDPR Considerations)</h2>
+  <p>Snippd collects and processes personal data including name, email, dietary preferences, household composition, location (store proximity), spending habits, and receipt images. The following rights apply:</p>
+
+  <table>
+    <tr><th>Right</th><th>Regulation</th><th>Current Implementation</th><th>Gap</th></tr>
+    <tr><td>Right to Access</td><td>GDPR Art. 15 / CCPA</td><td>User can view own profile data in app</td><td>No formal data export (DSAR) flow implemented</td></tr>
+    <tr><td>Right to Erasure</td><td>GDPR Art. 17</td><td>Not implemented</td><td>Need account deletion flow that removes/anonymizes PII</td></tr>
+    <tr><td>Right to Portability</td><td>GDPR Art. 20</td><td>Not implemented</td><td>Need data export (JSON/CSV) for user data</td></tr>
+    <tr><td>Right to Rectification</td><td>GDPR Art. 16</td><td>EditProfileScreen allows updates</td><td>Current — covered</td></tr>
+    <tr><td>Consent</td><td>GDPR Art. 6 / CCPA</td><td>Terms acceptance on signup</td><td>Need granular consent for analytics, marketing</td></tr>
+    <tr><td>Data Minimization</td><td>GDPR Art. 5</td><td>Collecting necessary data only</td><td>Audit receipt image retention (contains store + price data)</td></tr>
+  </table>
+
+  <h2>Subscription &amp; Payment Compliance</h2>
+  <div class="callout callout-warn">
+    <strong>Apple / Google App Store Policy:</strong> Snippd uses in-app subscriptions ($4.99/month, $99 lifetime). All purchases must go through Apple IAP / Google Play Billing — direct payment processing (Stripe, etc.) within the app is prohibited by store guidelines for subscription products.
+  </div>
+
+  <table>
+    <tr><th>Requirement</th><th>Status</th></tr>
+    <tr><td>IAP for subscription products</td><td><span class="badge badge-orange">Pending</span> — current flow uses subscription_type flag; IAP integration not yet wired</td></tr>
+    <tr><td>Free trial disclosures</td><td><span class="badge badge-green">N/A</span> — No free tier; paid-only model</td></tr>
+    <tr><td>Subscription cancellation</td><td><span class="badge badge-orange">Pending</span> — Must be cancelable via device subscription settings</td></tr>
+    <tr><td>Lifetime purchase receipt</td><td><span class="badge badge-orange">Pending</span> — Need server-side receipt validation</td></tr>
+  </table>
+
+  <h2>Security Standards Alignment</h2>
+  <table>
+    <tr><th>Standard</th><th>Relevance</th><th>Coverage</th></tr>
+    <tr><td>OWASP Mobile Top 10</td><td>High — React Native app</td><td>M1 (improper credential use) ✓ SecureStore. M2 (insecure data storage) ✓. M4 (auth) ✓ MFA. M9 (reverse eng) ⚠ FIELD_ENC_KEY in bundle</td></tr>
+    <tr><td>OWASP API Security Top 10</td><td>High — Supabase REST/GraphQL</td><td>API1 (BOLA/IDOR) ✓ RLS + SecurityMonitor. API2 (auth) ✓. API3 (mass assignment) ✓ SecurityMonitor. API8 (injection) ✓ sanitise()</td></tr>
+    <tr><td>SOC 2 Type II</td><td>Future — for enterprise/brand partners</td><td>Not pursued yet. Audit logging, encryption, access controls in place as foundation</td></tr>
+    <tr><td>PCI-DSS</td><td>Low — no direct card processing</td><td>Stash credits are not real currency. IAP payments go through Apple/Google</td></tr>
+  </table>
+</div>
+
+<!-- 9. HARDENING -->
+<div class="page" id="hardening">
+  <div class="page-eyebrow">Section 9</div>
+  <h1>Hardening Checklists</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Application Hardening</h2>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>No service_role key in client code</strong> — Anon key only in EXPO_PUBLIC_ vars</div></div>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>SecureStore for auth tokens</strong> — Not AsyncStorage</div></div>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>30-min inactivity timeout</strong> — sessionGuard.js PanResponder</div></div>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>Input validation</strong> — validate.js + Edge Function sanitise()</div></div>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>Security monitoring fire-and-forget</strong> — Never blocks UI, never throws</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>FIELD_ENC_KEY migration</strong> — Must move from EXPO_PUBLIC_ to server-side vault</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Certificate pinning</strong> — Add expo-ssl-pinning for Supabase API domain</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Background app re-auth</strong> — Require biometric/PIN when foregrounding after >5 min</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Enforce MFA</strong> — Make TOTP mandatory for all accounts, not optional</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>ProGuard / obfuscation</strong> — Enable for Android release builds</div></div>
+
+  <h2 class="green">Infrastructure Hardening</h2>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>RLS on all tables</strong> — Deny-by-default with explicit GRANT policies</div></div>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>Service role in Supabase vault only</strong> — Not in source code or .env</div></div>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>Edge Function auth headers</strong> — x-security-token validation on all security functions</div></div>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>Auto-block CRITICAL IPs</strong> — 24-hour ban on CRITICAL severity events</div></div>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>Approved domain allow-list</strong> — outbound domain validation table seeded</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Database connection pooling</strong> — Enable PgBouncer in Supabase settings for production load</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Enable Supabase Point-in-Time Recovery</strong> — For database backup &amp; restoration</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Geo-restriction</strong> — Restrict Supabase project access to specific regions if applicable</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>pg_cron for security-escalate</strong> — Schedule cron job in production Supabase</div></div>
+
+  <h2 class="green">Developer Workflow Hardening</h2>
+  <div class="checklist-item"><div class="check-icon check-done">✓</div><div class="check-text"><strong>.gitignore includes .env*</strong> — Confirmed present</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Create .env.example</strong> — Template with placeholder values; no real secrets</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Pre-commit hook</strong> — git-secrets or detect-secrets to block credential commits</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Separate dev API keys</strong> — Different Gemini/Resend keys for dev vs prod with spending limits</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Claude Code sandbox mode</strong> — Enable .claude/settings.json sandbox:true for AI-assisted development</div></div>
+</div>
+
+<!-- 10. SECRETS + 11. TESTING -->
+<div class="page" id="secrets">
+  <div class="page-eyebrow">Section 10 &amp; 11</div>
+  <h1>Secret Management &amp; Security Testing</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Secret Inventory</h2>
+  <table>
+    <tr><th>Secret</th><th>Where it Lives (Prod)</th><th>Where it Lives (Dev)</th><th>Rotation Frequency</th></tr>
+    <tr><td>SUPABASE_ANON_KEY</td><td>EXPO_PUBLIC_ in app build env</td><td>.env.local</td><td>On suspected compromise</td></tr>
+    <tr><td>SUPABASE_SERVICE_ROLE_KEY</td><td>Supabase vault (Edge Functions only)</td><td>Never on local machine</td><td>Quarterly + on compromise</td></tr>
+    <tr><td>SECURITY_INGEST_SECRET</td><td>Supabase vault + app build env</td><td>.env.local (dev token)</td><td>Quarterly</td></tr>
+    <tr><td>GEMINI_API_KEY</td><td>Supabase vault (gemini-proxy only)</td><td>.env.local (dev key)</td><td>Quarterly</td></tr>
+    <tr><td>RESEND_API_KEY</td><td>Supabase vault (security-alert only)</td><td>Dev key with send limits</td><td>Quarterly</td></tr>
+    <tr><td>FIELD_ENC_KEY</td><td>Currently EXPO_PUBLIC_ ⚠️ — migrate to vault</td><td>.env.local</td><td>On compromise + migration</td></tr>
+  </table>
+
+  <h2 class="green">Security Testing Plan</h2>
+
+  <h3>1. Automated — Pre-Commit</h3>
+  <ul>
+    <li>detect-secrets scan on all staged files</li>
+    <li>ESLint security plugin for common patterns (eval, innerHTML, etc.)</li>
+    <li>npm audit for known CVEs in dependencies</li>
+  </ul>
+
+  <h3>2. Authentication Testing</h3>
+  <ul>
+    <li>Verify password reset token single-use</li>
+    <li>Test session invalidation on signOut across devices</li>
+    <li>Verify MFA cannot be bypassed by direct API call</li>
+    <li>Test inactivity logout fires at exactly 30 minutes</li>
+    <li>Attempt TOTP replay attack (same code used twice)</li>
+  </ul>
+
+  <h3>3. Authorization / RLS Testing</h3>
+  <ul>
+    <li>Attempt to query another user's profile row with own JWT</li>
+    <li>Attempt to modify household_members with SHOPPER role</li>
+    <li>Attempt to read security_events with non-admin JWT</li>
+    <li>Attempt to insert into system_audit_logs directly</li>
+    <li>Verify RLS blocks service_role-only operations when using anon key</li>
+  </ul>
+
+  <h3>4. Injection Testing (security-ingest validation)</h3>
+  <ul>
+    <li>Send SQL injection payload in summary field — verify sanitise() strips it</li>
+    <li>Send XSS payload in route field — verify stripped to ASCII only</li>
+    <li>Send excessively long strings — verify truncation at maxLen</li>
+    <li>Send non-UTF8 bytes — verify stripped by replace(/[^\x20-\x7E\n\r\t]/g, '')</li>
+  </ul>
+
+  <h3>5. Security Monitoring Pipeline Testing</h3>
+  <ul>
+    <li>Fire a test LOGIN_FAILED event → verify appears in security_events</li>
+    <li>Fire a test BRUTE_FORCE_SUCCESS event → verify email received within 60 seconds</li>
+    <li>Fire CRITICAL event → verify IP is added to blocked_indicators</li>
+    <li>Fire same event twice within window → verify second is deduplicated</li>
+    <li>Stop firing events for 31 minutes → verify health check alert fires</li>
+  </ul>
+
+  <footer>Snippd Security &amp; Compliance · Version 1.0 · April 2026 · RESTRICTED — Internal Use Only</footer>
+</div>
+
+</body>
+</html>

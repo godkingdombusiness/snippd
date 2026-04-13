@@ -1,0 +1,53 @@
+{
+  "name": "snippd",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start --port 8082",
+    "android": "expo start --android --port 8082",
+    "ios": "expo start --ios --port 8082",
+    "web": "expo start --web --port 8082"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~55.0.6",
+    "@expo/vector-icons": "^15.0.2",
+    "@google/generative-ai": "^0.24.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/bottom-tabs": "^7.15.7",
+    "@react-navigation/native": "^7.2.0",
+    "@react-navigation/native-stack": "^7.14.6",
+    "@react-navigation/stack": "^7.8.8",
+    "@supabase/supabase-js": "^2.99.3",
+    "expo": "~55.0.12",
+    "expo-auth-session": "~55.0.12",
+    "expo-blur": "~55.0.13",
+    "expo-camera": "~55.0.14",
+    "expo-crypto": "~55.0.13",
+    "expo-font": "~55.0.6",
+    "expo-image-picker": "~55.0.17",
+    "expo-linear-gradient": "~55.0.12",
+    "expo-linking": "~55.0.11",
+    "expo-location": "~55.1.7",
+    "expo-media-library": "~55.0.13",
+    "expo-secure-store": "~55.0.12",
+    "expo-sharing": "~55.0.17",
+    "expo-splash-screen": "~55.0.16",
+    "expo-status-bar": "~55.0.5",
+    "expo-web-browser": "~55.0.13",
+    "neo4j-driver": "^6.0.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-native": "0.83.4",
+    "react-native-gesture-handler": "~2.30.0",
+    "react-native-qrcode-svg": "^6.3.21",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0",
+    "react-native-svg": "15.15.3",
+    "react-native-web": "^0.21.0"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/react": "~19.2.10",
+    "typescript": "~5.9.2"
+  }
+}

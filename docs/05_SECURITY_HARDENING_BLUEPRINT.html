@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snippd — Security Hardening Blueprint</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:#fff;color:#0f172a;font-size:13px;line-height:1.75}
+  .cover{background:#0f172a;color:#fff;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:60px 40px;page-break-after:always;position:relative;overflow:hidden}
+  .cover::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(239,68,68,0.15) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(12,158,84,0.15) 0%,transparent 60%);pointer-events:none}
+  .cover-logo{font-size:64px;font-weight:900;letter-spacing:-3px;color:#fff;margin-bottom:4px}
+  .cover-logo span{color:#C5FFBC}
+  .cover-tag{font-size:11px;font-weight:700;letter-spacing:4px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:48px}
+  .cover-title{font-size:38px;font-weight:900;color:#fff;line-height:1.15;margin-bottom:16px;max-width:700px}
+  .cover-title em{color:#ef4444;font-style:normal}
+  .cover-sub{font-size:14px;color:rgba(255,255,255,0.6);max-width:600px;line-height:1.8;margin-bottom:48px}
+  .cover-pills{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:40px}
+  .cover-pill{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;padding:5px 14px;border-radius:20px}
+  .cover-warn{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);border-radius:10px;padding:18px 28px;max-width:600px}
+  .cover-warn p{color:rgba(255,255,255,0.85);font-size:12.5px;line-height:1.7;margin:0}
+  .cover-meta{font-size:11px;color:rgba(255,255,255,0.35);margin-top:32px}
+  .cover-meta span{margin:0 12px}
+  .toc{padding:60px 80px;page-break-after:always;background:#fff}
+  .toc h2{font-size:22px;font-weight:800;color:#0f172a;margin-bottom:28px;display:flex;align-items:center;gap:12px}
+  .toc h2 span{display:inline-block;width:4px;height:24px;background:#ef4444;border-radius:2px}
+  .toc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .toc-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;align-items:baseline}
+  .toc-num{font-size:11px;font-weight:700;color:#ef4444;min-width:28px}
+  .toc-text{font-size:13px;color:#334155;font-weight:500}
+  .toc-sub-text{font-size:11.5px;color:#94a3b8;margin-top:1px}
+  .page{padding:56px 80px;page-break-after:always}
+  .page:last-child{page-break-after:auto}
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:3px;color:#ef4444;text-transform:uppercase;margin-bottom:8px}
+  .eyebrow.green{color:#0C9E54}
+  .eyebrow.blue{color:#3b82f6}
+  .eyebrow.orange{color:#f59e0b}
+  h1{font-size:28px;font-weight:900;color:#0f172a;margin-bottom:6px;line-height:1.2}
+  .divider{height:3px;background:linear-gradient(90deg,#ef4444,#f59e0b,#0C9E54,transparent);margin-bottom:28px;border-radius:2px}
+  .divider.blue{background:linear-gradient(90deg,#3b82f6,#6366f1,transparent)}
+  .divider.green{background:linear-gradient(90deg,#0C9E54,#C5FFBC,transparent)}
+  h2{font-size:17px;font-weight:800;color:#0f172a;margin-top:32px;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+  h2::before{content:'';display:inline-block;width:4px;height:18px;background:#ef4444;border-radius:2px;flex-shrink:0}
+  h2.green::before{background:#0C9E54}
+  h2.blue::before{background:#3b82f6}
+  h2.orange::before{background:#f59e0b}
+  h3{font-size:13.5px;font-weight:700;color:#1e293b;margin-top:20px;margin-bottom:6px}
+  h4{font-size:12.5px;font-weight:600;color:#334155;margin-top:14px;margin-bottom:4px}
+  p{color:#475569;margin-bottom:10px;font-size:13px}
+  ul,ol{padding-left:20px;margin-bottom:10px}
+  li{color:#475569;margin-bottom:3px;font-size:13px}
+  strong{color:#0f172a}
+  code{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:#f1f5f9;border:1px solid #e2e8f0;padding:1px 5px;border-radius:3px;color:#0C9E54}
+  pre{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:#0f172a;color:#e2e8f0;padding:20px;border-radius:10px;margin:14px 0;white-space:pre-wrap;line-height:1.65;border:1px solid #1e293b}
+  .kw{color:#C5FFBC;font-weight:600}
+  .cm{color:#475569}
+  .str{color:#fbbf24}
+  .var{color:#93c5fd}
+  .fn{color:#f9a8d4}
+  .num{color:#fb923c}
+  .type{color:#a5f3fc}
+  .box{border:1.5px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin:12px 0}
+  .box-red{border-color:#fca5a5;background:#fef2f2}
+  .box-green{border-color:#86efac;background:#f0fdf4}
+  .box-blue{border-color:#93c5fd;background:#eff6ff}
+  .box-orange{border-color:#fcd34d;background:#fffbeb}
+  .box-dark{background:#0f172a;border-color:#1e293b;color:#e2e8f0}
+  .box-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+  .box-red .box-title{color:#ef4444}
+  .box-green .box-title{color:#0C9E54}
+  .box-blue .box-title{color:#3b82f6}
+  .box-orange .box-title{color:#f59e0b}
+  .box-dark .box-title{color:#C5FFBC}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:11.5px}
+  th{background:#0f172a;color:#fff;padding:9px 13px;text-align:left;font-weight:600;font-size:10.5px;letter-spacing:0.5px}
+  th.red{background:#7f1d1d}
+  th.green{background:#14532d}
+  th.blue{background:#1e3a8a}
+  td{padding:8px 13px;border-bottom:1px solid #f1f5f9;color:#475569;vertical-align:top}
+  tr:nth-child(even) td{background:#fafafa}
+  .sev{display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;font-size:10px;letter-spacing:0.5px}
+  .sev-c{background:#450a0a;color:#fca5a5}
+  .sev-h{background:#431407;color:#fdba74}
+  .sev-m{background:#451a03;color:#fde68a}
+  .sev-l{background:#0c1a2e;color:#93c5fd}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+  .b-red{background:#fee2e2;color:#991b1b}
+  .b-green{background:#dcfce7;color:#14532d}
+  .b-blue{background:#dbeafe;color:#1e40af}
+  .b-orange{background:#ffedd5;color:#9a3412}
+  .b-gray{background:#f1f5f9;color:#475569}
+  .b-purple{background:#f3e8ff;color:#6b21a8}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:12px 0}
+  .trust-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+  .trust-label{font-weight:600;font-size:13px;color:#0f172a;min-width:160px}
+  .trust-level{font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px}
+  .trust-un{background:#fee2e2;color:#991b1b}
+  .trust-semi{background:#ffedd5;color:#9a3412}
+  .trust-full{background:#dcfce7;color:#14532d}
+  .trust-desc{font-size:11.5px;color:#64748b;flex:1}
+  .play{background:#0f172a;border-radius:10px;padding:20px 24px;margin:12px 0}
+  .play-trigger{display:inline-block;background:#ef4444;color:#fff;font-size:9.5px;font-weight:700;letter-spacing:1px;padding:3px 10px;border-radius:4px;margin-bottom:10px;text-transform:uppercase}
+  .play h4{color:#C5FFBC;font-size:13px;margin-bottom:10px;margin-top:0}
+  .play ol{color:#cbd5e1;padding-left:18px}
+  .play ol li{font-size:12px;margin-bottom:5px}
+  .play p{color:#94a3b8;font-size:12px}
+  .road-now{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:16px 20px;margin:8px 0}
+  .road-next{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:16px 20px;margin:8px 0}
+  .road-later{background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:16px 20px;margin:8px 0}
+  .road-label{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+  .road-now .road-label{color:#ef4444}
+  .road-next .road-label{color:#f59e0b}
+  .road-later .road-label{color:#0C9E54}
+  .road-item{font-size:12.5px;color:#334155;padding:4px 0;display:flex;gap:8px}
+  .road-item::before{content:'→';font-weight:700;color:inherit}
+  .road-now .road-item::before{color:#ef4444}
+  .road-next .road-item::before{color:#f59e0b}
+  .road-later .road-item::before{color:#0C9E54}
+  .check-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;align-items:flex-start}
+  .check-box{width:18px;height:18px;min-width:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-top:1px}
+  .check-pass{background:#dcfce7;color:#166534}
+  .check-fail{background:#fee2e2;color:#991b1b}
+  .check-warn{background:#fef9c3;color:#854d0e}
+  .check-text{flex:1;font-size:12.5px;color:#334155}
+  footer{text-align:center;padding:20px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;margin-top:40px}
+  @media (max-width:768px){
+    body{font-size:12px}
+    .cover{padding:48px 20px;min-height:auto}
+    .cover-logo{font-size:44px;letter-spacing:-2px}
+    .cover-sub{font-size:16px}
+    .cover-doc{font-size:20px;padding:10px 18px}
+    .cover-meta span{display:block;margin:4px 0}
+    .toc{padding:32px 20px}
+    .page{padding:32px 20px}
+    h1{font-size:22px}
+    h2{font-size:15px;margin-top:24px}
+    h3{font-size:13px}
+    .two-col,.three-col{grid-template-columns:1fr}
+    .env-row{flex-direction:column;gap:4px}
+    .env-key{min-width:auto;word-break:break-all}
+    .env-where{min-width:auto}
+    table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    pre{font-size:10px;padding:14px}
+    .kpi-num{font-size:22px}
+    .step{gap:10px}
+    .step-num{width:28px;height:28px;min-width:28px;font-size:11px}
+  }
+  @media print{
+    .page{page-break-after:always}
+    body{font-size:12px}
+    pre{font-size:10px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ COVER ═══════════════════════════════ -->
+<div class="cover">
+  <div class="cover-logo">snipp<span>d</span></div>
+  <div class="cover-tag">Smart Grocery Intelligence Platform</div>
+  <div class="cover-title">Production Security<br><em>Hardening Blueprint</em></div>
+  <div class="cover-sub">Full defense-in-depth architecture covering mobile client, authentication, API layer, database, rewards systems, developer workflows, and incident response for the Snippd platform.</div>
+  <div class="cover-pills">
+    <span class="cover-pill">18 Sections</span>
+    <span class="cover-pill">React Native · Expo</span>
+    <span class="cover-pill">Supabase · PostgreSQL</span>
+    <span class="cover-pill">Deno Edge Functions</span>
+    <span class="cover-pill">Gemini API</span>
+    <span class="cover-pill">Zero-Trust Model</span>
+  </div>
+  <div class="cover-warn">
+    <p>⚠️ <strong>RESTRICTED — SECURITY TEAM ONLY.</strong> Contains threat models, vulnerability details, and incident response procedures. Do not share. Store encrypted. Treat as CONFIDENTIAL.</p>
+  </div>
+  <div class="cover-meta">
+    <span>Version 1.0</span>
+    <span>April 2026</span>
+    <span>Principal Security Architect Review</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ TOC ═══════════════════════════════ -->
+<div class="toc">
+  <h2><span></span>Table of Contents — 18 Sections</h2>
+  <div class="toc-grid">
+    <div class="toc-item"><span class="toc-num">1</span><div><div class="toc-text">Executive Security Architecture</div><div class="toc-sub-text">Trust levels, defense layers, component model</div></div></div>
+    <div class="toc-item"><span class="toc-num">2</span><div><div class="toc-text">Threat Model</div><div class="toc-sub-text">Public, internal, AI/developer tooling threats</div></div></div>
+    <div class="toc-item"><span class="toc-num">3</span><div><div class="toc-text">Critical Vulnerabilities</div><div class="toc-sub-text">Immediate elimination plan</div></div></div>
+    <div class="toc-item"><span class="toc-num">4</span><div><div class="toc-text">Secure Backend Enforcement Model</div><div class="toc-sub-text">Client requests. Server decides. DB enforces.</div></div></div>
+    <div class="toc-item"><span class="toc-num">5</span><div><div class="toc-text">Supabase RLS Hardening</div><div class="toc-sub-text">Per-table policies, SQL examples, audit</div></div></div>
+    <div class="toc-item"><span class="toc-num">6</span><div><div class="toc-text">Edge Function Protection</div><div class="toc-sub-text">Auth, rate limits, HMAC, anti-replay</div></div></div>
+    <div class="toc-item"><span class="toc-num">7</span><div><div class="toc-text">Rewards / Referral Anti-Fraud</div><div class="toc-sub-text">Append-only ledger, fraud flags, anomaly scoring</div></div></div>
+    <div class="toc-item"><span class="toc-num">8</span><div><div class="toc-text">Event Idempotency + Replay Protection</div><div class="toc-sub-text">Fingerprinting, nonce, stale timestamp rejection</div></div></div>
+    <div class="toc-item"><span class="toc-num">9</span><div><div class="toc-text">Step-Up Authentication</div><div class="toc-sub-text">Elevated session tokens, MFA challenge, expiry</div></div></div>
+    <div class="toc-item"><span class="toc-num">10</span><div><div class="toc-text">Secrets &amp; Encryption Redesign</div><div class="toc-sub-text">Remove EXPO_PUBLIC keys, vault migration, rotation</div></div></div>
+    <div class="toc-item"><span class="toc-num">11</span><div><div class="toc-text">Environment Separation</div><div class="toc-sub-text">dev / staging / prod isolation, CI/CD gates</div></div></div>
+    <div class="toc-item"><span class="toc-num">12</span><div><div class="toc-text">pg_cron Hardening</div><div class="toc-sub-text">Permissions, audit logging, dead-man monitoring</div></div></div>
+    <div class="toc-item"><span class="toc-num">13</span><div><div class="toc-text">Monitoring &amp; Alerting</div><div class="toc-sub-text">Security pipeline, fraud detection, alert delivery</div></div></div>
+    <div class="toc-item"><span class="toc-num">14</span><div><div class="toc-text">Incident Response + Kill Switches</div><div class="toc-sub-text">Feature flags, freeze controls, response playbooks</div></div></div>
+    <div class="toc-item"><span class="toc-num">15</span><div><div class="toc-text">TypeScript + SQL Implementation</div><div class="toc-sub-text">Working code for every pattern</div></div></div>
+    <div class="toc-item"><span class="toc-num">16</span><div><div class="toc-text">Testing Plan</div><div class="toc-sub-text">RLS, fraud, replay, IDOR, escalation tests</div></div></div>
+    <div class="toc-item"><span class="toc-num">17</span><div><div class="toc-text">Deployment Checklist</div><div class="toc-sub-text">Pre-release security gate — must be all green</div></div></div>
+    <div class="toc-item"><span class="toc-num">18</span><div><div class="toc-text">Priority Roadmap</div><div class="toc-sub-text">Fix now / Fix next / Fix later</div></div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 1 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 1</div>
+  <h1>Executive Security Architecture</h1>
+  <div class="divider"></div>
+
+  <p>Snippd's security model is built on a single non-negotiable premise: <strong>the mobile client is fully untrusted.</strong> Every security decision flows from this. A user who roots their device, proxies network traffic, or reverse-engineers the app binary must never be able to manipulate balances, escalate privileges, claim rewards, or access other users' data — no matter what they send to the server.</p>
+
+  <h2>Component Trust Levels</h2>
+  <div class="trust-row"><div class="trust-label">React Native Client</div><div class="trust-level trust-un">UNTRUSTED</div><div class="trust-desc">Runs on user-controlled hardware. Binary extractable. Can be modified, proxied, replayed. Zero trust — all claims validated server-side.</div></div>
+  <div class="trust-row"><div class="trust-label">Supabase Anon Key</div><div class="trust-level trust-un">UNTRUSTED</div><div class="trust-desc">Public. Anyone who downloads the app has it. Only grants access as restricted by RLS. Never grants privilege on its own.</div></div>
+  <div class="trust-row"><div class="trust-label">Supabase Auth JWT</div><div class="trust-level trust-semi">SEMI-TRUSTED</div><div class="trust-desc">Cryptographically signed by Supabase. Proves identity of auth.uid(). Cannot prove intent, honesty of payload, or absence of compromise.</div></div>
+  <div class="trust-row"><div class="trust-label">Edge Functions (public routes)</div><div class="trust-level trust-semi">SEMI-TRUSTED</div><div class="trust-desc">Server-controlled code but invocable by any authenticated client. Must apply own rate limiting, validation, and business rule enforcement.</div></div>
+  <div class="trust-row"><div class="trust-label">Edge Functions (internal, HMAC)</div><div class="trust-level trust-full">TRUSTED</div><div class="trust-desc">Function-to-function calls signed with shared HMAC secret. Not publicly invocable. Verified on receipt.</div></div>
+  <div class="trust-row"><div class="trust-label">PostgreSQL + RLS</div><div class="trust-level trust-full">TRUSTED</div><div class="trust-desc">Final enforcement layer. RLS runs with every query regardless of caller. Cannot be bypassed by client.</div></div>
+  <div class="trust-row"><div class="trust-label">Supabase Service Role</div><div class="trust-level trust-full">TRUSTED (controlled)</div><div class="trust-desc">Bypasses RLS. Must exist only in Edge Function vault secrets. Never in client bundle. Rotate on any suspected exposure.</div></div>
+  <div class="trust-row"><div class="trust-label">Developer Machine</div><div class="trust-level trust-semi">SEMI-TRUSTED</div><div class="trust-desc">May contain credentials, may be compromised by malicious packages, AI tooling, or supply chain attacks. Must be isolated from production.</div></div>
+  <div class="trust-row"><div class="trust-label">pg_cron Jobs</div><div class="trust-level trust-semi">SEMI-TRUSTED</div><div class="trust-desc">Runs as postgres superuser role by default. Jobs must be restricted, logged, and monitored. Cannot be created/modified by unprivileged roles.</div></div>
+
+  <h2>Defense-in-Depth Layers</h2>
+  <table>
+    <tr><th>#</th><th>Layer</th><th>Mechanism</th><th>Enforces</th></tr>
+    <tr><td>1</td><td>Transport</td><td>TLS 1.3, HSTS</td><td>Confidentiality in transit</td></tr>
+    <tr><td>2</td><td>Authentication</td><td>Supabase Auth JWT + mandatory TOTP MFA</td><td>Identity verification</td></tr>
+    <tr><td>3</td><td>Session</td><td>30-min inactivity timeout, step-up tokens for sensitive actions</td><td>Session freshness</td></tr>
+    <tr><td>4</td><td>Token Storage</td><td>Expo SecureStore → iOS Keychain / Android Keystore</td><td>Credential at-rest protection</td></tr>
+    <tr><td>5</td><td>API Rate Limiting</td><td>Per-user + per-IP rolling window in Edge Functions</td><td>Abuse and DoS prevention</td></tr>
+    <tr><td>6</td><td>Input Validation</td><td>Strict schema validation in every Edge Function</td><td>Injection prevention</td></tr>
+    <tr><td>7</td><td>Replay Protection</td><td>Idempotency keys + stale timestamp rejection (±5 min)</td><td>Replay attack prevention</td></tr>
+    <tr><td>8</td><td>Edge Function Auth</td><td>JWT for public routes; HMAC signatures for internal calls</td><td>Origin and caller identity</td></tr>
+    <tr><td>9</td><td>Business Logic</td><td>Server-side only; RLS as last-resort enforcer</td><td>Reward, balance, role integrity</td></tr>
+    <tr><td>10</td><td>Database RLS</td><td>Deny-by-default; per-user and per-household scoping</td><td>Data isolation</td></tr>
+    <tr><td>11</td><td>Encryption at Rest</td><td>Server-side AES-256-GCM, key in Supabase vault</td><td>Sensitive field protection</td></tr>
+    <tr><td>12</td><td>Audit Trail</td><td>Append-only logs, immutable credit ledger</td><td>Forensic capability</td></tr>
+    <tr><td>13</td><td>Monitoring</td><td>Security event pipeline → scoring → email alerts</td><td>Attack detection</td></tr>
+    <tr><td>14</td><td>Kill Switches</td><td>feature_flags table, instant disable per subsystem</td><td>Emergency containment</td></tr>
+    <tr><td>15</td><td>Environment Isolation</td><td>Separate Supabase projects per env; no prod in dev</td><td>Blast radius containment</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 2 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 2</div>
+  <h1>Threat Model</h1>
+  <div class="divider"></div>
+
+  <h2>A. Public App Threats</h2>
+  <table>
+    <tr><th>Threat</th><th>Severity</th><th>Attack Path</th><th>Impact</th><th>Prevention</th><th>Detection Signal</th></tr>
+    <tr><td><strong>Credential Stuffing / Brute Force</strong></td><td><span class="sev sev-c">CRITICAL</span></td><td>Automated login attempts with leaked credential lists against /auth/sign-in</td><td>Account takeover, data breach</td><td>Server-side rate limiting per IP+endpoint; CAPTCHA on 3rd failure; mandatory MFA</td><td>LOGIN_FAILED burst &gt;5/min per IP</td></tr>
+    <tr><td><strong>IDOR / BOLA</strong></td><td><span class="sev sev-c">CRITICAL</span></td><td>User changes resource ID in API call to access another user's data</td><td>Data exposure, privacy violation</td><td>RLS policy on every table; server validates auth.uid() == resource owner</td><td>403s on row-scoped queries; SecurityMonitor.trackIDOR()</td></tr>
+    <tr><td><strong>Referral / Reward Farming</strong></td><td><span class="sev sev-h">HIGH</span></td><td>Mass account creation to self-refer; fake receipt upload; replay credit claim requests</td><td>Financial loss, credit economy inflation</td><td>Append-only ledger; one-time claim constraints; receipt verification; device/IP correlation</td><td>Multiple accounts same IP/device; referral_verifications anomaly score &gt;70</td></tr>
+    <tr><td><strong>Token Theft / Session Hijacking</strong></td><td><span class="sev sev-c">CRITICAL</span></td><td>Exfiltrate JWT from device storage or network intercept; replay against API</td><td>Full account compromise</td><td>SecureStore (not AsyncStorage); TLS pinning; 30-min inactivity logout; step-up re-auth</td><td>Same user from different IP/UA in short window → SESSION_HIJACK_INDICATOR</td></tr>
+    <tr><td><strong>MFA Bypass</strong></td><td><span class="sev sev-c">CRITICAL</span></td><td>TOTP code replay within validity window; race condition on challenge; bypass via password reset</td><td>Account takeover bypassing MFA</td><td>TOTP codes single-use (Supabase enforces); short validity window; alert on repeated MFA failures</td><td>MFA_FAIL_REPEATED; MFA_BYPASS_ATTEMPT</td></tr>
+    <tr><td><strong>Privilege Escalation</strong></td><td><span class="sev sev-c">CRITICAL</span></td><td>Manipulate role field in request payload; exploit broken RLS on household_members</td><td>SHOPPER becomes STACK_MANAGER; unauthorized admin access</td><td>Role changes only via SECURITY DEFINER functions; RLS validates current role before change</td><td>PRIVILEGE_ESCALATION_ATTEMPT in security_events</td></tr>
+    <tr><td><strong>Injection (SQL/XSS/Command)</strong></td><td><span class="sev sev-h">HIGH</span></td><td>Craft malicious input targeting Supabase queries or AI prompts</td><td>Data exfiltration, stored XSS, prompt injection in Gemini</td><td>Parameterized queries (Supabase client); strict input sanitization in all Edge Functions; Gemini prompt isolation</td><td>INJECTION_PAYLOAD_SIGNATURE events</td></tr>
+    <tr><td><strong>Receipt OCR Abuse</strong></td><td><span class="sev sev-m">MEDIUM</span></td><td>Submit fake or manipulated receipt images to claim false savings/credits</td><td>Financial fraud, credit inflation</td><td>Server-side OCR with confidence scoring; human review queue for anomalies; spend velocity checks</td><td>Receipt claims far exceeding household size; repeated identical receipts</td></tr>
+    <tr><td><strong>Mass Account Creation (Botting)</strong></td><td><span class="sev sev-h">HIGH</span></td><td>Automated signup with disposable emails to claim referral credits, free credits</td><td>Rewards abuse, DB pollution</td><td>Email domain allowlist/blocklist; device fingerprint correlation; referral fraud scoring</td><td>Signup spike from same IP; identical dietary_tags patterns</td></tr>
+    <tr><td><strong>Storage Abuse</strong></td><td><span class="sev sev-m">MEDIUM</span></td><td>Upload large files; repeatedly upload to consume storage quota at cost</td><td>Infrastructure cost, DoS</td><td>File size limits on storage policies; per-user upload rate limits; MIME type validation</td><td>Unusual upload volume per user</td></tr>
+  </table>
+
+  <h2>B. Internal / Platform Threats</h2>
+  <table>
+    <tr><th>Threat</th><th>Severity</th><th>Attack Path</th><th>Prevention</th></tr>
+    <tr><td><strong>service_role Key Exposure</strong></td><td><span class="sev sev-c">CRITICAL</span></td><td>Key in source code, git history, or .env committed to repo → attacker gains full DB access bypassing RLS</td><td>Key only in Supabase vault; detect-secrets pre-commit hook; rotate immediately if exposed; audit git history</td></tr>
+    <tr><td><strong>Broken RLS Policy</strong></td><td><span class="sev sev-c">CRITICAL</span></td><td>Misconfigured policy allows SELECT on all rows; missing UPDATE policy allows balance changes</td><td>Systematic RLS audit; automated policy testing; deny-by-default; helper function is_household_member()</td></tr>
+    <tr><td><strong>Over-Trusted Edge Function</strong></td><td><span class="sev sev-h">HIGH</span></td><td>Edge Function accepts caller-supplied role claim, skips JWT validation, or uses service_role for public operations</td><td>Always verify JWT; never trust client-supplied role; use service_role only for internal-only functions</td></tr>
+    <tr><td><strong>Cron Job Abuse</strong></td><td><span class="sev sev-h">HIGH</span></td><td>Unauthorized cron job creation; modified cron that runs destructive SQL; escalation via SECURITY DEFINER function</td><td>Restrict cron.schedule() to security admin role; log all job changes; audit pg_cron.job table</td></tr>
+    <tr><td><strong>Local Dev → Production</strong></td><td><span class="sev sev-h">HIGH</span></td><td>Developer connects to production Supabase project during testing; accidental data mutation or secret exposure</td><td>Separate Supabase project per env; block production creds from dev .env files; CI/CD secret injection only</td></tr>
+    <tr><td><strong>Compromised CI/CD Pipeline</strong></td><td><span class="sev sev-c">CRITICAL</span></td><td>Malicious PR injects code that exfiltrates secrets at build time</td><td>Branch protection; PR approval requirements; secret scanning; artifact signing</td></tr>
+  </table>
+
+  <h2>C. AI / Developer Tooling Threats</h2>
+  <table>
+    <tr><th>Threat</th><th>Attack Path</th><th>Prevention</th><th>Detection Signal</th></tr>
+    <tr><td><strong>Secret Exfiltration via AI Tool</strong></td><td>AI coding assistant reads .env file, sends contents to model API or logs output containing secrets</td><td>Never store real secrets in workspace-readable .env; use OS-level credential manager; sandbox AI tool access</td><td>SECRET_IN_REQUEST_BODY; outbound call to unapproved domain</td></tr>
+    <tr><td><strong>Malicious Dependency</strong></td><td>npm package contains postinstall hook that exfiltrates EXPO_PUBLIC_ env vars or reads filesystem</td><td>npm audit in CI; lock files committed; dependency pinning; no auto-update of unpinned dependencies</td><td>Unexpected outbound DNS/TCP from build environment</td></tr>
+    <tr><td><strong>Prompt Injection in Gemini Proxy</strong></td><td>User crafts receipt image or text input designed to override system prompt and exfiltrate data</td><td>Isolate system prompt from user input; never interpolate user content into system prompt; validate Gemini output schema</td><td>Gemini response contains unexpected content outside schema; PROMPT_INJECTION_ATTEMPT event</td></tr>
+    <tr><td><strong>Claude Code Workspace Trust Bypass</strong></td><td>Malicious repo contains CLAUDE.md or hooks that execute commands accessing production secrets</td><td>Enable sandbox mode; never trust .claude settings from untrusted repos; isolate workspace credentials</td><td>REPO_TRUST_BYPASS_CONFIRMED; COMMAND_EXECUTION_UNTRUSTED</td></tr>
+    <tr><td><strong>Model Endpoint Override</strong></td><td>Manipulated environment variable redirects Gemini API calls to attacker-controlled server</td><td>Hard-code approved API endpoints in Edge Function; no client-supplied endpoint override; domain allowlist</td><td>UNAPPROVED_DOMAIN_CALL with generativelanguage.googleapis.com as expected</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 3 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 3</div>
+  <h1>Critical Vulnerabilities — Eliminate Immediately</h1>
+  <div class="divider"></div>
+
+  <div class="box box-red">
+    <div class="box-title">⚠ CRITICAL-1: EXPO_PUBLIC_FIELD_ENC_KEY — Encryption Key in Client Bundle</div>
+    <p style="color:#991b1b"><strong>Why it's dangerous:</strong> Any value with the EXPO_PUBLIC_ prefix is bundled into the JavaScript binary shipped to the App Store. Anyone who downloads the app, extracts the JS bundle (trivial on Android; possible on iOS with jailbreak), or uses a decompiler can read this value. Your AES-256-GCM "field encryption" provides zero security because the key is public. An attacker who obtains it can decrypt all encrypted fields at rest in your database.</p>
+    <p style="color:#991b1b"><strong>Fix:</strong> Treat this key as fully compromised. Rotate it immediately. Move all encryption/decryption to a server-side Edge Function. The client sends plaintext to an authenticated Edge Function which encrypts server-side using a key stored only in Supabase vault. See Part 10 for full redesign.</p>
+  </div>
+
+  <div class="box box-red">
+    <div class="box-title">⚠ CRITICAL-2: Local Development Against Production Supabase Project</div>
+    <p style="color:#991b1b"><strong>Why it's dangerous:</strong> A developer running <code>npm start</code> with the production .env connects to live user data. A mistake (wrong query, accidental delete, test data mutation) affects real users. Worse: if the developer's machine is compromised, the attacker has access to production credentials and can read/write all data.</p>
+    <p style="color:#991b1b"><strong>Fix:</strong> Create a separate Supabase project for development. Developer .env.local must point to the dev project. Production credentials must never appear in any local file — they are injected only by CI/CD secrets at deploy time. See Part 11.</p>
+  </div>
+
+  <div class="box box-red">
+    <div class="box-title">⚠ CRITICAL-3: Client-Side Credit / Reward Logic</div>
+    <p style="color:#991b1b"><strong>Why it's dangerous:</strong> Any credit or reward logic that executes on the client (or trusts client-provided amounts/types) can be manipulated. A proxying user can send arbitrary amounts to a credits endpoint. SecurityMonitor running client-side is easy to bypass — just don't call it.</p>
+    <p style="color:#991b1b"><strong>Fix:</strong> All credit issuance, referral verification, and reward calculation must run exclusively in SECURITY DEFINER Postgres functions or Edge Functions using the service role. Client sends a request (e.g., "complete trip"). Server validates, calculates, and writes to append-only credit_ledger. Client never sends an amount.</p>
+  </div>
+
+  <div class="box box-red">
+    <div class="box-title">⚠ CRITICAL-4: Client-Side Brute Force Detection Only</div>
+    <p style="color:#991b1b"><strong>Why it's dangerous:</strong> trackLoginFailure() in SecurityMonitor.js uses in-memory state per session. An attacker who makes login requests directly to Supabase Auth (bypassing the app entirely) generates zero client-side events. The detection is completely invisible to direct API attacks.</p>
+    <p style="color:#991b1b"><strong>Fix:</strong> Implement server-side rate limiting in a login Edge Function that proxies all auth attempts. Track failures in api_rate_limit_log by IP. After 5 failures in 5 minutes, return 429 and fire security event server-side. Client-side tracking is supplemental, never authoritative.</p>
+  </div>
+
+  <div class="box box-red">
+    <div class="box-title">⚠ CRITICAL-5: Missing Replay Protection on Events and Rewards</div>
+    <p style="color:#991b1b"><strong>Why it's dangerous:</strong> If a "complete trip" or "claim reward" request can be replayed, an attacker can capture one successful request and resend it repeatedly to earn unlimited credits. No idempotency key means every retry is a potential double-award.</p>
+    <p style="color:#991b1b"><strong>Fix:</strong> Every state-changing operation must include an idempotency_key (UUID v4, client-generated) and a request_timestamp. The server rejects requests older than ±5 minutes. Idempotency keys are stored in processed_requests table with UNIQUE constraint. Duplicate key = return cached response. See Part 8.</p>
+  </div>
+
+  <div class="box box-orange">
+    <div class="box-title">⚠ HIGH-6: Missing Step-Up Authentication for Sensitive Actions</div>
+    <p style="color:#7c2d12"><strong>Why it's dangerous:</strong> Actions like disabling MFA, changing email/password, or changing a household role can be taken by anyone with a valid session — even a stolen or idle token. A 30-minute session window is a large attack surface for a session hijacker.</p>
+    <p style="color:#7c2d12"><strong>Fix:</strong> Require re-authentication (password re-entry + TOTP) before sensitive actions. Issue a short-lived elevated_session_token (15-minute TTL) stored in SecureStore. All sensitive Edge Functions validate this token. See Part 9.</p>
+  </div>
+
+  <div class="box box-orange">
+    <div class="box-title">⚠ HIGH-7: No Emergency Kill Switch / Feature Flag System</div>
+    <p style="color:#7c2d12"><strong>Why it's dangerous:</strong> If a referral fraud outbreak is detected, there is currently no way to disable the referral system without a full code deploy. Minutes of delay during an active fraud attack can cost thousands of credits.</p>
+    <p style="color:#7c2d12"><strong>Fix:</strong> Implement a feature_flags table in Supabase. Every critical subsystem checks its flag before executing. Flags can be toggled instantly via SQL with zero code deploy. See Part 14.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 4 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 4</div>
+  <h1>Secure Backend Enforcement Model</h1>
+  <div class="divider"></div>
+
+  <div class="box box-dark">
+    <div class="box-title">The Three-Layer Rule</div>
+    <p style="color:#e2e8f0"><strong>Client can request.</strong> Server decides. Database enforces.</p>
+    <p style="color:#94a3b8">The client is a UI that signals intent. It never carries authority. Every privileged decision — who gets credits, what role someone has, whether a referral is valid — is made by Edge Functions or Postgres functions using the service role and verified against database state. RLS is the last line of enforcement that runs for every query regardless of caller.</p>
+  </div>
+
+  <h2>Authority Model by Operation</h2>
+  <table>
+    <tr><th>Operation</th><th>Client Sends</th><th>Server Decides</th><th>DB Enforces</th></tr>
+    <tr><td>Complete Trip / Close Week</td><td>trip_id, idempotency_key, timestamp</td><td>Validates receipt exists, calculates credits based on server rules, calls close_week() RPC</td><td>RLS: user owns trip; UNIQUE on idempotency_key; credit_ledger append-only</td></tr>
+    <tr><td>Referral Signup</td><td>referral_code, new user JWT</td><td>Verifies code exists + not used; awards 25 credits instantly via fn_process_referral_signup(); holds 50 pending</td><td>RLS: referee can only claim once; UNIQUE on referee_id in referrals</td></tr>
+    <tr><td>Credit Balance Read</td><td>JWT only</td><td>Queries SUM of credit_ledger for user</td><td>RLS: user reads own ledger rows only</td></tr>
+    <tr><td>Household Role Change</td><td>member_id, new_role</td><td>Verifies caller is STACK_MANAGER; validates role limits; calls fn_change_role() SECURITY DEFINER</td><td>Trigger fn_enforce_household_rules() blocks invalid role counts</td></tr>
+    <tr><td>Admin Action</td><td>JWT + step-up token</td><td>Validates elevated_session_token not expired; verifies is_security_admin(); logs action</td><td>RLS: admin tables require is_security_admin()</td></tr>
+    <tr><td>Profile Change</td><td>fields to update</td><td>Strips privileged fields (stash_credits, subscription_type, referral_code); allows safe fields only</td><td>RLS: user updates own row; triggers audit log</td></tr>
+    <tr><td>Receipt OCR</td><td>image base64</td><td>Proxies to Gemini; validates response schema; returns items — no credits issued yet</td><td>No DB write at OCR stage; write happens only on confirmed trip</td></tr>
+    <tr><td>Security Event</td><td>event payload + idempotency_key</td><td>Validates token; fingerprints; deduplicates; scores severity; blocks if blocked indicator</td><td>RLS: security_events INSERT via service role only; client cannot read</td></tr>
+  </table>
+
+  <h2>Never Trust These Client Claims</h2>
+  <div class="box box-red">
+    <div class="box-title">Values the Backend Must Never Accept at Face Value from the Client</div>
+    <ul style="color:#991b1b">
+      <li><strong>stash_credits</strong> — any amount or delta. Balance is calculated from credit_ledger SUM server-side.</li>
+      <li><strong>subscription_type</strong> — 'monthly', 'lifetime', or any plan string. Verified against IAP receipt server-side.</li>
+      <li><strong>role</strong> — 'STACK_MANAGER', 'SHOPPER', 'VIEWER'. Role is read from household_members by user_id, never accepted as input.</li>
+      <li><strong>referral_code</strong> (for credit claims) — must be validated against database, not trusted as-is.</li>
+      <li><strong>savings_cents</strong> — any claimed savings amount. Server recalculates from actual receipt data.</li>
+      <li><strong>trip_total_cents</strong> — claimed trip total. Verified against OCR-extracted items stored server-side.</li>
+      <li><strong>fraud_score</strong> — any fraud risk level. Calculated by server, not accepted from client.</li>
+      <li><strong>is_admin</strong>, <strong>is_security_admin</strong> — any privilege flag. Checked in DB via helper functions only.</li>
+      <li><strong>user_id</strong> in any body payload — always use auth.uid() from verified JWT, never body.user_id.</li>
+      <li><strong>household_id</strong> without membership verification — always validate the caller is a member of that household.</li>
+      <li><strong>elevated_session</strong>, <strong>is_elevated</strong> — any self-asserted step-up status. Validate elevated_session_token from vault.</li>
+      <li><strong>created_at</strong>, <strong>updated_at</strong> timestamps — always generated by the server (NOW()).</li>
+      <li><strong>event severity</strong> in security events — calculated by server severity engine, never accepted from client payload.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 5 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 5</div>
+  <h1>Supabase RLS Hardening Plan</h1>
+  <div class="divider"></div>
+
+  <h2 class="green">Core Policy Model: Deny-by-Default</h2>
+  <p>Every table has RLS enabled. No policy = no access. Every policy is additive (PERMISSIVE) and must be explicitly proven necessary. When in doubt, deny.</p>
+
+  <h2>RLS Helper Functions</h2>
+  <pre>
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- HELPER FUNCTIONS — install before any RLS policies</span>
+<span class="cm">-- ============================================================</span>
+
+<span class="cm">-- Returns true if current user is a member of the given household</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">is_household_member</span>(p_household_id <span class="type">UUID</span>)
+<span class="kw">RETURNS BOOLEAN</span> <span class="kw">LANGUAGE</span> sql <span class="kw">SECURITY DEFINER STABLE AS</span> $$
+  <span class="kw">SELECT EXISTS</span>(
+    <span class="kw">SELECT</span> 1 <span class="kw">FROM</span> household_members
+    <span class="kw">WHERE</span> household_id = p_household_id
+      <span class="kw">AND</span> user_id = auth.uid()
+  );
+$$;
+
+<span class="cm">-- Returns current user's role in a household, or NULL if not a member</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">household_role</span>(p_household_id <span class="type">UUID</span>)
+<span class="kw">RETURNS TEXT LANGUAGE</span> sql <span class="kw">SECURITY DEFINER STABLE AS</span> $$
+  <span class="kw">SELECT</span> role <span class="kw">FROM</span> household_members
+  <span class="kw">WHERE</span> household_id = p_household_id <span class="kw">AND</span> user_id = auth.uid();
+$$;
+
+<span class="cm">-- Returns true if current user is a security admin</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">is_security_admin</span>()
+<span class="kw">RETURNS BOOLEAN LANGUAGE</span> sql <span class="kw">SECURITY DEFINER STABLE AS</span> $$
+  <span class="kw">SELECT EXISTS</span>(
+    <span class="kw">SELECT</span> 1 <span class="kw">FROM</span> profiles
+    <span class="kw">WHERE</span> id = auth.uid() <span class="kw">AND</span> is_admin = <span class="kw">TRUE</span>
+  );
+$$;
+
+<span class="cm">-- Returns true if a flag is enabled (kill switch check)</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">is_feature_enabled</span>(p_flag <span class="type">TEXT</span>)
+<span class="kw">RETURNS BOOLEAN LANGUAGE</span> sql <span class="kw">SECURITY DEFINER STABLE AS</span> $$
+  <span class="kw">SELECT COALESCE</span>(
+    (<span class="kw">SELECT</span> enabled <span class="kw">FROM</span> feature_flags <span class="kw">WHERE</span> flag_name = p_flag),
+    <span class="kw">FALSE</span>
+  );
+$$;
+  </pre>
+
+  <h2>Per-Table RLS Policies</h2>
+  <pre>
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- PROFILES — users read/update own row only</span>
+<span class="cm">-- Server strips privileged fields before any client update</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">ALTER TABLE</span> profiles <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="kw">CREATE POLICY</span> <span class="str">"profiles_select_own"</span> <span class="kw">ON</span> profiles
+  <span class="kw">FOR SELECT USING</span> (auth.uid() = id);
+
+<span class="kw">CREATE POLICY</span> <span class="str">"profiles_update_own"</span> <span class="kw">ON</span> profiles
+  <span class="kw">FOR UPDATE USING</span> (auth.uid() = id)
+  <span class="kw">WITH CHECK</span> (auth.uid() = id);
+
+<span class="cm">-- ❌ NEVER: no INSERT policy for client (service role only via trigger)</span>
+<span class="cm">-- ❌ NEVER: no DELETE policy (account deletion goes through Edge Function)</span>
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- HOUSEHOLDS — members read; STACK_MANAGER updates</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">ALTER TABLE</span> households <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="kw">CREATE POLICY</span> <span class="str">"households_select_members"</span> <span class="kw">ON</span> households
+  <span class="kw">FOR SELECT USING</span> (is_household_member(id));
+
+<span class="kw">CREATE POLICY</span> <span class="str">"households_update_manager"</span> <span class="kw">ON</span> households
+  <span class="kw">FOR UPDATE USING</span> (household_role(id) = <span class="str">'STACK_MANAGER'</span>)
+  <span class="kw">WITH CHECK</span> (household_role(id) = <span class="str">'STACK_MANAGER'</span>);
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- HOUSEHOLD_MEMBERS — members read own household's rows</span>
+<span class="cm">-- NO client INSERT/UPDATE/DELETE — all via fn_add_member() etc.</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">ALTER TABLE</span> household_members <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="kw">CREATE POLICY</span> <span class="str">"hm_select_own_household"</span> <span class="kw">ON</span> household_members
+  <span class="kw">FOR SELECT USING</span> (is_household_member(household_id));
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- CREDIT_LEDGER — users read own; no client INSERT (server only)</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">ALTER TABLE</span> credit_ledger <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="kw">CREATE POLICY</span> <span class="str">"ledger_select_own"</span> <span class="kw">ON</span> credit_ledger
+  <span class="kw">FOR SELECT USING</span> (user_id = auth.uid());
+
+<span class="cm">-- No INSERT/UPDATE/DELETE policies — service role only</span>
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- HOUSEHOLD_CART_ITEMS — scoped to household membership</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">ALTER TABLE</span> household_cart_items <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="kw">CREATE POLICY</span> <span class="str">"cart_select_household"</span> <span class="kw">ON</span> household_cart_items
+  <span class="kw">FOR SELECT USING</span> (is_household_member(household_id));
+
+<span class="kw">CREATE POLICY</span> <span class="str">"cart_insert_shopper+"</span> <span class="kw">ON</span> household_cart_items
+  <span class="kw">FOR INSERT WITH CHECK</span> (
+    is_household_member(household_id)
+    <span class="kw">AND</span> household_role(household_id) <span class="kw">IN</span> (<span class="str">'STACK_MANAGER'</span>, <span class="str">'SHOPPER'</span>)
+    <span class="kw">AND</span> added_by_user_id = auth.uid()   <span class="cm">-- cannot insert for another user</span>
+  );
+
+<span class="kw">CREATE POLICY</span> <span class="str">"cart_delete_own_or_manager"</span> <span class="kw">ON</span> household_cart_items
+  <span class="kw">FOR DELETE USING</span> (
+    (added_by_user_id = auth.uid())  <span class="cm">-- own item</span>
+    <span class="kw">OR</span> household_role(household_id) = <span class="str">'STACK_MANAGER'</span>
+  );
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- SECURITY_EVENTS — admin read only; no client write</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">ALTER TABLE</span> security_events <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="kw">CREATE POLICY</span> <span class="str">"security_events_admin_only"</span> <span class="kw">ON</span> security_events
+  <span class="kw">FOR SELECT USING</span> (is_security_admin());
+
+<span class="cm">-- No INSERT via client — service role only in Edge Functions</span>
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- SYSTEM_AUDIT_LOGS — no client access whatsoever</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">ALTER TABLE</span> system_audit_logs <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="cm">-- No policies = no access for any authenticated client</span>
+<span class="cm">-- Logs written only by SECURITY DEFINER triggers</span>
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- FEATURE_FLAGS — admin read; no client write</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">ALTER TABLE</span> feature_flags <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="kw">CREATE POLICY</span> <span class="str">"flags_read_all_auth"</span> <span class="kw">ON</span> feature_flags
+  <span class="kw">FOR SELECT USING</span> (auth.uid() <span class="kw">IS NOT NULL</span>); <span class="cm">-- any auth user can read flags</span>
+
+<span class="cm">-- No client INSERT/UPDATE — admin only via service role</span>
+  </pre>
+
+  <h2>Example: Broken vs. Correct Policy</h2>
+  <div class="two-col">
+    <div class="box box-red">
+      <div class="box-title">❌ Broken Policy</div>
+      <pre style="margin:0;font-size:10px">CREATE POLICY "open_select" ON profiles
+  FOR SELECT USING (true);
+<span class="cm">-- All users can read ALL profiles</span>
+<span class="cm">-- Exposes PII, dietary prefs,</span>
+<span class="cm">-- budget, referral codes</span></pre>
+    </div>
+    <div class="box box-green">
+      <div class="box-title">✓ Correct Policy</div>
+      <pre style="margin:0;font-size:10px">CREATE POLICY "profiles_own" ON profiles
+  FOR SELECT USING (
+    auth.uid() = id
+  );
+<span class="cm">-- Only own row visible</span>
+<span class="cm">-- Enforced at DB level</span>
+<span class="cm">-- Cannot be bypassed</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 6 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 6</div>
+  <h1>Edge Function Protection Plan</h1>
+  <div class="divider"></div>
+
+  <h2>Authentication Matrix</h2>
+  <table>
+    <tr><th>Function</th><th>Public Auth</th><th>Internal Auth</th><th>Rate Limit</th><th>Idempotency</th></tr>
+    <tr><td>gemini-proxy</td><td>Supabase JWT (required)</td><td>N/A</td><td>10 req/min per user</td><td>Not required (read-only)</td></tr>
+    <tr><td>auth-proxy (new)</td><td>None (pre-auth)</td><td>N/A</td><td>5 attempts/5min per IP</td><td>Not required</td></tr>
+    <tr><td>close-trip (new)</td><td>Supabase JWT + step-up token</td><td>N/A</td><td>3 req/hour per user</td><td>Required (idempotency_key)</td></tr>
+    <tr><td>claim-referral (new)</td><td>Supabase JWT</td><td>N/A</td><td>1 req/hour per user</td><td>Required</td></tr>
+    <tr><td>security-ingest</td><td>HMAC-signed x-ingest-sig</td><td>HMAC-signed</td><td>100 req/min per IP</td><td>Required (event_id)</td></tr>
+    <tr><td>security-alert</td><td>None (internal only)</td><td>HMAC-signed</td><td>Internal only</td><td>Required (alert_id)</td></tr>
+    <tr><td>security-escalate</td><td>None (cron only)</td><td>HMAC-signed</td><td>Cron-triggered</td><td>N/A</td></tr>
+    <tr><td>encrypt-field (new)</td><td>Supabase JWT</td><td>N/A</td><td>100 req/min per user</td><td>Not required</td></tr>
+  </table>
+
+  <h2>Shared Edge Function Security Middleware</h2>
+  <pre>
+<span class="cm">// supabase/functions/_shared/middleware.ts</span>
+
+<span class="kw">export interface</span> <span class="type">RequestContext</span> {
+  userId: <span class="type">string</span>
+  jwt: <span class="type">string</span>
+  correlationId: <span class="type">string</span>
+  isElevated: <span class="type">boolean</span>
+}
+
+<span class="cm">// ── JWT Verification ──────────────────────────────────────────────────────</span>
+<span class="kw">export async function</span> <span class="fn">requireAuth</span>(req: <span class="type">Request</span>, supabase: <span class="type">SupabaseClient</span>): <span class="type">Promise</span>&lt;<span class="type">RequestContext</span>&gt; {
+  <span class="kw">const</span> auth = req.headers.get(<span class="str">'Authorization'</span>)
+  <span class="kw">if</span> (!auth?.startsWith(<span class="str">'Bearer '</span>)) <span class="kw">throw</span> unauthorizedError(<span class="str">'Missing JWT'</span>)
+
+  <span class="kw">const</span> jwt = auth.slice(<span class="num">7</span>)
+  <span class="kw">const</span> { data: { user }, error } = <span class="kw">await</span> supabase.auth.getUser(jwt)
+  <span class="kw">if</span> (error || !user) <span class="kw">throw</span> unauthorizedError(<span class="str">'Invalid JWT'</span>)
+
+  <span class="kw">const</span> correlationId = crypto.randomUUID()
+  <span class="kw">return</span> { userId: user.id, jwt, correlationId, isElevated: <span class="kw">false</span> }
+}
+
+<span class="cm">// ── Step-Up Token Validation ──────────────────────────────────────────────</span>
+<span class="kw">export async function</span> <span class="fn">requireStepUp</span>(req: <span class="type">Request</span>, ctx: <span class="type">RequestContext</span>, supabase: <span class="type">SupabaseClient</span>): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt; {
+  <span class="kw">const</span> token = req.headers.get(<span class="str">'x-step-up-token'</span>)
+  <span class="kw">if</span> (!token) <span class="kw">throw</span> forbiddenError(<span class="str">'Step-up authentication required'</span>)
+
+  <span class="kw">const</span> { data, error } = <span class="kw">await</span> supabase
+    .from(<span class="str">'elevated_sessions'</span>)
+    .select(<span class="str">'expires_at, user_id, used'</span>)
+    .eq(<span class="str">'token'</span>, token)
+    .eq(<span class="str">'user_id'</span>, ctx.userId)
+    .single()
+
+  <span class="kw">if</span> (error || !data) <span class="kw">throw</span> forbiddenError(<span class="str">'Invalid step-up token'</span>)
+  <span class="kw">if</span> (data.used) <span class="kw">throw</span> forbiddenError(<span class="str">'Step-up token already used'</span>)
+  <span class="kw">if</span> (<span class="kw">new</span> <span class="type">Date</span>(data.expires_at) &lt; <span class="kw">new</span> <span class="type">Date</span>()) <span class="kw">throw</span> forbiddenError(<span class="str">'Step-up token expired'</span>)
+
+  ctx.isElevated = <span class="kw">true</span>
+}
+
+<span class="cm">// ── Rate Limiting ─────────────────────────────────────────────────────────</span>
+<span class="kw">export async function</span> <span class="fn">checkRateLimit</span>(
+  supabase: <span class="type">SupabaseClient</span>, userId: <span class="type">string</span>, ip: <span class="type">string</span>,
+  endpoint: <span class="type">string</span>, maxPerUser: <span class="num">number</span>, maxPerIp: <span class="num">number</span>, windowSecs: <span class="num">number</span>
+): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt; {
+  <span class="kw">const</span> [userCheck, ipCheck] = <span class="kw">await</span> Promise.all([
+    supabase.rpc(<span class="str">'check_rate_limit'</span>, { p_key: userId, p_endpoint: endpoint, p_max: maxPerUser, p_window: windowSecs }),
+    supabase.rpc(<span class="str">'check_rate_limit'</span>, { p_key: ip, p_endpoint: `ip:${endpoint}`, p_max: maxPerIp, p_window: windowSecs })
+  ])
+  <span class="kw">if</span> (userCheck.data === <span class="kw">false</span>) <span class="kw">throw</span> rateLimitError(<span class="str">'User rate limit exceeded'</span>)
+  <span class="kw">if</span> (ipCheck.data === <span class="kw">false</span>) <span class="kw">throw</span> rateLimitError(<span class="str">'IP rate limit exceeded'</span>)
+}
+
+<span class="cm">// ── Timestamp / Replay Guard ──────────────────────────────────────────────</span>
+<span class="kw">export function</span> <span class="fn">validateTimestamp</span>(requestTimestamp: <span class="type">string</span>, maxSkewMs = <span class="num">300000</span>): <span class="type">void</span> {
+  <span class="kw">const</span> ts = <span class="kw">new</span> <span class="type">Date</span>(requestTimestamp).getTime()
+  <span class="kw">const</span> now = <span class="type">Date</span>.now()
+  <span class="kw">if</span> (<span class="type">Math</span>.abs(now - ts) > maxSkewMs) <span class="kw">throw</span> badRequestError(<span class="str">'Request timestamp out of allowed window (±5 min)'</span>)
+}
+
+<span class="cm">// ── HMAC Signature Verification (internal function-to-function) ───────────</span>
+<span class="kw">export async function</span> <span class="fn">verifyHmac</span>(req: <span class="type">Request</span>, secret: <span class="type">string</span>): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt; {
+  <span class="kw">const</span> sig = req.headers.get(<span class="str">'x-ingest-sig'</span>)
+  <span class="kw">const</span> ts  = req.headers.get(<span class="str">'x-timestamp'</span>)
+  <span class="kw">const</span> body = <span class="kw">await</span> req.text()
+
+  <span class="kw">const</span> key = <span class="kw">await</span> crypto.subtle.importKey(
+    <span class="str">'raw'</span>, <span class="kw">new</span> <span class="type">TextEncoder</span>().encode(secret), { name: <span class="str">'HMAC'</span>, hash: <span class="str">'SHA-256'</span> }, <span class="kw">false</span>, [<span class="str">'sign'</span>, <span class="str">'verify'</span>]
+  )
+  <span class="kw">const</span> expected = <span class="kw">await</span> crypto.subtle.sign(<span class="str">'HMAC'</span>, key, <span class="kw">new</span> <span class="type">TextEncoder</span>().encode(`${ts}.${body}`))
+  <span class="kw">const</span> expectedHex = [...<span class="kw">new</span> <span class="type">Uint8Array</span>(expected)].map(b => b.toString(<span class="num">16</span>).padStart(<span class="num">2</span>, <span class="str">'0'</span>)).join(<span class="str">''</span>)
+
+  <span class="kw">if</span> (sig !== expectedHex) <span class="kw">throw</span> unauthorizedError(<span class="str">'Invalid HMAC signature'</span>)
+  validateTimestamp(ts!) <span class="cm">// also check timestamp freshness</span>
+}
+
+<span class="cm">// ── Safe Outbound Fetch (domain allowlist) ────────────────────────────────</span>
+<span class="kw">export async function</span> <span class="fn">guardedFetch</span>(url: <span class="type">string</span>, opts: <span class="type">RequestInit</span>, supabase: <span class="type">SupabaseClient</span>): <span class="type">Promise</span>&lt;<span class="type">Response</span>&gt; {
+  <span class="kw">const</span> domain = <span class="kw">new</span> <span class="type">URL</span>(url).hostname
+  <span class="kw">const</span> { data } = <span class="kw">await</span> supabase.from(<span class="str">'approved_domains'</span>).select(<span class="str">'domain'</span>).eq(<span class="str">'domain'</span>, domain).eq(<span class="str">'active'</span>, <span class="kw">true</span>).maybeSingle()
+  <span class="kw">if</span> (!data) <span class="kw">throw</span> <span class="kw">new</span> <span class="type">Error</span>(<span class="str">`Blocked outbound to unapproved domain: ${domain}`</span>)
+  <span class="kw">return</span> fetch(url, opts)
+}
+  </pre>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 7 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 7</div>
+  <h1>Rewards / Referral / Credits Anti-Fraud Design</h1>
+  <div class="divider"></div>
+
+  <h2>Append-Only Credit Ledger Schema</h2>
+  <pre>
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- CREDIT_LEDGER — every credit event is a row, never an UPDATE</span>
+<span class="cm">-- Balance = SUM(amount) for user. Always server-written.</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">CREATE TABLE</span> credit_ledger (
+  id              <span class="type">UUID</span>        <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  user_id         <span class="type">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> profiles(id),
+  amount          <span class="type">INTEGER</span>     <span class="kw">NOT NULL</span>,        <span class="cm">-- positive = credit, negative = debit</span>
+  transaction_type <span class="type">TEXT</span>       <span class="kw">NOT NULL</span>,        <span class="cm">-- WEEKLY_TRIP|REFERRAL_INSTANT|REFERRAL_RELEASE|PROMO|LEVEL_BONUS|ADMIN_ADJUST|DEBIT</span>
+  reference_id    <span class="type">UUID</span>,                        <span class="cm">-- trip_id, referral_id, promo_id, etc.</span>
+  idempotency_key <span class="type">TEXT</span>        <span class="kw">UNIQUE NOT NULL</span>, <span class="cm">-- prevents double-award</span>
+  issued_by       <span class="type">TEXT</span>        <span class="kw">NOT NULL</span>,        <span class="cm">-- 'system'|'admin:{admin_id}'</span>
+  metadata        <span class="type">JSONB</span>       <span class="kw">DEFAULT</span> <span class="str">'{}'</span>,
+  created_at      <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cm">-- Balances are ALWAYS derived, never stored as a mutable column</span>
+<span class="kw">CREATE VIEW</span> user_credit_balance <span class="kw">AS</span>
+  <span class="kw">SELECT</span> user_id, <span class="fn">COALESCE</span>(<span class="fn">SUM</span>(amount), <span class="num">0</span>) <span class="kw">AS</span> balance
+  <span class="kw">FROM</span> credit_ledger
+  <span class="kw">GROUP BY</span> user_id;
+
+<span class="cm">-- Prevent direct modification of ledger rows</span>
+<span class="kw">CREATE RULE</span> no_update_ledger <span class="kw">AS ON UPDATE TO</span> credit_ledger <span class="kw">DO INSTEAD NOTHING</span>;
+<span class="kw">CREATE RULE</span> no_delete_ledger <span class="kw">AS ON DELETE TO</span> credit_ledger <span class="kw">DO INSTEAD NOTHING</span>;
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- FRAUD_FLAGS — auto-populated by anomaly detection</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">CREATE TABLE</span> fraud_flags (
+  id             <span class="type">UUID PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  user_id        <span class="type">UUID REFERENCES</span> profiles(id),
+  flag_type      <span class="type">TEXT NOT NULL</span>,  <span class="cm">-- REFERRAL_FARM|RECEIPT_FAKE|DUPLICATE_DEVICE|CREDIT_ABUSE|MASS_SIGNUP</span>
+  risk_score     <span class="type">INTEGER CHECK</span>(risk_score <span class="kw">BETWEEN</span> <span class="num">0</span> <span class="kw">AND</span> <span class="num">100</span>),
+  auto_blocked   <span class="type">BOOLEAN DEFAULT FALSE</span>,
+  reviewed       <span class="type">BOOLEAN DEFAULT FALSE</span>,
+  reviewer_id    <span class="type">UUID REFERENCES</span> profiles(id),
+  evidence       <span class="type">JSONB DEFAULT</span> <span class="str">'{}'</span>,
+  created_at     <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- REWARD_CLAIMS — one-time claim enforcement</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">CREATE TABLE</span> reward_claims (
+  id             <span class="type">UUID PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  user_id        <span class="type">UUID REFERENCES</span> profiles(id),
+  reward_type    <span class="type">TEXT NOT NULL</span>,
+  reward_key     <span class="type">TEXT NOT NULL</span>,   <span class="cm">-- e.g., 'LEVEL_3_BONUS', 'STREAK_7_DAY', etc.</span>
+  claimed_at     <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>(),
+  <span class="kw">UNIQUE</span>(user_id, reward_key)     <span class="cm">-- one claim per user per reward type</span>
+);
+
+<span class="cm">-- ============================================================</span>
+<span class="cm">-- REFERRAL_VERIFICATIONS — detailed referral audit</span>
+<span class="cm">-- ============================================================</span>
+<span class="kw">CREATE TABLE</span> referral_verifications (
+  id              <span class="type">UUID PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  referral_id     <span class="type">UUID REFERENCES</span> referrals(id),
+  device_fp       <span class="type">TEXT</span>,           <span class="cm">-- hashed device fingerprint</span>
+  ip_address      <span class="type">INET</span>,
+  ip_country      <span class="type">TEXT</span>,
+  signup_velocity <span class="type">INTEGER</span>,       <span class="cm">-- signups from same IP in last 24h</span>
+  same_device     <span class="type">BOOLEAN DEFAULT FALSE</span>, <span class="cm">-- referrer + referee same device?</span>
+  fraud_score     <span class="type">INTEGER DEFAULT 0</span>,
+  auto_blocked    <span class="type">BOOLEAN DEFAULT FALSE</span>,
+  created_at      <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>()
+);
+  </pre>
+
+  <h2>Secure Credit Issuance Function</h2>
+  <pre>
+<span class="cm">-- SECURITY DEFINER: only callable with elevated permissions</span>
+<span class="cm">-- Client never calls this directly — only Edge Functions with service role</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">issue_credits</span>(
+  p_user_id        <span class="type">UUID</span>,
+  p_amount         <span class="type">INTEGER</span>,
+  p_type           <span class="type">TEXT</span>,
+  p_reference_id   <span class="type">UUID</span>,
+  p_idempotency    <span class="type">TEXT</span>,
+  p_issued_by      <span class="type">TEXT</span>
+) <span class="kw">RETURNS</span> credit_ledger
+<span class="kw">LANGUAGE</span> plpgsql <span class="kw">SECURITY DEFINER AS</span> $$
+<span class="kw">DECLARE</span>
+  v_row credit_ledger;
+  v_blocked <span class="type">BOOLEAN</span>;
+  v_flag_count <span class="type">INTEGER</span>;
+<span class="kw">BEGIN</span>
+  <span class="cm">-- 1. Check if user is blocked for fraud</span>
+  <span class="kw">SELECT EXISTS</span>(<span class="kw">SELECT</span> 1 <span class="kw">FROM</span> fraud_flags <span class="kw">WHERE</span> user_id = p_user_id <span class="kw">AND</span> auto_blocked = <span class="kw">TRUE</span>) <span class="kw">INTO</span> v_blocked;
+  <span class="kw">IF</span> v_blocked <span class="kw">THEN</span>
+    <span class="kw">RAISE EXCEPTION</span> <span class="str">'User is blocked from receiving credits due to fraud flag'</span>;
+  <span class="kw">END IF</span>;
+
+  <span class="cm">-- 2. Check kill switch</span>
+  <span class="kw">IF NOT</span> <span class="fn">is_feature_enabled</span>(<span class="str">'rewards_enabled'</span>) <span class="kw">THEN</span>
+    <span class="kw">RAISE EXCEPTION</span> <span class="str">'Rewards subsystem is currently disabled'</span>;
+  <span class="kw">END IF</span>;
+
+  <span class="cm">-- 3. Insert with idempotency (ON CONFLICT DO NOTHING returns existing row)</span>
+  <span class="kw">INSERT INTO</span> credit_ledger(user_id, amount, transaction_type, reference_id, idempotency_key, issued_by)
+  <span class="kw">VALUES</span>(p_user_id, p_amount, p_type, p_reference_id, p_idempotency, p_issued_by)
+  <span class="kw">ON CONFLICT</span>(idempotency_key) <span class="kw">DO NOTHING</span>
+  <span class="kw">RETURNING</span> * <span class="kw">INTO</span> v_row;
+
+  <span class="cm">-- 4. Anomaly: flag if user has received >200 credits in last 24h</span>
+  <span class="kw">SELECT COUNT</span>(*) <span class="kw">INTO</span> v_flag_count
+  <span class="kw">FROM</span> credit_ledger
+  <span class="kw">WHERE</span> user_id = p_user_id <span class="kw">AND</span> amount > <span class="num">0</span>
+    <span class="kw">AND</span> created_at > <span class="fn">NOW</span>() - <span class="str">'24h'</span>::<span class="type">INTERVAL</span>;
+
+  <span class="kw">IF</span> v_flag_count > <span class="num">200</span> <span class="kw">THEN</span>
+    <span class="kw">INSERT INTO</span> fraud_flags(user_id, flag_type, risk_score, evidence)
+    <span class="kw">VALUES</span>(p_user_id, <span class="str">'CREDIT_ABUSE'</span>, <span class="num">80</span>, jsonb_build_object(<span class="str">'credits_24h'</span>, v_flag_count));
+  <span class="kw">END IF</span>;
+
+  <span class="kw">RETURN</span> v_row;
+<span class="kw">END</span>;
+$$;
+  </pre>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 8 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 8</div>
+  <h1>Event Idempotency + Replay Protection</h1>
+  <div class="divider"></div>
+
+  <h2>processed_requests Table</h2>
+  <pre>
+<span class="kw">CREATE TABLE</span> processed_requests (
+  idempotency_key  <span class="type">TEXT</span>        <span class="kw">PRIMARY KEY</span>,   <span class="cm">-- UUID v4, client-generated</span>
+  endpoint         <span class="type">TEXT</span>        <span class="kw">NOT NULL</span>,
+  user_id          <span class="type">UUID</span>,
+  request_hash     <span class="type">TEXT</span>        <span class="kw">NOT NULL</span>,       <span class="cm">-- SHA-256(method+endpoint+body)</span>
+  response_status  <span class="type">INTEGER</span>     <span class="kw">NOT NULL</span>,
+  response_body    <span class="type">JSONB</span>,
+  created_at       <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>(),
+  expires_at       <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>() + <span class="str">'24h'</span>::<span class="type">INTERVAL</span>
+);
+
+<span class="kw">CREATE INDEX</span> idx_proc_req_user ON processed_requests(user_id, endpoint, created_at);
+<span class="kw">CREATE INDEX</span> idx_proc_req_expires ON processed_requests(expires_at);
+  </pre>
+
+  <h2>Idempotency Enforcement — TypeScript</h2>
+  <pre>
+<span class="cm">// supabase/functions/_shared/idempotency.ts</span>
+
+<span class="kw">export async function</span> <span class="fn">withIdempotency</span>&lt;T&gt;(
+  supabaseAdmin: <span class="type">SupabaseClient</span>,
+  idempotencyKey: <span class="type">string</span>,
+  endpoint: <span class="type">string</span>,
+  userId: <span class="type">string</span>,
+  requestBody: <span class="type">unknown</span>,
+  handler: () => <span class="type">Promise</span>&lt;T&gt;
+): <span class="type">Promise</span>&lt;{ result: T; cached: <span class="type">boolean</span> }&gt; {
+
+  <span class="cm">// 1. Validate idempotency key format</span>
+  <span class="kw">if</span> (!/^[0-9a-f-]{36}$/.test(idempotencyKey)) <span class="kw">throw</span> badRequestError(<span class="str">'Invalid idempotency_key format'</span>)
+
+  <span class="cm">// 2. Check if already processed</span>
+  <span class="kw">const</span> { data: existing } = <span class="kw">await</span> supabaseAdmin
+    .from(<span class="str">'processed_requests'</span>)
+    .select(<span class="str">'response_body, response_status, expires_at'</span>)
+    .eq(<span class="str">'idempotency_key'</span>, idempotencyKey)
+    .eq(<span class="str">'user_id'</span>, userId)
+    .maybeSingle()
+
+  <span class="kw">if</span> (existing && <span class="kw">new</span> Date(existing.expires_at) > <span class="kw">new</span> Date()) {
+    <span class="kw">return</span> { result: existing.response_body <span class="kw">as</span> T, cached: <span class="kw">true</span> }
+  }
+
+  <span class="cm">// 3. Compute request hash for dedup within same key but different body</span>
+  <span class="kw">const</span> bodyText = <span class="type">JSON</span>.stringify(requestBody)
+  <span class="kw">const</span> hashBytes = <span class="kw">await</span> crypto.subtle.digest(<span class="str">'SHA-256'</span>, <span class="kw">new</span> <span class="type">TextEncoder</span>().encode(`${endpoint}:${bodyText}`))
+  <span class="kw">const</span> requestHash = [...<span class="kw">new</span> <span class="type">Uint8Array</span>(hashBytes)].map(b => b.toString(<span class="num">16</span>).padStart(<span class="num">2</span>, <span class="str">'0'</span>)).join(<span class="str">''</span>)
+
+  <span class="cm">// 4. Execute handler</span>
+  <span class="kw">const</span> result = <span class="kw">await</span> handler()
+
+  <span class="cm">// 5. Record as processed</span>
+  <span class="kw">await</span> supabaseAdmin.from(<span class="str">'processed_requests'</span>).insert({
+    idempotency_key: idempotencyKey,
+    endpoint,
+    user_id: userId,
+    request_hash: requestHash,
+    response_status: <span class="num">200</span>,
+    response_body: result
+  })
+
+  <span class="kw">return</span> { result, cached: <span class="kw">false</span> }
+}
+  </pre>
+
+  <h2>Timestamp / Stale Request Rejection</h2>
+  <pre>
+<span class="cm">// Every state-changing request must include request_timestamp in body</span>
+<span class="cm">// Reject if outside ±5 minute window</span>
+
+<span class="kw">const</span> MAX_SKEW_MS = <span class="num">5</span> * <span class="num">60</span> * <span class="num">1000</span> <span class="cm">// 5 minutes</span>
+
+<span class="kw">function</span> <span class="fn">validateRequestTimestamp</span>(ts: <span class="type">string</span>): <span class="type">void</span> {
+  <span class="kw">const</span> requestTime = <span class="kw">new</span> <span class="type">Date</span>(ts).getTime()
+  <span class="kw">if</span> (<span class="type">isNaN</span>(requestTime)) <span class="kw">throw</span> badRequestError(<span class="str">'Invalid request_timestamp'</span>)
+  <span class="kw">const</span> skew = <span class="type">Math</span>.abs(<span class="type">Date</span>.now() - requestTime)
+  <span class="kw">if</span> (skew > MAX_SKEW_MS) <span class="kw">throw</span> badRequestError(<span class="str">`Request too old or future-dated. Skew: ${skew}ms`</span>)
+}
+
+<span class="cm">// Usage in any state-changing Edge Function:</span>
+<span class="kw">const</span> { idempotency_key, request_timestamp, ...payload } = <span class="kw">await</span> req.json()
+validateRequestTimestamp(request_timestamp)
+<span class="kw">await</span> withIdempotency(adminClient, idempotency_key, <span class="str">'/close-trip'</span>, ctx.userId, payload, handler)
+  </pre>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 9 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 9</div>
+  <h1>Step-Up Authentication Model</h1>
+  <div class="divider"></div>
+
+  <h2>When Step-Up is Required</h2>
+  <table>
+    <tr><th>Action</th><th>Step-Up Required</th><th>Token TTL</th></tr>
+    <tr><td>Disable / re-enroll MFA</td><td>Password + TOTP</td><td>5 minutes</td></tr>
+    <tr><td>Change email address</td><td>Password + TOTP</td><td>5 minutes</td></tr>
+    <tr><td>Change password</td><td>Current password</td><td>5 minutes</td></tr>
+    <tr><td>Change household role (STACK_MANAGER only)</td><td>TOTP challenge</td><td>15 minutes</td></tr>
+    <tr><td>View admin diagnostics (AdminPulseScreen)</td><td>TOTP challenge</td><td>15 minutes</td></tr>
+    <tr><td>Export user data (GDPR/CCPA)</td><td>Password + TOTP</td><td>5 minutes</td></tr>
+    <tr><td>Lifetime subscription purchase</td><td>Password re-entry</td><td>10 minutes</td></tr>
+    <tr><td>Account deletion</td><td>Password + TOTP</td><td>5 minutes</td></tr>
+    <tr><td>View/manage blocked indicators</td><td>Admin + TOTP</td><td>15 minutes</td></tr>
+  </table>
+
+  <h2>elevated_sessions Table + Flow</h2>
+  <pre>
+<span class="kw">CREATE TABLE</span> elevated_sessions (
+  token       <span class="type">TEXT</span>        <span class="kw">PRIMARY KEY DEFAULT</span> encode(gen_random_bytes(<span class="num">32</span>), <span class="str">'hex'</span>),
+  user_id     <span class="type">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> profiles(id),
+  action      <span class="type">TEXT</span>        <span class="kw">NOT NULL</span>,          <span class="cm">-- 'disable_mfa'|'change_email'|'role_change'|etc.</span>
+  expires_at  <span class="type">TIMESTAMPTZ NOT NULL</span>,
+  used        <span class="type">BOOLEAN</span>     <span class="kw">DEFAULT FALSE</span>,   <span class="cm">-- single-use enforcement</span>
+  used_at     <span class="type">TIMESTAMPTZ</span>,
+  created_at  <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>()
+);
+<span class="kw">CREATE INDEX</span> idx_elevated_user ON elevated_sessions(user_id, expires_at);
+  </pre>
+
+  <pre>
+<span class="cm">// Edge Function: POST /request-step-up</span>
+<span class="cm">// Called by client BEFORE performing sensitive action</span>
+
+<span class="kw">export default async function</span> handler(req: <span class="type">Request</span>) {
+  <span class="kw">const</span> ctx = <span class="kw">await</span> requireAuth(req, publicClient)
+  <span class="kw">const</span> { password, totp_code, action } = <span class="kw">await</span> req.json()
+
+  <span class="cm">// 1. Re-verify password via Supabase Auth sign-in</span>
+  <span class="kw">const</span> { error: authError } = <span class="kw">await</span> publicClient.auth.signInWithPassword({
+    email: ctx.userEmail, password
+  })
+  <span class="kw">if</span> (authError) <span class="kw">throw</span> forbiddenError(<span class="str">'Password verification failed'</span>)
+
+  <span class="cm">// 2. Verify TOTP if action requires it</span>
+  <span class="kw">if</span> (requiresTotp(action)) {
+    <span class="kw">const</span> factors = <span class="kw">await</span> publicClient.auth.mfa.listFactors()
+    <span class="kw">const</span> totp = factors.data?.totp?.[<span class="num">0</span>]
+    <span class="kw">if</span> (!totp) <span class="kw">throw</span> forbiddenError(<span class="str">'MFA required for this action but not enrolled'</span>)
+    <span class="kw">const</span> { error } = <span class="kw">await</span> publicClient.auth.mfa.challengeAndVerify({ factorId: totp.id, code: totp_code })
+    <span class="kw">if</span> (error) <span class="kw">throw</span> forbiddenError(<span class="str">'TOTP verification failed'</span>)
+  }
+
+  <span class="cm">// 3. Issue elevated session token</span>
+  <span class="kw">const</span> ttlMinutes = getActionTtl(action) <span class="cm">// 5 or 15 min based on action</span>
+  <span class="kw">const</span> { data: session } = <span class="kw">await</span> adminClient.from(<span class="str">'elevated_sessions'</span>).insert({
+    user_id: ctx.userId,
+    action,
+    expires_at: <span class="kw">new</span> <span class="type">Date</span>(<span class="type">Date</span>.now() + ttlMinutes * <span class="num">60000</span>).toISOString()
+  }).select(<span class="str">'token'</span>).single()
+
+  <span class="cm">// 4. Log the step-up event</span>
+  <span class="kw">await</span> logSecurityEvent(<span class="str">'STEP_UP_AUTH_GRANTED'</span>, <span class="str">'AUTH'</span>, <span class="str">'MEDIUM'</span>, ctx.userId, { action })
+
+  <span class="kw">return</span> Response.json({ elevated_session_token: session.token, expires_in_minutes: ttlMinutes })
+}
+  </pre>
+
+  <h2>Client-Side Flow</h2>
+  <ol>
+    <li>User triggers sensitive action (e.g., "Disable MFA")</li>
+    <li>App prompts: enter password + TOTP code</li>
+    <li>App calls <code>POST /request-step-up</code> → receives <code>elevated_session_token</code></li>
+    <li>Token stored in memory only (not SecureStore — expires quickly)</li>
+    <li>Sensitive action request includes <code>x-step-up-token: &lt;token&gt;</code> header</li>
+    <li>Edge Function validates token via <code>requireStepUp()</code> + marks <code>used=true</code></li>
+    <li>Token is single-use — cannot be replayed</li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 10 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 10</div>
+  <h1>Secrets &amp; Encryption Redesign</h1>
+  <div class="divider"></div>
+
+  <div class="box box-red">
+    <div class="box-title">⚠ TREAT EXPO_PUBLIC_FIELD_ENC_KEY AS FULLY COMPROMISED</div>
+    <p style="color:#991b1b">Any value that has been in an EXPO_PUBLIC_ variable has been bundled into production app builds and can be extracted. Rotate the key immediately. Re-encrypt all fields that were encrypted with the old key after generating a new server-side key. The old key should be kept read-only for decryption of legacy data during migration, then permanently deleted.</p>
+  </div>
+
+  <h2>Safe vs. Unsafe Environment Variables</h2>
+  <table>
+    <tr><th class="green">✓ SAFE — Can be EXPO_PUBLIC_</th><th class="red">❌ UNSAFE — Must NEVER be EXPO_PUBLIC_</th></tr>
+    <tr><td>EXPO_PUBLIC_SUPABASE_URL</td><td>EXPO_PUBLIC_FIELD_ENC_KEY ← remove immediately</td></tr>
+    <tr><td>EXPO_PUBLIC_SUPABASE_ANON_KEY (public by design, protected by RLS)</td><td>Any service_role key</td></tr>
+    <tr><td>EXPO_PUBLIC_APP_VERSION</td><td>GEMINI_API_KEY</td></tr>
+    <tr><td>EXPO_PUBLIC_ENVIRONMENT label</td><td>RESEND_API_KEY</td></tr>
+    <tr><td>EXPO_PUBLIC_SECURITY_INGEST_PUBLIC_TOKEN (public endpoint, rate limited)</td><td>SECURITY_INGEST_SECRET (internal HMAC)</td></tr>
+    <tr><td></td><td>Any HMAC signing secret</td></tr>
+    <tr><td></td><td>Any encryption key</td></tr>
+    <tr><td></td><td>Database connection strings</td></tr>
+  </table>
+
+  <h2>Server-Side Encryption Architecture (Envelope Encryption)</h2>
+  <pre>
+<span class="cm">// supabase/functions/encrypt-field/index.ts</span>
+<span class="cm">// ALL encryption/decryption happens here — key never leaves vault</span>
+
+<span class="cm">// Key Hierarchy:</span>
+<span class="cm">// Master Key (in Supabase vault) → Per-user Data Encryption Key (DEK)</span>
+<span class="cm">// DEK stored encrypted in profiles.encrypted_dek</span>
+<span class="cm">// Actual field encrypted with DEK</span>
+<span class="cm">// This allows per-user key rotation without re-encrypting all data</span>
+
+<span class="kw">async function</span> <span class="fn">getOrCreateUserDek</span>(userId: <span class="type">string</span>, adminClient: <span class="type">SupabaseClient</span>): <span class="type">Promise</span>&lt;<span class="type">CryptoKey</span>&gt; {
+  <span class="kw">const</span> masterKeyHex = Deno.env.get(<span class="str">'MASTER_ENC_KEY'</span>)! <span class="cm">// from Supabase vault only</span>
+  <span class="kw">const</span> masterKey = <span class="kw">await</span> importKey(masterKeyHex)
+
+  <span class="kw">const</span> { data: profile } = <span class="kw">await</span> adminClient.from(<span class="str">'profiles'</span>).select(<span class="str">'encrypted_dek'</span>).eq(<span class="str">'id'</span>, userId).single()
+
+  <span class="kw">if</span> (profile?.encrypted_dek) {
+    <span class="cm">// Decrypt the per-user DEK using the master key</span>
+    <span class="kw">return</span> decryptKey(profile.encrypted_dek, masterKey)
+  }
+
+  <span class="cm">// Generate new per-user DEK and encrypt it with master key</span>
+  <span class="kw">const</span> dek = <span class="kw">await</span> crypto.subtle.generateKey({ name: <span class="str">'AES-GCM'</span>, length: <span class="num">256</span> }, <span class="kw">true</span>, [<span class="str">'encrypt'</span>, <span class="str">'decrypt'</span>])
+  <span class="kw">const</span> encryptedDek = <span class="kw">await</span> encryptKey(dek, masterKey)
+  <span class="kw">await</span> adminClient.from(<span class="str">'profiles'</span>).update({ encrypted_dek: encryptedDek }).eq(<span class="str">'id'</span>, userId)
+  <span class="kw">return</span> dek
+}
+
+<span class="kw">export async function</span> <span class="fn">encryptField</span>(userId: <span class="type">string</span>, plaintext: <span class="type">string</span>, adminClient: <span class="type">SupabaseClient</span>): <span class="type">Promise</span>&lt;<span class="type">string</span>&gt; {
+  <span class="kw">const</span> dek = <span class="kw">await</span> getOrCreateUserDek(userId, adminClient)
+  <span class="kw">const</span> iv = crypto.getRandomValues(<span class="kw">new</span> <span class="type">Uint8Array</span>(<span class="num">12</span>))
+  <span class="kw">const</span> ciphertext = <span class="kw">await</span> crypto.subtle.encrypt({ name: <span class="str">'AES-GCM'</span>, iv }, dek, <span class="kw">new</span> <span class="type">TextEncoder</span>().encode(plaintext))
+  <span class="cm">// Return as base64(iv) + '.' + base64(ciphertext)</span>
+  <span class="kw">return</span> `${btoa(<span class="type">String</span>.fromCharCode(...iv))}.${btoa(<span class="type">String</span>.fromCharCode(...<span class="kw">new</span> <span class="type">Uint8Array</span>(ciphertext)))}`
+}
+  </pre>
+
+  <h2>Key Rotation Process</h2>
+  <ol>
+    <li>Generate new MASTER_ENC_KEY: <code>node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"</code></li>
+    <li>Set in Supabase vault: <code>supabase secrets set MASTER_ENC_KEY=&lt;new&gt; MASTER_ENC_KEY_LEGACY=&lt;old&gt;</code></li>
+    <li>Run migration Edge Function: re-encrypt all <code>encrypted_dek</code> rows using old key → new key</li>
+    <li>Remove MASTER_ENC_KEY_LEGACY from vault after migration verified complete</li>
+    <li>Rotate on any suspected compromise — do not wait for scheduled rotation</li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 11 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 11</div>
+  <h1>Environment Separation &amp; Deployment Hardening</h1>
+  <div class="divider"></div>
+
+  <h2>Three-Project Model</h2>
+  <table>
+    <tr><th>Property</th><th>Development</th><th>Staging</th><th>Production</th></tr>
+    <tr><td>Supabase Project</td><td>snippd-dev (separate project)</td><td>snippd-staging (separate)</td><td>gsnbpfpekqqjlmkgvwvb</td></tr>
+    <tr><td>Data</td><td>Synthetic test data only</td><td>Anonymized production copy</td><td>Live user data</td></tr>
+    <tr><td>Gemini Key</td><td>Dev key ($10 limit)</td><td>Staging key ($50 limit)</td><td>Prod key (monitored)</td></tr>
+    <tr><td>Resend Key</td><td>Dev key (sends to Mailtrap only)</td><td>Staging key (internal team)</td><td>Prod key (ddavis@getsnippd.com)</td></tr>
+    <tr><td>App build</td><td>Expo Go / dev build</td><td>EAS staging profile</td><td>EAS production profile</td></tr>
+    <tr><td>Credentials source</td><td>.env.local (never committed)</td><td>CI/CD secrets (GitHub Actions)</td><td>CI/CD secrets (protected branch)</td></tr>
+    <tr><td>Who can deploy</td><td>Any developer</td><td>Engineer + automated CI</td><td>Maintainer approval required</td></tr>
+    <tr><td>Migration runs</td><td>Developer runs locally</td><td>CI runs automatically on PR merge</td><td>Manual + PR approval gate</td></tr>
+  </table>
+
+  <h2>CI/CD Security Gates</h2>
+  <pre>
+<span class="cm"># .github/workflows/deploy-production.yml</span>
+name: Production Deploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  security-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      <span class="cm"># 1. Secret scanning — fail if any credentials in code</span>
+      - name: Secret Scan
+        run: npx detect-secrets scan --baseline .secrets.baseline
+
+      <span class="cm"># 2. Dependency audit — fail on high/critical CVEs</span>
+      - name: npm audit
+        run: npm audit --audit-level=high
+
+      <span class="cm"># 3. RLS policy tests (custom test suite)</span>
+      - name: RLS Tests
+        run: npm run test:rls
+        env:
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.STAGING_SERVICE_KEY }}
+
+      <span class="cm"># 4. Smoke test staging before promoting to prod</span>
+      - name: Staging Smoke Test
+        run: npm run test:smoke
+
+  deploy-production:
+    needs: security-gates
+    environment: production  <span class="cm"># Requires reviewer approval in GitHub</span>
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Edge Functions
+        run: |
+          supabase functions deploy gemini-proxy --project-ref ${{ secrets.PROD_PROJECT_REF }}
+          supabase functions deploy security-ingest --project-ref ${{ secrets.PROD_PROJECT_REF }}
+          supabase functions deploy security-alert --project-ref ${{ secrets.PROD_PROJECT_REF }}
+          supabase functions deploy security-escalate --project-ref ${{ secrets.PROD_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  </pre>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 12 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 12</div>
+  <h1>pg_cron &amp; Automation Hardening</h1>
+  <div class="divider"></div>
+
+  <h2>Cron Inventory Format</h2>
+  <table>
+    <tr><th>Job Name</th><th>Schedule</th><th>Action</th><th>Owner</th><th>Last Reviewed</th><th>Risk</th></tr>
+    <tr><td>security-escalate-job</td><td>*/5 * * * *</td><td>POST /security-escalate</td><td>Engineering</td><td>Apr 2026</td><td><span class="sev sev-m">MEDIUM</span></td></tr>
+    <tr><td>purge-low-security-events</td><td>0 3 * * *</td><td>fn_purge_low_severity_events()</td><td>Engineering</td><td>Apr 2026</td><td><span class="sev sev-l">LOW</span></td></tr>
+    <tr><td>expire-elevated-sessions</td><td>*/10 * * * *</td><td>DELETE FROM elevated_sessions WHERE expires_at &lt; NOW()</td><td>Engineering</td><td>Apr 2026</td><td><span class="sev sev-l">LOW</span></td></tr>
+    <tr><td>expire-blocked-indicators</td><td>0 * * * *</td><td>UPDATE blocked_indicators SET active=false WHERE expires_at &lt; NOW()</td><td>Engineering</td><td>Apr 2026</td><td><span class="sev sev-l">LOW</span></td></tr>
+    <tr><td>processed-requests-cleanup</td><td>0 4 * * *</td><td>DELETE FROM processed_requests WHERE expires_at &lt; NOW()</td><td>Engineering</td><td>Apr 2026</td><td><span class="sev sev-l">LOW</span></td></tr>
+  </table>
+
+  <h2>Cron Permission Restriction + Audit</h2>
+  <pre>
+<span class="cm">-- Restrict who can create/modify cron jobs</span>
+<span class="cm">-- Only the postgres superuser (Supabase admin) should call cron.schedule()</span>
+<span class="cm">-- Revoke from application roles</span>
+<span class="kw">REVOKE ALL ON</span> cron.job <span class="kw">FROM PUBLIC</span>;
+<span class="kw">REVOKE EXECUTE ON FUNCTION</span> cron.schedule <span class="kw">FROM PUBLIC</span>;
+<span class="kw">REVOKE EXECUTE ON FUNCTION</span> cron.unschedule <span class="kw">FROM PUBLIC</span>;
+
+<span class="cm">-- Audit table for cron job changes</span>
+<span class="kw">CREATE TABLE</span> cron_audit_log (
+  id          <span class="type">UUID</span>        <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  action      <span class="type">TEXT</span>        <span class="kw">NOT NULL</span>,   <span class="cm">-- CREATED|MODIFIED|DELETED|EXECUTED|FAILED</span>
+  job_name    <span class="type">TEXT</span>        <span class="kw">NOT NULL</span>,
+  job_command <span class="type">TEXT</span>,
+  executed_by <span class="type">TEXT</span>,                   <span class="cm">-- postgres role</span>
+  result      <span class="type">TEXT</span>,
+  created_at  <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cm">-- Monitor for unauthorized job creation</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">fn_audit_cron_changes</span>()
+<span class="kw">RETURNS EVENT TRIGGER LANGUAGE</span> plpgsql <span class="kw">AS</span> $$
+<span class="kw">BEGIN</span>
+  <span class="kw">INSERT INTO</span> cron_audit_log(action, job_name, executed_by)
+  <span class="kw">VALUES</span>(<span class="str">'SCHEMA_CHANGE'</span>, TG_TAG, <span class="fn">current_user</span>());
+<span class="kw">END</span>; $$;
+
+<span class="cm">-- Monitor: alert if a new cron job appears that isn't in the inventory</span>
+<span class="cm">-- Run this check in security-escalate job:</span>
+<span class="kw">SELECT</span> jobname <span class="kw">FROM</span> cron.job
+<span class="kw">WHERE</span> jobname <span class="kw">NOT IN</span> (<span class="str">'security-escalate-job'</span>, <span class="str">'purge-low-security-events'</span>,
+  <span class="str">'expire-elevated-sessions'</span>, <span class="str">'expire-blocked-indicators'</span>, <span class="str">'processed-requests-cleanup'</span>);
+<span class="cm">-- If any rows returned → fire CRON_JOB_UNAUTHORIZED CRITICAL event</span>
+  </pre>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 13 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 13</div>
+  <h1>Monitoring &amp; Alerting Architecture</h1>
+  <div class="divider"></div>
+
+  <h2>Alert Email Specification</h2>
+  <div class="box box-dark">
+    <div class="box-title">Email Format — HIGH/CRITICAL Events</div>
+    <p style="color:#e2e8f0"><strong>To:</strong> ddavis@getsnippd.com</p>
+    <p style="color:#e2e8f0"><strong>Subject:</strong> [HIGH PRIORITY SECURITY ALERT] {EVENT_TYPE} — {SEVERITY} on {ENVIRONMENT}</p>
+    <p style="color:#94a3b8">Body includes: Event type, severity (color-coded header), timestamp (UTC), environment, impacted user_id, source IP, endpoint/route, summary, metadata excerpt, recommended next action specific to event type, correlation ID, link to investigation guide.</p>
+  </div>
+
+  <h2>Full Detection Rule Set</h2>
+  <table>
+    <tr><th>Signal</th><th>Detection Logic</th><th>Severity</th><th>Action</th></tr>
+    <tr><td>Brute Force</td><td>5+ LOGIN_FAILED same IP in 5 min</td><td><span class="sev sev-h">HIGH</span></td><td>Email + auto-block IP 1h</td></tr>
+    <tr><td>Brute Force Success</td><td>LOGIN_SUCCESS within 30 min of BRUTE_FORCE_IN_PROGRESS</td><td><span class="sev sev-c">CRITICAL</span></td><td>Email + invalidate all sessions for user</td></tr>
+    <tr><td>IDOR Confirmed</td><td>403 on row-scoped query where auth.uid() != owner; data returned</td><td><span class="sev sev-c">CRITICAL</span></td><td>Email + block IP 24h</td></tr>
+    <tr><td>Privilege Escalation</td><td>Role change attempted without STACK_MANAGER JWT or without fn_change_role()</td><td><span class="sev sev-c">CRITICAL</span></td><td>Email + block user + preserve forensics</td></tr>
+    <tr><td>Secret in Payload</td><td>Request body matches JWT/Stripe/AWS/Supabase key patterns</td><td><span class="sev sev-c">CRITICAL</span></td><td>Email immediately; rotate relevant key</td></tr>
+    <tr><td>Referral Farming</td><td>3+ referrals from same IP/device within 24h</td><td><span class="sev sev-h">HIGH</span></td><td>Email + flag accounts + block credits</td></tr>
+    <tr><td>Double Credit Claim</td><td>Duplicate idempotency_key in credit_ledger attempted</td><td><span class="sev sev-m">MEDIUM</span></td><td>Log + flag user</td></tr>
+    <tr><td>Cron Job Tampering</td><td>New job in cron.job not in approved inventory</td><td><span class="sev sev-c">CRITICAL</span></td><td>Email immediately + disable new job</td></tr>
+    <tr><td>Monitoring Silence</td><td>0 security_events in 30 min (dead-man switch)</td><td><span class="sev sev-c">CRITICAL</span></td><td>Direct email bypassing pipeline</td></tr>
+    <tr><td>Injection Payload</td><td>SQL/XSS/command patterns in any request field</td><td><span class="sev sev-h">HIGH</span></td><td>Reject + log + email if repeated</td></tr>
+    <tr><td>Unapproved Domain</td><td>Outbound fetch to domain not in approved_domains</td><td><span class="sev sev-h">HIGH</span></td><td>Block request + email</td></tr>
+    <tr><td>Mass Receipt Abuse</td><td>User uploads 5+ receipts/day or receipts with identical total</td><td><span class="sev sev-m">MEDIUM</span></td><td>Flag for manual review + hold credits</td></tr>
+    <tr><td>Feature Flag Tampering</td><td>UPDATE to feature_flags table not via admin Edge Function</td><td><span class="sev sev-c">CRITICAL</span></td><td>Email immediately + revert flag</td></tr>
+    <tr><td>Admin Anomaly</td><td>Admin action outside business hours or from unusual IP</td><td><span class="sev sev-h">HIGH</span></td><td>Email + log + require step-up re-auth</td></tr>
+  </table>
+
+  <h2>Alert Deduplication + Cooldown Windows</h2>
+  <table>
+    <tr><th>Severity</th><th>Cooldown</th><th>Dedup Window</th><th>Max Alerts/Hour</th></tr>
+    <tr><td><span class="sev sev-c">CRITICAL</span></td><td>60 seconds</td><td>Same fingerprint: 5 min</td><td>60 (no fatigue limit — always alert)</td></tr>
+    <tr><td><span class="sev sev-h">HIGH</span></td><td>5 minutes</td><td>Same fingerprint: 15 min</td><td>12</td></tr>
+    <tr><td><span class="sev sev-m">MEDIUM</span></td><td>1 hour</td><td>Same event_type: 1 hour</td><td>3 (digest format)</td></tr>
+    <tr><td><span class="sev sev-l">LOW</span></td><td>No email</td><td>DB-only log</td><td>0 emails</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 14 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 14</div>
+  <h1>Incident Response &amp; Kill Switch Design</h1>
+  <div class="divider"></div>
+
+  <h2>feature_flags Kill Switch Table</h2>
+  <pre>
+<span class="kw">CREATE TABLE</span> feature_flags (
+  flag_name    <span class="type">TEXT PRIMARY KEY</span>,
+  enabled      <span class="type">BOOLEAN NOT NULL DEFAULT TRUE</span>,
+  description  <span class="type">TEXT</span>,
+  disabled_by  <span class="type">TEXT</span>,                   <span class="cm">-- admin who disabled it</span>
+  disabled_at  <span class="type">TIMESTAMPTZ</span>,
+  updated_at   <span class="type">TIMESTAMPTZ DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cm">-- Seed default flags</span>
+<span class="kw">INSERT INTO</span> feature_flags(flag_name, enabled, description) <span class="kw">VALUES</span>
+  (<span class="str">'rewards_enabled'</span>,    <span class="kw">TRUE</span>, <span class="str">'All credit earning and reward issuance'</span>),
+  (<span class="str">'referrals_enabled'</span>,  <span class="kw">TRUE</span>, <span class="str">'Referral code sign-ups and credit release'</span>),
+  (<span class="str">'receipts_enabled'</span>,   <span class="kw">TRUE</span>, <span class="str">'Receipt upload and OCR processing'</span>),
+  (<span class="str">'ai_enabled'</span>,         <span class="kw">TRUE</span>, <span class="str">'Gemini API calls (OCR + Chef Stash)'</span>),
+  (<span class="str">'new_signups_enabled'</span>,<span class="kw">TRUE</span>, <span class="str">'New account creation'</span>),
+  (<span class="str">'household_enabled'</span>,  <span class="kw">TRUE</span>, <span class="str">'Household creation and member joins'</span>),
+  (<span class="str">'export_enabled'</span>,     <span class="kw">TRUE</span>, <span class="str">'Data export / DSAR fulfillment'</span>);
+
+<span class="cm">-- Emergency disable (takes effect immediately on next request check)</span>
+<span class="cm">-- UPDATE feature_flags SET enabled=FALSE, disabled_by='ddavis', disabled_at=NOW() WHERE flag_name='referrals_enabled';</span>
+  </pre>
+
+  <h2>Incident Response Playbooks</h2>
+
+  <div class="play">
+    <div class="play-trigger">CRITICAL — REFERRAL FRAUD OUTBREAK</div>
+    <h4>Referral Farm Detected</h4>
+    <ol>
+      <li>Kill switch: <code>UPDATE feature_flags SET enabled=FALSE WHERE flag_name='referrals_enabled'</code></li>
+      <li>Identify cluster: <code>SELECT * FROM referral_verifications WHERE fraud_score &gt; 70 ORDER BY created_at DESC</code></li>
+      <li>Block accounts: <code>INSERT INTO fraud_flags(user_id, flag_type, risk_score, auto_blocked) SELECT referee_id, 'REFERRAL_FARM', 90, TRUE FROM referrals WHERE fraud_score &gt; 70</code></li>
+      <li>Reverse fraudulent credits: Admin-issued negative credit_ledger entries for each flagged user</li>
+      <li>Document scope in investigations table</li>
+      <li>Re-enable referrals only after root cause fixed and validation tightened</li>
+    </ol>
+  </div>
+
+  <div class="play">
+    <div class="play-trigger">CRITICAL — SERVICE_ROLE KEY EXPOSED</div>
+    <h4>Credential Breach — Emergency</h4>
+    <ol>
+      <li>STOP all deployments and CI/CD pipelines immediately</li>
+      <li>Rotate in Supabase Dashboard: Settings → API → Rotate Keys (old key invalidated in 24h)</li>
+      <li>Update all Edge Function secrets: <code>supabase secrets set SUPABASE_SERVICE_ROLE_KEY=&lt;new&gt;</code></li>
+      <li>Redeploy all Edge Functions to pick up new secret</li>
+      <li>Audit git history: <code>git log --all -S "service_role" --source --all</code> — if found, use git-filter-repo to purge</li>
+      <li>Review security_events for any unauthorized DB access during exposure window</li>
+      <li>Document: exposure start time, end time, which secrets were exposed, what access was possible</li>
+    </ol>
+  </div>
+
+  <div class="play">
+    <div class="play-trigger">CRITICAL — REWARD FARMING</div>
+    <h4>Credit Economy Under Attack</h4>
+    <ol>
+      <li>Kill switch: <code>UPDATE feature_flags SET enabled=FALSE WHERE flag_name='rewards_enabled'</code></li>
+      <li>Identify suspicious accounts: query credit_ledger for users with &gt;200 credits in 24h</li>
+      <li>Check for duplicate idempotency_keys or request_hash collisions in processed_requests</li>
+      <li>Flag all suspicious accounts in fraud_flags</li>
+      <li>Remove fraudulent credits via negative credit_ledger entries (admin-issued)</li>
+      <li>Fix the vulnerability (replay, duplicate ID, or logic flaw) in staging first</li>
+      <li>Re-enable rewards after fix is deployed and verified</li>
+    </ol>
+  </div>
+
+  <div class="play">
+    <div class="play-trigger">CRITICAL — COMPROMISED DEVELOPER MACHINE</div>
+    <h4>Developer Credential Compromise</h4>
+    <ol>
+      <li>Immediately rotate ALL credentials that may have been on that machine (all API keys, tokens)</li>
+      <li>Revoke developer's Supabase access tokens: Supabase Dashboard → Organization → Members</li>
+      <li>Review security_events for any anomalous actions from that developer's authenticated sessions</li>
+      <li>Check if production was ever accessed from that machine (it should not be — see Part 11)</li>
+      <li>Notify developer: advise full machine wipe + credential audit</li>
+      <li>Review and restrict CI/CD secrets the developer had access to</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 15 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 15</div>
+  <h1>TypeScript + SQL Implementation Examples</h1>
+  <div class="divider"></div>
+
+  <h2 class="green">Secure close-trip Edge Function (Full Example)</h2>
+  <pre>
+<span class="cm">// supabase/functions/close-trip/index.ts</span>
+<span class="cm">// Handles: trip close, credit issuance, fresh start</span>
+<span class="cm">// Security: JWT + step-up token + idempotency + rate limiting + kill switch</span>
+
+<span class="kw">import</span> { createClient } from <span class="str">'@supabase/supabase-js'</span>
+<span class="kw">import</span> { requireAuth, requireStepUp, checkRateLimit, validateTimestamp, withIdempotency } from <span class="str">'../_shared/middleware.ts'</span>
+
+<span class="kw">export default async function</span> handler(req: <span class="type">Request</span>) {
+  <span class="kw">const</span> correlationId = crypto.randomUUID()
+  <span class="kw">const</span> adminClient = createClient(Deno.env.get(<span class="str">'SUPABASE_URL'</span>)!, Deno.env.get(<span class="str">'SUPABASE_SERVICE_ROLE_KEY'</span>)!)
+  <span class="kw">const</span> publicClient = createClient(Deno.env.get(<span class="str">'SUPABASE_URL'</span>)!, Deno.env.get(<span class="str">'SUPABASE_ANON_KEY'</span>)!)
+
+  <span class="kw">try</span> {
+    <span class="cm">// 1. Authenticate</span>
+    <span class="kw">const</span> ctx = <span class="kw">await</span> requireAuth(req, publicClient)
+    <span class="kw">const</span> clientIp = req.headers.get(<span class="str">'x-forwarded-for'</span>) ?? <span class="str">'unknown'</span>
+
+    <span class="cm">// 2. Rate limit (3 trip closes per hour per user)</span>
+    <span class="kw">await</span> checkRateLimit(adminClient, ctx.userId, clientIp, <span class="str">'close-trip'</span>, <span class="num">3</span>, <span class="num">10</span>, <span class="num">3600</span>)
+
+    <span class="cm">// 3. Parse + validate body</span>
+    <span class="kw">const</span> body = <span class="kw">await</span> req.json()
+    <span class="kw">const</span> { trip_id, idempotency_key, request_timestamp } = body
+    <span class="kw">if</span> (!trip_id || !idempotency_key || !request_timestamp) <span class="kw">throw</span> badRequestError(<span class="str">'Missing required fields'</span>)
+
+    <span class="cm">// 4. Reject stale requests</span>
+    validateTimestamp(request_timestamp)
+
+    <span class="cm">// 5. Kill switch check</span>
+    <span class="kw">const</span> { data: rewardsFlag } = <span class="kw">await</span> adminClient.from(<span class="str">'feature_flags'</span>).select(<span class="str">'enabled'</span>).eq(<span class="str">'flag_name'</span>, <span class="str">'rewards_enabled'</span>).single()
+    <span class="kw">if</span> (!rewardsFlag?.enabled) <span class="kw">throw</span> serviceUnavailableError(<span class="str">'Rewards are temporarily unavailable'</span>)
+
+    <span class="cm">// 6. Idempotency: execute once only</span>
+    <span class="kw">const</span> { result, cached } = <span class="kw">await</span> withIdempotency(adminClient, idempotency_key, <span class="str">'/close-trip'</span>, ctx.userId, body, async () => {
+      <span class="cm">// 7. Verify trip belongs to this user (server-side, not trusting client)</span>
+      <span class="kw">const</span> { data: trip, error } = <span class="kw">await</span> adminClient.from(<span class="str">'trip_results'</span>).select(<span class="str">'*'</span>).eq(<span class="str">'id'</span>, trip_id).eq(<span class="str">'user_id'</span>, ctx.userId).single()
+      <span class="kw">if</span> (error || !trip) <span class="kw">throw</span> forbiddenError(<span class="str">'Trip not found or not owned by user'</span>)
+      <span class="kw">if</span> (trip.closed) <span class="kw">throw</span> badRequestError(<span class="str">'Trip already closed'</span>)
+
+      <span class="cm">// 8. Run close_week() — atomic Postgres function</span>
+      <span class="kw">const</span> { data: weekResult, error: closeError } = <span class="kw">await</span> adminClient.rpc(<span class="str">'close_week'</span>, { p_user_id: ctx.userId, p_trip_id: trip_id })
+      <span class="kw">if</span> (closeError) <span class="kw">throw</span> serverError(<span class="str">'Failed to close week'</span>)
+
+      <span class="cm">// 9. Issue credits via secure ledger function (server decides amount)</span>
+      <span class="kw">await</span> adminClient.rpc(<span class="str">'issue_credits'</span>, {
+        p_user_id:      ctx.userId,
+        p_amount:       weekResult.credits_earned,  <span class="cm">// server calculated, not client-supplied</span>
+        p_type:         <span class="str">'WEEKLY_TRIP'</span>,
+        p_reference_id: trip_id,
+        p_idempotency:  `trip_credit_${trip_id}`,
+        p_issued_by:    <span class="str">'system'</span>
+      })
+
+      <span class="kw">return</span> { success: <span class="kw">true</span>, credits_earned: weekResult.credits_earned, new_level: weekResult.new_level, streak: weekResult.streak_days }
+    })
+
+    <span class="kw">return</span> Response.json({ ...result, cached, correlation_id: correlationId })
+  } <span class="kw">catch</span> (e) {
+    <span class="kw">return</span> Response.json({ error: e.message, correlation_id: correlationId }, { status: e.status ?? <span class="num">500</span> })
+  }
+}
+  </pre>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 16 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 16</div>
+  <h1>Testing Plan</h1>
+  <div class="divider"></div>
+
+  <h2>RLS Policy Tests</h2>
+  <table>
+    <tr><th>Test</th><th>Method</th><th>Expected Result</th></tr>
+    <tr><td>User reads another user's profile</td><td>Query profiles with user A's JWT for user B's row</td><td>0 rows returned (not 403)</td></tr>
+    <tr><td>User updates another's profile</td><td>UPDATE profiles SET full_name='hacked' WHERE id=&lt;other_user&gt; with own JWT</td><td>0 rows affected</td></tr>
+    <tr><td>Non-member reads household cart</td><td>Query household_cart_items with non-member JWT</td><td>0 rows returned</td></tr>
+    <tr><td>VIEWER adds cart item</td><td>INSERT into household_cart_items as VIEWER</td><td>RLS violation, 0 rows inserted</td></tr>
+    <tr><td>Client reads security_events</td><td>Query security_events with non-admin JWT</td><td>0 rows returned</td></tr>
+    <tr><td>Client inserts to system_audit_logs</td><td>INSERT with anon or user JWT</td><td>Blocked by RLS</td></tr>
+    <tr><td>Client updates credit_ledger</td><td>UPDATE credit_ledger SET amount=9999</td><td>Blocked by RULE + RLS</td></tr>
+    <tr><td>Feature flag read by auth user</td><td>SELECT from feature_flags with user JWT</td><td>Rows returned (allowed)</td></tr>
+    <tr><td>Feature flag update by non-admin</td><td>UPDATE feature_flags SET enabled=FALSE</td><td>Blocked by RLS</td></tr>
+  </table>
+
+  <h2>Replay + Idempotency Tests</h2>
+  <table>
+    <tr><th>Test</th><th>Scenario</th><th>Expected</th></tr>
+    <tr><td>Duplicate idempotency key</td><td>Send same close-trip request twice with same idempotency_key</td><td>Second returns cached response, no second credit issued</td></tr>
+    <tr><td>Stale timestamp</td><td>Send request with request_timestamp 10 minutes ago</td><td>400 error "Request timestamp out of allowed window"</td></tr>
+    <tr><td>Future timestamp</td><td>Send request with timestamp 6 minutes in future</td><td>400 error</td></tr>
+    <tr><td>Modified body + same key</td><td>Same idempotency_key but different trip_id</td><td>Return cached first response (key wins)</td></tr>
+    <tr><td>Security event replay</td><td>Send same security event fingerprint twice within window</td><td>Second marked as deduplicated, no double-alert</td></tr>
+  </table>
+
+  <h2>Fraud + Rewards Abuse Tests</h2>
+  <table>
+    <tr><th>Test</th><th>Simulation</th><th>Expected</th></tr>
+    <tr><td>Self-referral</td><td>Use own referral code in same account creation flow</td><td>Rejected by fn_process_referral_signup() — same user_id check</td></tr>
+    <tr><td>Mass referral from same IP</td><td>4 signups from same IP with same referral code</td><td>fraud_score escalates; 4th signup auto-blocked</td></tr>
+    <tr><td>Credit farming (repeat close_week)</td><td>Attempt close_week twice in same week for same user</td><td>Second call hits rate limit (3/hour) and trip.closed=true check</td></tr>
+    <tr><td>Claiming non-owned reward</td><td>Submit reward_key for a level the user hasn't reached</td><td>Server recalculates eligibility — rejected</td></tr>
+    <tr><td>Disable rewards kill switch</td><td>Set rewards_enabled=FALSE, attempt to earn credits</td><td>issue_credits() raises exception, 503 returned</td></tr>
+  </table>
+
+  <h2>Step-Up Authentication Tests</h2>
+  <table>
+    <tr><th>Test</th><th>Expected</th></tr>
+    <tr><td>Sensitive action without step-up token</td><td>403 "Step-up authentication required"</td></tr>
+    <tr><td>Expired step-up token (16 min old)</td><td>403 "Step-up token expired"</td></tr>
+    <tr><td>Reuse step-up token after use</td><td>403 "Step-up token already used"</td></tr>
+    <tr><td>Step-up token for wrong user</td><td>403 "Invalid step-up token" (user_id mismatch)</td></tr>
+    <tr><td>Wrong password in step-up request</td><td>403 "Password verification failed"</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 17 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 17</div>
+  <h1>Deployment Checklist — Must All Be Green</h1>
+  <div class="divider"></div>
+
+  <h3>Authentication</h3>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>MFA enforced for all users</strong> — currently optional. Make mandatory before launch.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Server-side login rate limiting via auth-proxy Edge Function</strong> — currently client-side only.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Step-up authentication implemented</strong> for all sensitive actions (MFA disable, email change, etc.)</div></div>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>SecureStore for tokens</strong> — confirmed, not AsyncStorage.</div></div>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>30-min inactivity logout</strong> — sessionGuard.js confirmed.</div></div>
+
+  <h3>Database</h3>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>RLS enabled on all tables</strong> — confirmed in migrations.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>credit_ledger table created</strong> — append-only ledger not yet implemented.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>processed_requests table created</strong> for idempotency enforcement.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>elevated_sessions table created</strong> for step-up tokens.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>feature_flags table seeded</strong> with all kill switch flags.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>fraud_flags table created</strong> for anomaly flagging.</div></div>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>Supabase PITR (Point-in-Time Recovery) enabled</strong> — verify in Dashboard.</div></div>
+
+  <h3>Secrets</h3>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>EXPO_PUBLIC_FIELD_ENC_KEY removed</strong> — encryption moved server-side. CRITICAL.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>MASTER_ENC_KEY set in Supabase vault only</strong> — never in any local file.</div></div>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>SUPABASE_SERVICE_ROLE_KEY in vault only</strong> — not in client code.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>detect-secrets pre-commit hook installed</strong> — prevents accidental credential commits.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>.env.example created</strong> with placeholder values only.</div></div>
+
+  <h3>Edge Functions</h3>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>HMAC signing on internal function calls</strong> — security-ingest → security-alert.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Idempotency enforcement in close-trip</strong> and all state-changing functions.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Timestamp validation (±5 min)</strong> in all state-changing functions.</div></div>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>guardedFetch domain allowlist</strong> — approved_domains table seeded.</div></div>
+
+  <h3>Environments</h3>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Separate Supabase project for development</strong> — currently hitting production.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Staging environment created</strong> with separate project and secrets.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>CI/CD pipeline with security gates</strong> — secret scan, npm audit, RLS tests.</div></div>
+
+  <h3>Monitoring</h3>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>security-ingest deployed and tested</strong> — smoke test event received.</div></div>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>Alert email verified</strong> — test CRITICAL event email received at ddavis@getsnippd.com.</div></div>
+  <div class="check-item"><div class="check-box check-pass">✓</div><div class="check-text"><strong>security-escalate cron scheduled</strong> — verified in pg_cron.job table.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Cron inventory enforced</strong> — unauthorized cron job detection in escalate job.</div></div>
+
+  <h3>Fraud Controls</h3>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>credit_ledger is sole source of truth for balances</strong> — profiles.stash_credits removed or kept as cache only.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Referral fraud scoring implemented</strong> in referral_verifications.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>All reward issuance server-side only</strong> — issue_credits() SECURITY DEFINER function.</div></div>
+  <div class="check-item"><div class="check-box check-fail">!</div><div class="check-text"><strong>Feature flags table seeded</strong> — kill switches ready for all subsystems.</div></div>
+</div>
+
+<!-- ═══════════════════════════════ SECTION 18 ═══════════════════════════════ -->
+<div class="page">
+  <div class="eyebrow">Part 18</div>
+  <h1>Priority Roadmap</h1>
+  <div class="divider"></div>
+
+  <p>Ordered by real risk reduction per unit of effort. Do not reorder — the sequence matters.</p>
+
+  <div class="road-now">
+    <div class="road-label">🔴 Fix Now — Week 1 (Before Any New Users)</div>
+    <div class="road-item">Remove EXPO_PUBLIC_FIELD_ENC_KEY. Move all encryption to server-side Edge Function with MASTER_ENC_KEY in vault. Treat current key as compromised. Re-encrypt all affected fields.</div>
+    <div class="road-item">Create a separate Supabase project for development. All developers switch to dev project immediately. Production creds removed from all local machines.</div>
+    <div class="road-item">Create credit_ledger table and issue_credits() SECURITY DEFINER function. Remove any client-side credit mutation. Balance = SUM(credit_ledger) only.</div>
+    <div class="road-item">Add processed_requests table and idempotency enforcement to close-trip and all reward-issuing Edge Functions.</div>
+    <div class="road-item">Add request_timestamp validation (±5 min) to all state-changing Edge Functions.</div>
+    <div class="road-item">Create feature_flags table and seed kill switches for rewards, referrals, receipts, signups.</div>
+    <div class="road-item">Install detect-secrets pre-commit hook. Run scan on full git history. Remove any committed secrets. Rotate any secrets found.</div>
+    <div class="road-item">Set ENVIRONMENT=production secret in Supabase and confirm security alerts fire to ddavis@getsnippd.com with [HIGH PRIORITY SECURITY ALERT] subject line.</div>
+  </div>
+
+  <div class="road-next">
+    <div class="road-label">🟡 Fix Next — Weeks 2-4 (Before Launch)</div>
+    <div class="road-item">Implement step-up authentication: elevated_sessions table, /request-step-up Edge Function, requireStepUp() middleware. Wire to MFA disable, email change, role change.</div>
+    <div class="road-item">Add server-side login rate limiting via auth-proxy Edge Function. Move brute force detection fully server-side.</div>
+    <div class="road-item">Implement HMAC signing for internal Edge Function calls (security-ingest → security-alert, etc.).</div>
+    <div class="road-item">Create referral_verifications table with fraud scoring. Wire to fn_process_referral_signup(). Auto-block accounts with fraud_score &gt; 70.</div>
+    <div class="road-item">Create fraud_flags table. Wire anomaly detection in issue_credits() (credits &gt;200/day threshold).</div>
+    <div class="road-item">Set up staging Supabase project. Create eas.json with dev/staging/production profiles.</div>
+    <div class="road-item">Add GitHub Actions CI/CD pipeline with secret scanning, npm audit, and RLS test gates before production deploy.</div>
+    <div class="road-item">Restrict pg_cron permissions. Add cron_audit_log table. Add unauthorized cron detection in security-escalate job.</div>
+    <div class="road-item">Enforce MFA as mandatory for all new accounts (not optional).</div>
+    <div class="road-item">Add server-side Gemini response schema validation to prevent prompt injection exfiltration.</div>
+  </div>
+
+  <div class="road-later">
+    <div class="road-label">🟢 Fix Later — Months 2-3 (Post-Launch Hardening)</div>
+    <div class="road-item">Certificate pinning (expo-ssl-pinning) for Supabase API domain to prevent MitM proxying.</div>
+    <div class="road-item">Background app re-authentication: biometric/PIN required when foregrounding after &gt;5 min in background.</div>
+    <div class="road-item">GDPR/CCPA: account deletion flow (PII anonymization), data export (DSAR) flow.</div>
+    <div class="road-item">AdminSecurityDashboardScreen: in-app view of security_events, blocked IPs, fraud flags, kill switch controls.</div>
+    <div class="road-item">IAP integration (react-native-purchases) with server-side receipt validation before granting subscription access.</div>
+    <div class="road-item">Device fingerprinting: correlate fraud across accounts using consistent device identifiers.</div>
+    <div class="road-item">SOC 2 audit preparation: document controls, evidence collection, logging retention policies.</div>
+    <div class="road-item">SIEM integration: export security_events to external log management (Datadog, Splunk) for long-term retention and advanced correlation.</div>
+    <div class="road-item">Penetration testing: engage an external firm for black-box testing of auth, RLS, rewards, and API endpoints.</div>
+    <div class="road-item">ProGuard/R8 obfuscation for Android release builds to slow reverse engineering of business logic.</div>
+  </div>
+
+  <footer>Snippd Security Hardening Blueprint · Version 1.0 · April 2026 · RESTRICTED — Security Team Only</footer>
+</div>
+
+</body>
+</html>

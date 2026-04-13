@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snippd — Technical Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:#fff;color:#0f172a;font-size:13px;line-height:1.7}
+  .cover{background:linear-gradient(135deg,#0C9E54 0%,#04361D 60%,#0D1B4B 100%);color:#fff;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:60px 40px;page-break-after:always}
+  .cover-logo{font-size:72px;font-weight:800;letter-spacing:-3px;margin-bottom:8px;color:#C5FFBC}
+  .cover-sub{font-size:28px;font-weight:600;color:rgba(255,255,255,0.9);margin-bottom:40px;letter-spacing:1px}
+  .cover-doc{font-size:36px;font-weight:800;color:#fff;margin-bottom:16px;border:2px solid rgba(197,255,188,0.5);padding:12px 32px;border-radius:8px;display:inline-block}
+  .cover-meta{font-size:13px;color:rgba(255,255,255,0.6);margin-top:40px}
+  .cover-meta span{display:inline-block;margin:0 16px}
+  .toc{padding:60px 80px;page-break-after:always}
+  .toc h2{font-size:24px;font-weight:800;color:#0C9E54;margin-bottom:32px;border-bottom:2px solid #C5FFBC;padding-bottom:12px}
+  .toc-section{margin-bottom:8px}
+  .toc-section a{text-decoration:none;color:#0f172a;font-weight:500;font-size:14px}
+  .toc-section a:hover{color:#0C9E54}
+  .toc-num{color:#0C9E54;font-weight:700;margin-right:8px}
+  .toc-sub{padding-left:24px;margin-top:4px}
+  .toc-sub a{font-size:12.5px;color:#475569;font-weight:400}
+  .page{padding:60px 80px;page-break-after:always}
+  .page:last-child{page-break-after:auto}
+  h1{font-size:30px;font-weight:800;color:#0C9E54;margin-bottom:6px;margin-top:0}
+  .page-eyebrow{font-size:10px;font-weight:700;letter-spacing:3px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px}
+  .page-divider{height:3px;background:linear-gradient(90deg,#0C9E54,#C5FFBC,transparent);margin-bottom:32px;border-radius:2px}
+  h2{font-size:18px;font-weight:700;color:#0f172a;margin-top:36px;margin-bottom:12px;padding-left:12px;border-left:4px solid #0C9E54}
+  h3{font-size:14px;font-weight:700;color:#1e293b;margin-top:24px;margin-bottom:8px}
+  h4{font-size:13px;font-weight:600;color:#334155;margin-top:16px;margin-bottom:6px}
+  p{margin-bottom:12px;color:#334155}
+  ul{margin-bottom:12px;padding-left:20px}
+  ul li{color:#334155;margin-bottom:4px}
+  ol{margin-bottom:12px;padding-left:20px}
+  ol li{color:#334155;margin-bottom:4px}
+  code{font-family:'JetBrains Mono',monospace;font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:3px;color:#0C9E54}
+  pre{font-family:'JetBrains Mono',monospace;font-size:11px;background:#0f172a;color:#e2e8f0;padding:20px;border-radius:8px;margin:16px 0;overflow-x:auto;white-space:pre-wrap;line-height:1.6}
+  pre .kw{color:#C5FFBC}
+  pre .str{color:#fbbf24}
+  pre .cm{color:#64748b}
+  .callout{background:#f0fdf4;border-left:4px solid #0C9E54;padding:16px 20px;border-radius:0 8px 8px 0;margin:16px 0}
+  .callout-warn{background:#fffbeb;border-left:4px solid #f59e0b}
+  .callout-danger{background:#fef2f2;border-left:4px solid #ef4444}
+  .callout-info{background:#eff6ff;border-left:4px solid #3b82f6}
+  .callout strong{color:#0f172a}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12px}
+  th{background:#0C9E54;color:#fff;padding:10px 14px;text-align:left;font-weight:600;font-size:11px;letter-spacing:0.5px}
+  td{padding:9px 14px;border-bottom:1px solid #e2e8f0;color:#334155;vertical-align:top}
+  tr:nth-child(even) td{background:#f8fafc}
+  .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:0.5px}
+  .badge-green{background:#dcfce7;color:#166534}
+  .badge-blue{background:#dbeafe;color:#1e40af}
+  .badge-orange{background:#ffedd5;color:#9a3412}
+  .badge-red{background:#fee2e2;color:#991b1b}
+  .badge-gray{background:#f1f5f9;color:#475569}
+  .arch-box{border:2px solid #e2e8f0;border-radius:12px;padding:20px;margin:16px 0;background:#fafafa}
+  .arch-box-title{font-weight:700;font-size:13px;color:#0C9E54;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:16px 0}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:16px 0}
+  .stat-box{background:#0f172a;color:#fff;border-radius:12px;padding:20px;text-align:center}
+  .stat-num{font-size:32px;font-weight:800;color:#C5FFBC}
+  .stat-lbl{font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px}
+  .flow-step{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px}
+  .flow-num{width:32px;height:32px;min-width:32px;background:#0C9E54;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .flow-content{flex:1}
+  .flow-title{font-weight:600;color:#0f172a;margin-bottom:2px}
+  .flow-desc{font-size:12px;color:#64748b}
+  .layer{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;margin:6px 0;display:flex;align-items:center;gap:14px}
+  .layer-icon{width:36px;height:36px;border-radius:8px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:18px;min-width:36px}
+  .layer-name{font-weight:600;font-size:13px;color:#0f172a}
+  .layer-tech{font-size:11px;color:#64748b;margin-top:2px}
+  footer{text-align:center;padding:20px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;margin-top:40px}
+  @media (max-width:768px){
+    body{font-size:12px}
+    .cover{padding:48px 20px;min-height:auto}
+    .cover-logo{font-size:44px;letter-spacing:-2px}
+    .cover-sub{font-size:16px}
+    .cover-doc{font-size:20px;padding:10px 18px}
+    .cover-meta span{display:block;margin:4px 0}
+    .toc{padding:32px 20px}
+    .page{padding:32px 20px}
+    h1{font-size:22px}
+    h2{font-size:15px;margin-top:24px}
+    h3{font-size:13px}
+    .two-col,.three-col{grid-template-columns:1fr}
+    .env-row{flex-direction:column;gap:4px}
+    .env-key{min-width:auto;word-break:break-all}
+    .env-where{min-width:auto}
+    table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    pre{font-size:10px;padding:14px}
+    .kpi-num{font-size:22px}
+    .step{gap:10px}
+    .step-num{width:28px;height:28px;min-width:28px;font-size:11px}
+    .layer-stack{flex-direction:column}
+  }
+  @media print{
+    .page{page-break-after:always}
+    body{font-size:12px}
+    h1{font-size:26px}
+    .cover{min-height:auto;padding:80px 60px}
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-logo">snippd</div>
+  <div class="cover-sub">Smart Grocery Intelligence Platform</div>
+  <div style="margin:40px 0">
+    <div class="cover-doc">TECHNICAL ARCHITECTURE</div>
+  </div>
+  <p style="color:rgba(255,255,255,0.7);font-size:15px;max-width:600px;line-height:1.8">
+    Complete technical specification covering system architecture, data models, navigation, API integrations, security layers, and infrastructure for the Snippd mobile application.
+  </p>
+  <div class="cover-meta">
+    <span>Version 1.0</span>
+    <span>April 2026</span>
+    <span>Classification: Internal</span>
+    <span>React Native · Supabase · Deno Edge</span>
+  </div>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <div class="toc-section"><span class="toc-num">1.</span><a href="#overview">System Overview &amp; Design Philosophy</a></div>
+  <div class="toc-section"><span class="toc-num">2.</span><a href="#stack">Technology Stack</a></div>
+  <div class="toc-section"><span class="toc-num">3.</span><a href="#frontend">Frontend Architecture</a>
+    <div class="toc-sub"><a href="#nav">Navigation Architecture</a> · <a href="#screens">Screen Inventory</a> · <a href="#state">State &amp; Data Flow</a> · <a href="#theme">Theme System</a></div>
+  </div>
+  <div class="toc-section"><span class="toc-num">4.</span><a href="#backend">Backend Architecture</a>
+    <div class="toc-sub"><a href="#supabase">Supabase Platform</a> · <a href="#edge">Edge Functions</a> · <a href="#rls">Row-Level Security</a></div>
+  </div>
+  <div class="toc-section"><span class="toc-num">5.</span><a href="#schema">Database Schema</a>
+    <div class="toc-sub"><a href="#tables">Core Tables</a> · <a href="#indexes">Indexes &amp; Performance</a> · <a href="#triggers">Triggers &amp; Functions</a></div>
+  </div>
+  <div class="toc-section"><span class="toc-num">6.</span><a href="#integrations">External Integrations</a></div>
+  <div class="toc-section"><span class="toc-num">7.</span><a href="#security-arch">Security Architecture</a></div>
+  <div class="toc-section"><span class="toc-num">8.</span><a href="#libs">Shared Libraries &amp; Utilities</a></div>
+  <div class="toc-section"><span class="toc-num">9.</span><a href="#performance">Performance &amp; Caching</a></div>
+  <div class="toc-section"><span class="toc-num">10.</span><a href="#data-flows">Key Data Flows</a></div>
+</div>
+
+<!-- 1. SYSTEM OVERVIEW -->
+<div class="page" id="overview">
+  <div class="page-eyebrow">Section 1</div>
+  <h1>System Overview &amp; Design Philosophy</h1>
+  <div class="page-divider"></div>
+
+  <p>Snippd is a mobile-first grocery intelligence platform that combines AI-powered receipt scanning, household budget management, gamified savings tracking, and a curated deal discovery engine. The architecture is designed around three core principles: <strong>offline-tolerant UX</strong>, <strong>household-first data isolation</strong>, and <strong>zero-trust security</strong>.</p>
+
+  <div class="three-col">
+    <div class="stat-box"><div class="stat-num">32</div><div class="stat-lbl">Screen Components</div></div>
+    <div class="stat-box"><div class="stat-num">4</div><div class="stat-lbl">Edge Functions</div></div>
+    <div class="stat-box"><div class="stat-num">6</div><div class="stat-lbl">SQL Migration Files</div></div>
+  </div>
+
+  <div class="three-col" style="margin-top:16px">
+    <div class="stat-box"><div class="stat-num">24+</div><div class="stat-lbl">Database Tables</div></div>
+    <div class="stat-box"><div class="stat-num">50+</div><div class="stat-lbl">Security Event Types</div></div>
+    <div class="stat-box"><div class="stat-num">10+</div><div class="stat-lbl">Shared Libraries</div></div>
+  </div>
+
+  <h2>Architectural Layers</h2>
+  <div class="layer"><div class="layer-icon">📱</div><div><div class="layer-name">Presentation Layer</div><div class="layer-tech">React Native 0.83 · Expo 55 · React Navigation 7 · Custom Design System</div></div></div>
+  <div class="layer"><div class="layer-icon">🧠</div><div><div class="layer-name">Application Logic Layer</div><div class="layer-tech">lib/ utilities: SessionGuard · AuditLogger · SecurityMonitor · FieldEncryption · Validation</div></div></div>
+  <div class="layer"><div class="layer-icon">⚡</div><div><div class="layer-name">Edge Function Layer</div><div class="layer-tech">Deno Runtime · Supabase Edge Functions: gemini-proxy · security-ingest · security-alert · security-escalate</div></div></div>
+  <div class="layer"><div class="layer-icon">🗄️</div><div><div class="layer-name">Database Layer</div><div class="layer-tech">PostgreSQL 15 · Supabase Auth · Row-Level Security · pg_cron · pg_trgm</div></div></div>
+  <div class="layer"><div class="layer-icon">🤖</div><div><div class="layer-name">AI Layer</div><div class="layer-tech">Google Gemini 1.5 Flash · OCR Pipeline · Recipe Generation · Feed Personalization</div></div></div>
+  <div class="layer"><div class="layer-icon">🔔</div><div><div class="layer-name">Alerting Layer</div><div class="layer-tech">Resend Email API · Security alert cooldowns · Exponential retry · Pipeline health monitoring</div></div></div>
+
+  <h2>Design Principles</h2>
+  <div class="two-col">
+    <div class="callout">
+      <strong>Household-First</strong><br>Every data model treats the household as the primary context. Individual users belong to households; carts, spending, and credits are aggregated at the household level.
+    </div>
+    <div class="callout">
+      <strong>Zero-Trust Security</strong><br>RLS policies deny by default. Service role never touches the client. Secrets live in Supabase vault, never in source code or client bundles.
+    </div>
+    <div class="callout">
+      <strong>Graceful Degradation</strong><br>No utility module (audit, security, session guard) ever throws an unhandled exception. All monitoring is fire-and-forget to avoid blocking UI.
+    </div>
+    <div class="callout">
+      <strong>Cents-Precision Finance</strong><br>All monetary values stored as BIGINT cents. No floating-point arithmetic on currency. Formatted at display time only.
+    </div>
+  </div>
+</div>
+
+<!-- 2. TECH STACK -->
+<div class="page" id="stack">
+  <div class="page-eyebrow">Section 2</div>
+  <h1>Technology Stack</h1>
+  <div class="page-divider"></div>
+
+  <table>
+    <tr><th>Layer</th><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+    <tr><td>Mobile Runtime</td><td>React Native</td><td>0.83.4</td><td>Cross-platform iOS/Android UI framework</td></tr>
+    <tr><td>Dev Platform</td><td>Expo (Managed)</td><td>55.0.11</td><td>Build tooling, OTA updates, native module access</td></tr>
+    <tr><td>UI Framework</td><td>React</td><td>19.2.0</td><td>Component model, hooks, context</td></tr>
+    <tr><td>Navigation</td><td>React Navigation</td><td>7.x</td><td>Stack + Tab navigation, deep links</td></tr>
+    <tr><td>Backend Platform</td><td>Supabase</td><td>2.99.3</td><td>Auth, PostgreSQL, RLS, Storage, Edge Functions</td></tr>
+    <tr><td>Edge Runtime</td><td>Deno</td><td>1.x (Supabase managed)</td><td>TypeScript edge function runtime</td></tr>
+    <tr><td>Database</td><td>PostgreSQL</td><td>15</td><td>Primary datastore, triggers, RLS, cron</td></tr>
+    <tr><td>AI / LLM</td><td>Google Gemini 1.5 Flash</td><td>API v1</td><td>Receipt OCR, recipe generation, feed personalization</td></tr>
+    <tr><td>AI SDK</td><td>@google/generative-ai</td><td>0.24.1</td><td>Client SDK (proxied via Edge Function)</td></tr>
+    <tr><td>Token Storage</td><td>Expo SecureStore</td><td>Expo 55</td><td>Encrypted on-device auth token storage</td></tr>
+    <tr><td>Email Delivery</td><td>Resend API</td><td>v1</td><td>Transactional security alert emails</td></tr>
+    <tr><td>Encryption</td><td>AES-256-GCM</td><td>Web Crypto API</td><td>Field-level encryption for sensitive data</td></tr>
+    <tr><td>MFA</td><td>TOTP (RFC 6238)</td><td>Supabase Auth</td><td>Time-based one-time passwords via Authenticator apps</td></tr>
+    <tr><td>Camera</td><td>expo-camera</td><td>Expo 55</td><td>Receipt scanning, creator studio video</td></tr>
+    <tr><td>Location</td><td>expo-location</td><td>Expo 55</td><td>Store proximity, geo-based deal ranking</td></tr>
+  </table>
+
+  <h2>NPM Dependencies (Key)</h2>
+  <pre>
+<span class="cm">// Core</span>
+"expo": "^55.0.11"
+"react-native": "0.83.4"
+"react": "19.2.0"
+
+<span class="cm">// Navigation</span>
+"@react-navigation/native": "^7.x"
+"@react-navigation/native-stack": "^7.x"
+"@react-navigation/bottom-tabs": "^7.x"
+
+<span class="cm">// Backend</span>
+"@supabase/supabase-js": "^2.99.3"
+"expo-secure-store": "^14.x"
+
+<span class="cm">// AI</span>
+"@google/generative-ai": "^0.24.1"
+
+<span class="cm">// Expo Modules</span>
+"expo-camera", "expo-image-picker", "expo-location",
+"expo-linear-gradient", "expo-blur", "expo-crypto",
+"expo-sharing", "expo-font", "expo-web-browser"
+
+<span class="cm">// Icons</span>
+"@expo/vector-icons"   <span class="cm">// Feather, Ionicons, MaterialIcons</span>
+  </pre>
+
+  <h2>Build Targets</h2>
+  <table>
+    <tr><th>Platform</th><th>Bundle ID</th><th>Min SDK</th><th>Target SDK</th><th>Orientation</th></tr>
+    <tr><td>iOS</td><td>com.snippd.app</td><td>iOS 15</td><td>iOS 17</td><td>Portrait only</td></tr>
+    <tr><td>Android</td><td>com.snippd.app</td><td>API 21 (Android 5)</td><td>API 34 (Android 14)</td><td>Portrait only</td></tr>
+  </table>
+</div>
+
+<!-- 3. FRONTEND ARCHITECTURE -->
+<div class="page" id="frontend">
+  <div class="page-eyebrow">Section 3</div>
+  <h1>Frontend Architecture</h1>
+  <div class="page-divider"></div>
+
+  <h2 id="nav">Navigation Architecture</h2>
+  <p>The navigation tree uses React Navigation 7 with a root stack that branches between unauthenticated (Auth Stack) and authenticated (Main App with Bottom Tabs) states. Each tab contains its own nested stack navigator.</p>
+
+  <pre>
+RootNavigator (NativeStack)
+├── Auth Stack (when not authenticated)
+│   ├── AuthScreen           — Login / Signup / Password Reset
+│   ├── OnboardingScreen     — New user setup wizard (dietary, budget, stores)
+│   ├── MFAVerifyScreen      — TOTP code entry on login
+│   └── MFASetupScreen       — TOTP enrollment
+│
+└── MainApp (BottomTabs — 5 tabs)
+    ├── HomeTab (HomeStack)
+    │   ├── HomeScreen              — Budget widget + deal feed
+    │   ├── ChefStashScreen         — AI recipe generation
+    │   ├── KitchenScreen           — Saved recipes
+    │   ├── PantryScreen            — Pantry velocity tracking
+    │   ├── ListScreen              — Shopping list
+    │   ├── ShoppingPlanScreen      — Weekly meal plan
+    │   ├── TripResultsScreen       — Post-trip review
+    │   ├── ReceiptUploadScreen     — Camera/upload + OCR
+    │   ├── WinsScreen              — Streak/level/credits
+    │   ├── FamilySharingScreen     — Household management
+    │   ├── BudgetPreferencesScreen — Weekly budget editor
+    │   ├── BudgetDashboardScreen   — Spending analytics
+    │   └── CategoryInsightScreen   — Category deep-dive
+    │
+    ├── ExploreTab (DiscoverStack)
+    │   ├── DiscoverScreen     — Curated stack browser + Deal Hub
+    │   ├── StackDetailScreen  — Individual stack & add to cart
+    │   ├── CatalogScreen      — Full product catalog
+    │   ├── CartScreen         — Household shared cart
+    │   └── ChefStashScreen    — Recipe generation (shared)
+    │
+    ├── CartTab (CartStack) — Center FAB
+    │   ├── CartMain           — Primary cart view
+    │   ├── ReceiptUploadScreen
+    │   ├── ShoppingPlanScreen
+    │   ├── TripResultsScreen
+    │   └── ListScreen
+    │
+    ├── StudioTab (StudioStack)
+    │   ├── StudioScreen       — Creator content dashboard
+    │   └── ReceiptUploadScreen
+    │
+    └── ProfileTab (ProfileStack)
+        ├── ProfileScreen           — User menu hub
+        ├── EditProfileScreen       — Profile editor
+        ├── PreferredStoresScreen   — Store management
+        ├── BudgetPreferencesScreen
+        ├── BudgetDashboardScreen
+        ├── CategoryInsightScreen
+        ├── FamilySharingScreen
+        ├── InviteFriendsScreen     — Referral code
+        ├── PromoCodesScreen        — Coupon management
+        ├── HelpScreen              — Support docs
+        ├── AdminPulseScreen        — Connection diagnostics (admin)
+        └── MFASetupScreen
+  </pre>
+
+  <div class="callout callout-info">
+    <strong>Custom Tab Bar:</strong> The bottom tab bar is fully custom — a dark navy pill (#04361D) with mint green active indicators (#C5FFBC). The center "Snippd" FAB is a 45°-rotated brand logo. Tab bar position is managed via <code>useSafeAreaInsets</code> to handle device notches and home indicators.
+  </div>
+
+  <h2 id="screens">Screen Inventory (32 Screens)</h2>
+  <table>
+    <tr><th>Screen</th><th>Stack</th><th>Primary Tables</th><th>Key Functionality</th></tr>
+    <tr><td>AuthScreen</td><td>Auth</td><td>auth.users, profiles</td><td>Email/password auth, MFA trigger, password reset</td></tr>
+    <tr><td>OnboardingScreen</td><td>Auth</td><td>profiles</td><td>Dietary tags, budget wizard, store selection, paywall ($4.99/mo or $99 lifetime)</td></tr>
+    <tr><td>HomeScreen</td><td>Home</td><td>profiles, app_home_feed, home_payload_cache</td><td>Budget ring widget, personalized deal feed, weekly savings</td></tr>
+    <tr><td>DiscoverScreen</td><td>Explore</td><td>curated_stacks</td><td>Deal Hub accordion UI, curated stacks with live pricing, community missions</td></tr>
+    <tr><td>StackDetailScreen</td><td>Explore</td><td>curated_stacks, offer_sources</td><td>Stack details, add items to household cart</td></tr>
+    <tr><td>CartScreen</td><td>Cart</td><td>household_cart_items, household_members, profiles</td><td>Shared household cart, RBAC controls, item attribution with persona</td></tr>
+    <tr><td>ReceiptUploadScreen</td><td>Multiple</td><td>trip_results, receipts</td><td>Camera/gallery capture, Gemini OCR, item review & correction</td></tr>
+    <tr><td>ListScreen</td><td>Home/Cart</td><td>shopping_list_items</td><td>Shopping list CRUD, quantity adjustments</td></tr>
+    <tr><td>ShoppingPlanScreen</td><td>Home/Cart</td><td>meal_plans, pantry_velocity</td><td>Weekly meal recommendations, ingredient → list mapping</td></tr>
+    <tr><td>TripResultsScreen</td><td>Multiple</td><td>trip_results, food_waste_log</td><td>Post-trip summary, savings calculation, item matching</td></tr>
+    <tr><td>WinsScreen</td><td>Home</td><td>profiles</td><td>Celebration overlay, streak display, level/XP, credits summary</td></tr>
+    <tr><td>PantryScreen</td><td>Home</td><td>pantry_velocity</td><td>Inventory management, purchase velocity, expiry prediction</td></tr>
+    <tr><td>KitchenScreen</td><td>Home</td><td>creator_content</td><td>Saved recipes, meal ideas</td></tr>
+    <tr><td>ChefStashScreen</td><td>Multiple</td><td>creator_content</td><td>Gemini-powered recipe search + generation</td></tr>
+    <tr><td>CatalogScreen</td><td>Explore</td><td>products</td><td>Full product catalog with search (pg_trgm fuzzy search)</td></tr>
+    <tr><td>ProfileScreen</td><td>Profile</td><td>profiles</td><td>User dashboard, menu navigation hub</td></tr>
+    <tr><td>EditProfileScreen</td><td>Profile</td><td>profiles</td><td>Name, email, dietary tags, chef persona selection</td></tr>
+    <tr><td>PreferredStoresScreen</td><td>Profile</td><td>profiles</td><td>Store selection, distance filtering, save with safe-area footer</td></tr>
+    <tr><td>BudgetPreferencesScreen</td><td>Multiple</td><td>profiles</td><td>Weekly budget, category spend limits</td></tr>
+    <tr><td>BudgetDashboardScreen</td><td>Multiple</td><td>profiles, trip_results</td><td>Budget analytics, category breakdowns, over-budget alerts, AM mode</td></tr>
+    <tr><td>CategoryInsightScreen</td><td>Multiple</td><td>profiles, trip_results</td><td>6-month bar chart, transaction list, AI recommendations</td></tr>
+    <tr><td>FamilySharingScreen</td><td>Multiple</td><td>households, household_members</td><td>Household creation, invite codes, RBAC roles, 5-member cap</td></tr>
+    <tr><td>InviteFriendsScreen</td><td>Profile</td><td>profiles, referrals</td><td>Referral code display, share link, credit status</td></tr>
+    <tr><td>PromoCodesScreen</td><td>Profile</td><td>promo_codes</td><td>Promo code listing and application</td></tr>
+    <tr><td>HelpScreen</td><td>Profile</td><td>—</td><td>Static FAQ, contact support</td></tr>
+    <tr><td>BrandMarketplaceScreen</td><td>Profile</td><td>—</td><td>Brand partnership placeholder (future)</td></tr>
+    <tr><td>AdminPulseScreen</td><td>Profile</td><td>(service role)</td><td>Connection diagnostics: auth, DB, Gemini, OCR health check</td></tr>
+    <tr><td>MFASetupScreen</td><td>Multiple</td><td>auth.mfa</td><td>TOTP enrollment, QR code display via react-native-qrcode-svg</td></tr>
+    <tr><td>MFAVerifyScreen</td><td>Auth</td><td>auth.mfa</td><td>TOTP code entry, challenge/verify flow</td></tr>
+    <tr><td>VerifyScreen</td><td>Auth</td><td>auth.users</td><td>Email verification confirmation</td></tr>
+  </table>
+
+  <h2 id="state">State &amp; Data Flow</h2>
+  <p>Snippd uses <strong>local component state</strong> (useState/useEffect) per screen — no global state management library (no Redux, no Zustand). Data is fetched fresh on focus via <code>useFocusEffect</code> or standard <code>useEffect</code>. This keeps each screen self-contained and avoids stale data bugs.</p>
+
+  <div class="callout">
+    <strong>Pattern: Screen-Local Data Fetching</strong><br>
+    Every screen that reads from Supabase follows: <code>useState(loading=true)</code> → <code>useEffect(fetchData)</code> → render. Refreshes are triggered by <code>RefreshControl</code> pull-to-refresh or <code>navigation.addListener('focus',...)</code>.
+  </div>
+
+  <h2 id="theme">Theme &amp; Design System</h2>
+  <table>
+    <tr><th>Token</th><th>Value</th><th>Usage</th></tr>
+    <tr><td>PRIMARY_GREEN</td><td>#0C9E54</td><td>Primary actions, active states, charts</td></tr>
+    <tr><td>DARK_GREEN / NAVY</td><td>#04361D / #0D1B4B</td><td>Header backgrounds, deep accents</td></tr>
+    <tr><td>MINT_POP</td><td>#C5FFBC</td><td>Active tab icons, celebration highlights, lifetime CTA</td></tr>
+    <tr><td>WHITE</td><td>#FFFFFF</td><td>Card backgrounds, primary text on dark</td></tr>
+    <tr><td>LIGHT_GRAY</td><td>#F5F5F5</td><td>Screen backgrounds, dividers</td></tr>
+    <tr><td>RED</td><td>#EF4444</td><td>Over-budget warnings, errors, critical badges</td></tr>
+    <tr><td>AMBER</td><td>#F59E0B</td><td>Near-budget warnings, MEDIUM severity</td></tr>
+    <tr><td>Font</td><td>Sublima (custom)</td><td>Display headings only</td></tr>
+    <tr><td>Font</td><td>System (SF Pro / Roboto)</td><td>All body text and UI labels</td></tr>
+  </table>
+</div>
+
+<!-- 4. BACKEND -->
+<div class="page" id="backend">
+  <div class="page-eyebrow">Section 4</div>
+  <h1>Backend Architecture</h1>
+  <div class="page-divider"></div>
+
+  <h2 id="supabase">Supabase Platform</h2>
+  <p>Supabase serves as the complete backend: PostgreSQL database, authentication, row-level security, object storage, and edge function hosting. The client connects via <code>@supabase/supabase-js</code> with a <strong>custom SecureStore adapter</strong> that stores session tokens in the device's encrypted keychain.</p>
+
+  <pre>
+<span class="cm">// lib/supabase.js — client initialization</span>
+<span class="kw">import</span> { createClient } from '@supabase/supabase-js'
+<span class="kw">import</span> * as SecureStore from 'expo-secure-store'
+
+const ExpoSecureStoreAdapter = {
+  getItem:    (key) => SecureStore.getItemAsync(key),
+  setItem:    (key, value) => SecureStore.setItemAsync(key, value),
+  removeItem: (key) => SecureStore.deleteItemAsync(key),
+}
+
+export const supabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  { auth: { storage: ExpoSecureStoreAdapter, autoRefreshToken: true, persistSession: true } }
+)
+  </pre>
+
+  <h2 id="edge">Edge Functions</h2>
+  <table>
+    <tr><th>Function</th><th>Trigger</th><th>Auth Method</th><th>Description</th></tr>
+    <tr><td><code>gemini-proxy</code></td><td>HTTP POST</td><td>Supabase JWT</td><td>Dual-mode AI proxy: OCR receipt images (temp=0, JSON schema) or recipe generation (temp=0.7)</td></tr>
+    <tr><td><code>security-ingest</code></td><td>HTTP POST</td><td><code>x-security-token</code> header</td><td>Receives security events, scores severity, deduplicates, inserts, auto-blocks CRITICAL</td></tr>
+    <tr><td><code>security-alert</code></td><td>HTTP POST (internal)</td><td><code>x-security-token</code> header</td><td>Fetches event, applies cooldown, builds + sends Resend email, logs delivery</td></tr>
+    <tr><td><code>security-escalate</code></td><td>pg_cron (every 5 min)</td><td><code>x-security-token</code> header</td><td>Retries failed alerts, escalates MEDIUM→HIGH by volume, health check, expires stale blocks</td></tr>
+  </table>
+
+  <h3>gemini-proxy: Dual-Mode Detection</h3>
+  <pre>
+<span class="cm">// If body contains imageBase64 → OCR mode</span>
+<span class="kw">if</span> (body.imageBase64) {
+  <span class="cm">// Gemini 1.5 Flash with strict JSON schema</span>
+  <span class="cm">// responseMimeType: 'application/json', temperature: 0</span>
+  <span class="cm">// Returns: { items: [{name, price_cents, quantity, category}] }</span>
+}
+
+<span class="cm">// If body contains contents[] → Text/Recipe mode</span>
+<span class="kw">if</span> (body.contents) {
+  <span class="cm">// RECIPE_SYSTEM_PROMPT, temperature: 0.7</span>
+  <span class="cm">// Returns: full Gemini candidates structure</span>
+}
+  </pre>
+
+  <h2 id="rls">Row-Level Security</h2>
+  <p>All tables have RLS enabled with a <strong>deny-by-default</strong> policy. Policies are defined in <code>sql/00_rls_policies.sql</code>.</p>
+
+  <table>
+    <tr><th>Table</th><th>SELECT</th><th>INSERT</th><th>UPDATE</th><th>DELETE</th></tr>
+    <tr><td>profiles</td><td>Own row only</td><td>Service role</td><td>Own row only</td><td>No</td></tr>
+    <tr><td>app_home_feed</td><td>Active + verified</td><td>No</td><td>No</td><td>No</td></tr>
+    <tr><td>approved_cart / household_cart_items</td><td>Own household</td><td>Own household</td><td>Own household</td><td>Own household</td></tr>
+    <tr><td>system_audit_logs</td><td>No</td><td>Trigger only</td><td>No</td><td>No</td></tr>
+    <tr><td>security_events</td><td>Admin only</td><td>Service role</td><td>Admin only</td><td>No</td></tr>
+    <tr><td>households</td><td>Members only</td><td>Service role</td><td>STACK_MANAGER only</td><td>No</td></tr>
+    <tr><td>referrals</td><td>Referrer/referee</td><td>Service role</td><td>Service role</td><td>No</td></tr>
+    <tr><td>blocked_indicators</td><td>Admin only</td><td>Service role</td><td>Service role</td><td>No</td></tr>
+  </table>
+</div>
+
+<!-- 5. DATABASE SCHEMA -->
+<div class="page" id="schema">
+  <div class="page-eyebrow">Section 5</div>
+  <h1>Database Schema</h1>
+  <div class="page-divider"></div>
+
+  <h2 id="tables">Core Tables</h2>
+
+  <h3>profiles</h3>
+  <pre>
+id                  UUID PRIMARY KEY REFERENCES auth.users(id)
+email               TEXT NOT NULL
+full_name           TEXT
+weekly_budget_cents BIGINT DEFAULT 0       <span class="cm">-- weekly budget in cents</span>
+stash_credits       INTEGER DEFAULT 0      <span class="cm">-- gamification currency</span>
+streak_days         INTEGER DEFAULT 0
+current_level       INTEGER DEFAULT 1      <span class="cm">-- 1-5 based on lifetime savings</span>
+lifetime_savings_cents BIGINT DEFAULT 0
+chef_persona        TEXT                   <span class="cm">-- savvy_stacker, pantry_hero, etc.</span>
+dietary_tags        TEXT[]                 <span class="cm">-- ['vegetarian','gluten-free',...]</span>
+preferred_stores    JSONB                  <span class="cm">-- [{store_name, location, distance}]</span>
+household_size      INTEGER DEFAULT 1
+mfa_enabled         BOOLEAN DEFAULT false
+subscription_type   TEXT DEFAULT 'monthly' <span class="cm">-- 'monthly' | 'lifetime'</span>
+referral_code       TEXT UNIQUE
+created_at          TIMESTAMPTZ DEFAULT NOW()
+updated_at          TIMESTAMPTZ DEFAULT NOW()
+  </pre>
+
+  <h3>households + household_members</h3>
+  <pre>
+<span class="cm">-- households</span>
+id           UUID PRIMARY KEY
+name         TEXT NOT NULL
+invite_code  TEXT UNIQUE NOT NULL         <span class="cm">-- 8-char alphanumeric</span>
+owner_id     UUID REFERENCES profiles(id)
+created_at   TIMESTAMPTZ DEFAULT NOW()
+
+<span class="cm">-- household_members</span>
+id           UUID PRIMARY KEY
+household_id UUID REFERENCES households(id)
+user_id      UUID REFERENCES profiles(id)
+role         TEXT NOT NULL                <span class="cm">-- 'STACK_MANAGER'|'SHOPPER'|'VIEWER'</span>
+joined_at    TIMESTAMPTZ DEFAULT NOW()
+<span class="cm">-- Constraint: max 1 STACK_MANAGER, max 2 SHOPPER per household, max 5 members total</span>
+  </pre>
+
+  <h3>security_events</h3>
+  <pre>
+id               UUID PRIMARY KEY DEFAULT gen_random_uuid()
+event_type       TEXT NOT NULL            <span class="cm">-- enum: LOGIN_FAILED, BRUTE_FORCE, etc.</span>
+category         TEXT NOT NULL            <span class="cm">-- AUTH|ACCESS_CONTROL|INJECTION|etc.</span>
+severity         severity_level NOT NULL  <span class="cm">-- LOW|MEDIUM|HIGH|CRITICAL</span>
+risk_score       INTEGER CHECK(0-100)
+source_system    TEXT NOT NULL
+environment      TEXT NOT NULL
+user_id          UUID
+ip_address       INET
+user_agent       TEXT
+route            TEXT
+summary          TEXT NOT NULL
+metadata         JSONB DEFAULT '{}'
+fingerprint      TEXT NOT NULL            <span class="cm">-- SHA-256 dedupe key</span>
+row_hash         TEXT GENERATED ALWAYS AS (md5(id::text || event_type || created_at::text)) STORED
+alert_required   BOOLEAN DEFAULT false
+alert_sent       BOOLEAN DEFAULT false
+resolved         BOOLEAN DEFAULT false
+created_at       TIMESTAMPTZ DEFAULT NOW()
+  </pre>
+
+  <h3>referrals</h3>
+  <pre>
+id                       UUID PRIMARY KEY
+referrer_id              UUID REFERENCES profiles(id)
+referee_id               UUID REFERENCES profiles(id)
+referral_code            TEXT NOT NULL
+referrer_credits_amount  INTEGER DEFAULT 50
+referrer_credits_status  TEXT DEFAULT 'pending'  <span class="cm">-- pending|approved|blocked</span>
+referee_credits_amount   INTEGER DEFAULT 25
+referee_credits_status   TEXT DEFAULT 'instant'
+fraud_score              INTEGER DEFAULT 0
+created_at               TIMESTAMPTZ DEFAULT NOW()
+verified_at              TIMESTAMPTZ
+  </pre>
+
+  <h2 id="triggers">Key Database Functions &amp; Triggers</h2>
+  <table>
+    <tr><th>Function / Trigger</th><th>File</th><th>Purpose</th></tr>
+    <tr><td><code>close_week(p_user_id)</code></td><td>03_fresh_start.sql</td><td>Atomic weekly reset: updates streak, levels, credits, resets cart</td></tr>
+    <tr><td><code>fn_process_referral_signup()</code></td><td>05_referrals.sql</td><td>Awards referee 25 credits instantly; holds referrer's 50 pending</td></tr>
+    <tr><td><code>fn_release_referral_credits()</code></td><td>05_referrals.sql</td><td>Releases 50 credits to referrer after receipt verification</td></tr>
+    <tr><td><code>fn_enforce_household_rules()</code></td><td>04_households.sql</td><td>BEFORE INSERT trigger: enforces 5-member cap, RBAC role limits</td></tr>
+    <tr><td><code>fn_audit_log_changes()</code></td><td>02_audit_triggers.sql</td><td>DML audit trigger on profiles, carts — logs to system_audit_logs</td></tr>
+    <tr><td><code>check_rate_limit()</code></td><td>01_rate_limiting.sql</td><td>Rolling window rate limiter per user+endpoint</td></tr>
+    <tr><td><code>is_blocked()</code></td><td>06_security_schema.sql</td><td>Checks blocked_indicators for IP/token/user</td></tr>
+    <tr><td><code>count_events_in_window()</code></td><td>06_security_schema.sql</td><td>Returns event repeat count within dedup window for scoring</td></tr>
+    <tr><td><code>fn_purge_low_severity_events()</code></td><td>06_security_schema.sql</td><td>Scheduled cleanup: deletes resolved LOW events older than 30 days</td></tr>
+  </table>
+</div>
+
+<!-- 6. INTEGRATIONS -->
+<div class="page" id="integrations">
+  <div class="page-eyebrow">Section 6</div>
+  <h1>External Integrations</h1>
+  <div class="page-divider"></div>
+
+  <h2>Google Gemini 1.5 Flash</h2>
+  <div class="two-col">
+    <div class="arch-box">
+      <div class="arch-box-title">OCR Mode (Receipt Scanning)</div>
+      <ul>
+        <li>Endpoint: <code>gemini-proxy</code> edge function</li>
+        <li>Input: Base64-encoded receipt image</li>
+        <li>System prompt: Strict grocery item extractor</li>
+        <li>Temperature: 0 (deterministic)</li>
+        <li>Response schema: <code>{items: [{name, price_cents, qty, category}]}</code></li>
+        <li>Used by: ReceiptUploadScreen</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <div class="arch-box-title">Text Mode (Recipe / Feed)</div>
+      <ul>
+        <li>Endpoint: <code>gemini-proxy</code> edge function</li>
+        <li>Input: <code>{contents: [{role, parts}]}</code></li>
+        <li>System prompt: Chef Stash recipe assistant</li>
+        <li>Temperature: 0.7 (creative)</li>
+        <li>Response: Full Gemini candidates structure</li>
+        <li>Used by: ChefStashScreen, freshStart.js</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Resend Email API</h2>
+  <ul>
+    <li>Used exclusively by the <code>security-alert</code> edge function</li>
+    <li>From address: <code>security@getsnippd.com</code></li>
+    <li>To address: <code>ddavis@getsnippd.com</code></li>
+    <li>API key stored in Supabase secrets vault (never in client)</li>
+    <li>Emails include: HTML + plain-text fallback, severity color coding, recommended next steps</li>
+  </ul>
+
+  <h2>Supabase Auth (PKCE Flow)</h2>
+  <ul>
+    <li>Email/password sign-up and sign-in</li>
+    <li>TOTP MFA via Supabase built-in MFA APIs</li>
+    <li>Password reset via magic link (email)</li>
+    <li>Session stored in SecureStore (encrypted device keychain)</li>
+    <li>Auto-refresh: tokens refreshed silently before expiry</li>
+    <li>Session guard: 30-minute inactivity kills session (PanResponder touch tracking)</li>
+  </ul>
+
+  <h2>Approved Domains (Outbound Allow-list)</h2>
+  <table>
+    <tr><th>Domain</th><th>Purpose</th><th>Active</th></tr>
+    <tr><td>supabase.co</td><td>Backend platform</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>api.resend.com</td><td>Email delivery</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>generativelanguage.googleapis.com</td><td>Gemini AI</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>registry.npmjs.org</td><td>Package registry (dev)</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>expo.dev</td><td>Expo services</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>getsnippd.com</td><td>App domain</td><td><span class="badge badge-green">Yes</span></td></tr>
+  </table>
+</div>
+
+<!-- 7. SECURITY ARCH -->
+<div class="page" id="security-arch">
+  <div class="page-eyebrow">Section 7</div>
+  <h1>Security Architecture</h1>
+  <div class="page-divider"></div>
+
+  <h2>Security Layers (Defense in Depth)</h2>
+  <div class="flow-step"><div class="flow-num">1</div><div class="flow-content"><div class="flow-title">Transport Security — TLS 1.3</div><div class="flow-desc">All traffic over HTTPS. Expo handles certificate pinning at the native layer. Supabase enforces TLS on all connections.</div></div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div class="flow-content"><div class="flow-title">Authentication — Supabase Auth + TOTP MFA</div><div class="flow-desc">JWT-based sessions stored in SecureStore. TOTP MFA enforced for sensitive operations. Password reset via email magic link.</div></div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div class="flow-content"><div class="flow-title">Token Storage — Expo SecureStore (Keychain/Keystore)</div><div class="flow-desc">Auth tokens never stored in AsyncStorage (plaintext). SecureStore uses iOS Keychain and Android Keystore APIs.</div></div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div class="flow-content"><div class="flow-title">Field Encryption — AES-256-GCM</div><div class="flow-desc">Sensitive fields encrypted client-side before storage via fieldEncryption.js. Key stored in EXPO_PUBLIC_FIELD_ENC_KEY (should be rotated to secure vault).</div></div></div>
+  <div class="flow-step"><div class="flow-num">5</div><div class="flow-content"><div class="flow-title">Database — Row-Level Security</div><div class="flow-desc">Every table has RLS enabled. Users can only read/write their own rows. Admin tables require is_security_admin() helper check.</div></div></div>
+  <div class="flow-step"><div class="flow-num">6</div><div class="flow-content"><div class="flow-title">Rate Limiting — Rolling Window Per Endpoint</div><div class="flow-desc">check_rate_limit() RPC enforces daily limits per user+endpoint. Violations logged to api_rate_limit_log.</div></div></div>
+  <div class="flow-step"><div class="flow-num">7</div><div class="flow-content"><div class="flow-title">Security Monitoring — Event Pipeline</div><div class="flow-desc">SecurityMonitor.js emits events → security-ingest scores/deduplicates → security-alert emails → security-escalate retries/escalates.</div></div></div>
+  <div class="flow-step"><div class="flow-num">8</div><div class="flow-content"><div class="flow-title">Auto-Blocking — CRITICAL IP Blocks (24h)</div><div class="flow-desc">Any CRITICAL severity event auto-blocks the source IP in blocked_indicators for 24 hours. Subsequent requests from that IP are rejected at the Edge Function layer.</div></div></div>
+  <div class="flow-step"><div class="flow-num">9</div><div class="flow-content"><div class="flow-title">Audit Trail — Postgres Triggers + App Logging</div><div class="flow-desc">DML triggers on sensitive tables write to system_audit_logs. App events written via AuditLogger.log(). Logs are append-only (no client DELETE).</div></div></div>
+
+  <h2>Security Event Taxonomy</h2>
+  <table>
+    <tr><th>Category</th><th>Events (Sample)</th><th>Max Severity</th></tr>
+    <tr><td>AUTH</td><td>LOGIN_FAILED, BRUTE_FORCE_IN_PROGRESS, BRUTE_FORCE_SUCCESS, SESSION_HIJACK_INDICATOR, MFA_DISABLE_ADMIN</td><td><span class="badge badge-red">CRITICAL</span></td></tr>
+    <tr><td>ACCESS_CONTROL</td><td>IDOR_ATTEMPT, IDOR_CONFIRMED, PRIVILEGE_ESCALATION_CONFIRMED, UNAUTHORIZED_ADMIN_ACCESS</td><td><span class="badge badge-red">CRITICAL</span></td></tr>
+    <tr><td>INJECTION</td><td>SQL_INJECTION_ATTEMPT, XSS_PAYLOAD_DETECTED, COMMAND_INJECTION_ATTEMPT, PATH_TRAVERSAL_ATTEMPT</td><td><span class="badge badge-orange">HIGH</span></td></tr>
+    <tr><td>EXFILTRATION</td><td>SECRET_EXFILTRATION_ATTEMPT, SERVICE_ROLE_KEY_EXPOSED, SECRET_IN_REQUEST_BODY</td><td><span class="badge badge-red">CRITICAL</span></td></tr>
+    <tr><td>DEVELOPER_TOOL</td><td>REPO_TRUST_BYPASS_CONFIRMED, COMMAND_EXECUTION_UNTRUSTED, PROMPT_INJECTION_ATTEMPT</td><td><span class="badge badge-red">CRITICAL</span></td></tr>
+    <tr><td>ABUSE</td><td>COUPON_ABUSE_PATTERN, REFERRAL_FRAUD_ATTEMPT, API_ABUSE, RATE_LIMIT_EVASION</td><td><span class="badge badge-orange">HIGH</span></td></tr>
+    <tr><td>MONITORING</td><td>MONITORING_TAMPERING, ADMIN_ACCOUNT_TAKEOVER, UNUSUAL_API_SPIKE</td><td><span class="badge badge-red">CRITICAL</span></td></tr>
+  </table>
+</div>
+
+<!-- 8. LIBRARIES -->
+<div class="page" id="libs">
+  <div class="page-eyebrow">Section 8</div>
+  <h1>Shared Libraries &amp; Utilities</h1>
+  <div class="page-divider"></div>
+
+  <table>
+    <tr><th>File</th><th>Exports</th><th>Description</th></tr>
+    <tr><td><code>lib/supabase.js</code></td><td><code>supabase</code></td><td>Initialized Supabase client with SecureStore auth adapter, auto-refresh enabled</td></tr>
+    <tr><td><code>lib/mfa.js</code></td><td><code>MFA</code> object</td><td>TOTP lifecycle: enroll(), confirmEnrollment(), challengeAndVerify(), getFactors(), unenroll()</td></tr>
+    <tr><td><code>lib/sessionGuard.js</code></td><td><code>useSessionGuard()</code></td><td>React hook: monitors touch events via PanResponder, signs out after 30 min inactivity</td></tr>
+    <tr><td><code>lib/auditLogger.js</code></td><td><code>AuditLogger</code></td><td>AuditLogger.log(eventType, metadata) — writes to system_audit_logs, never throws</td></tr>
+    <tr><td><code>lib/auditAgent.js</code></td><td><code>ConnectionAgent</code></td><td>Diagnostic tool: pings auth, DB tables, Gemini API, OCR — used by AdminPulseScreen</td></tr>
+    <tr><td><code>lib/freshStart.js</code></td><td><code>runFreshStart()</code></td><td>Orchestrates weekly close: close_week() RPC + Gemini feed personalization</td></tr>
+    <tr><td><code>lib/fieldEncryption.js</code></td><td><code>encryptField(), decryptField()</code></td><td>AES-256-GCM symmetric encryption for sensitive data fields before Supabase storage</td></tr>
+    <tr><td><code>lib/validate.js</code></td><td>sanitize(), validators</td><td>Input sanitization, email/password/zip validation, XSS strip</td></tr>
+    <tr><td><code>lib/theme.js</code></td><td>COLORS, SHADOWS, etc.</td><td>Centralized design tokens used across all screens</td></tr>
+    <tr><td><code>lib/security/SecurityMonitor.js</code></td><td><code>SecurityMonitor</code></td><td>Client-side security event emitter with convenience wrappers for all event types</td></tr>
+  </table>
+
+  <h2>SecurityMonitor API</h2>
+  <pre>
+SecurityMonitor.event(payload)               <span class="cm">// Raw event emit (fire-and-forget)</span>
+SecurityMonitor.trackLoginFailure({ip, email, route})  <span class="cm">// Brute force detection</span>
+SecurityMonitor.trackLoginSuccess({ip, userId, route}) <span class="cm">// Post-brute-force check</span>
+SecurityMonitor.trackIDOR({userId, resourceType, resourceId, ownerUserId})
+SecurityMonitor.trackInjectionPayload({payload, route, userId, ip})
+SecurityMonitor.trackSecretInData({data, context, userId, ip})
+SecurityMonitor.trackOutboundDomain({domain, calledFrom, userId})
+SecurityMonitor.trackFinancialAbuse({userId, abuseType, amount})
+  </pre>
+</div>
+
+<!-- 9. PERFORMANCE -->
+<div class="page" id="performance">
+  <div class="page-eyebrow">Section 9 &amp; 10</div>
+  <h1>Performance, Caching &amp; Key Data Flows</h1>
+  <div class="page-divider"></div>
+
+  <h2>Caching Strategy</h2>
+  <table>
+    <tr><th>Cache</th><th>Table</th><th>TTL</th><th>Invalidation</th></tr>
+    <tr><td>Personalized home feed</td><td>home_payload_cache</td><td>7 days</td><td>runFreshStart() overwrites on weekly close</td></tr>
+    <tr><td>App home feed</td><td>app_home_feed</td><td>Rolling (managed by admin)</td><td>is_active + is_verified flags</td></tr>
+    <tr><td>Pantry velocity</td><td>pantry_velocity</td><td>Per purchase</td><td>Updated on receipt verification</td></tr>
+  </table>
+
+  <h2>Key Data Flows</h2>
+
+  <h3>1. Receipt Upload → Trip Close Flow</h3>
+  <div class="flow-step"><div class="flow-num">1</div><div class="flow-content"><div class="flow-title">Capture</div><div class="flow-desc">User takes photo (expo-camera) or selects from gallery (expo-image-picker)</div></div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div class="flow-content"><div class="flow-title">OCR</div><div class="flow-desc">Image → Base64 → POST /gemini-proxy → Gemini 1.5 Flash → JSON items array</div></div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div class="flow-content"><div class="flow-title">Review</div><div class="flow-desc">User reviews OCR results, edits item names/prices, removes errors</div></div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div class="flow-content"><div class="flow-title">Save</div><div class="flow-desc">Confirmed items → trip_results table, prices in cents</div></div></div>
+  <div class="flow-step"><div class="flow-num">5</div><div class="flow-content"><div class="flow-title">Fresh Start</div><div class="flow-desc">runFreshStart() → close_week() Postgres RPC (atomic) → updates streak, level, credits, resets cart → Gemini generates next week's personalized feed</div></div></div>
+  <div class="flow-step"><div class="flow-num">6</div><div class="flow-content"><div class="flow-title">Celebrate</div><div class="flow-desc">Navigate to WinsScreen → display streak, new level, credits earned</div></div></div>
+
+  <h3>2. Security Event Flow</h3>
+  <div class="flow-step"><div class="flow-num">1</div><div class="flow-content"><div class="flow-title">Detect</div><div class="flow-desc">App/API detects anomaly → SecurityMonitor.trackX() or .event() called</div></div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div class="flow-content"><div class="flow-title">Ingest</div><div class="flow-desc">POST /security-ingest with x-security-token → validate → fingerprint → dedup check → score severity</div></div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div class="flow-content"><div class="flow-title">Store &amp; Block</div><div class="flow-desc">Insert into security_events → if CRITICAL: upsert blocked_indicators (24h IP ban)</div></div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div class="flow-content"><div class="flow-title">Alert</div><div class="flow-desc">If HIGH/CRITICAL: async POST /security-alert → cooldown check → Resend email to ddavis@getsnippd.com</div></div></div>
+  <div class="flow-step"><div class="flow-num">5</div><div class="flow-content"><div class="flow-title">Escalate</div><div class="flow-desc">Every 5 min: security-escalate job retries failures, escalates MEDIUM→HIGH by volume, checks pipeline health</div></div></div>
+
+  <footer>Snippd Technical Architecture · Version 1.0 · April 2026 · Confidential</footer>
+</div>
+
+</body>
+</html>

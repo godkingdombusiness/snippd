@@ -1,0 +1,89 @@
+{
+  "expo": {
+    "name": "Snippd",
+    "slug": "snippd",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.snippd.app",
+      "buildNumber": "1",
+      "requireFullScreen": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Snippd uses your camera to scan receipts, identify food items in your pantry, and record Creator Studio savings videos.",
+        "NSPhotoLibraryUsageDescription": "Snippd accesses your photo library so you can upload receipts and update your profile photo.",
+        "NSPhotoLibraryAddUsageDescription": "Snippd saves your savings receipt cards to your photo library so you can share them.",
+        "NSLocationWhenInUseUsageDescription": "Snippd uses your location to show grocery deals at stores near you and calculate the optimal shopping route.",
+        "NSMicrophoneUsageDescription": "Snippd uses your microphone to record Creator Studio savings videos.",
+        "NSFaceIDUsageDescription": "Snippd uses Face ID to securely unlock your account.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.snippd.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0C9E54",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Snippd uses your camera to scan receipts, identify food items, and record savings videos."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Snippd uses your location to find deals at stores near you."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Snippd accesses your photos to upload receipts.",
+          "savePhotosPermission": "Snippd saves your savings cards to your photo library.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      "expo-web-browser",
+      "expo-font",
+      "expo-sharing"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    },
+    "owner": "snippd"
+  }
+}

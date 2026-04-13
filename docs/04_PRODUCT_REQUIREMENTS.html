@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snippd — Operations &amp; Deployment</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:#fff;color:#0f172a;font-size:13px;line-height:1.7}
+  .cover{background:linear-gradient(135deg,#0D1B4B 0%,#1e3a8a 50%,#0C9E54 100%);color:#fff;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:60px 40px;page-break-after:always}
+  .cover-logo{font-size:72px;font-weight:800;letter-spacing:-3px;margin-bottom:8px;color:#C5FFBC}
+  .cover-sub{font-size:22px;font-weight:500;color:rgba(255,255,255,0.7);margin-bottom:40px}
+  .cover-doc{font-size:34px;font-weight:800;color:#fff;margin-bottom:16px;border:2px solid rgba(197,255,188,0.5);padding:12px 32px;border-radius:8px;display:inline-block}
+  .cover-meta{font-size:13px;color:rgba(255,255,255,0.5);margin-top:40px}
+  .cover-meta span{display:inline-block;margin:0 16px}
+  .toc{padding:60px 80px;page-break-after:always}
+  .toc h2{font-size:24px;font-weight:800;color:#0C9E54;margin-bottom:32px;border-bottom:2px solid #C5FFBC;padding-bottom:12px}
+  .toc-section{margin-bottom:8px}
+  .toc-section a{text-decoration:none;color:#0f172a;font-weight:500;font-size:14px}
+  .toc-num{color:#0D1B4B;font-weight:700;margin-right:8px}
+  .toc-sub{padding-left:24px;margin-top:4px}
+  .toc-sub a{font-size:12.5px;color:#475569;font-weight:400}
+  .page{padding:60px 80px;page-break-after:always}
+  .page:last-child{page-break-after:auto}
+  h1{font-size:30px;font-weight:800;color:#0D1B4B;margin-bottom:6px}
+  .page-eyebrow{font-size:10px;font-weight:700;letter-spacing:3px;color:#3b82f6;text-transform:uppercase;margin-bottom:8px}
+  .page-divider{height:3px;background:linear-gradient(90deg,#0D1B4B,#3b82f6,#0C9E54,transparent);margin-bottom:32px;border-radius:2px}
+  h2{font-size:18px;font-weight:700;color:#0D1B4B;margin-top:36px;margin-bottom:12px;padding-left:12px;border-left:4px solid #0D1B4B}
+  h2.green{border-left-color:#0C9E54}
+  h3{font-size:14px;font-weight:700;color:#1e293b;margin-top:24px;margin-bottom:8px}
+  h4{font-size:13px;font-weight:600;color:#334155;margin-top:16px;margin-bottom:6px}
+  p{margin-bottom:12px;color:#334155}
+  ul{margin-bottom:12px;padding-left:20px}
+  ul li{color:#334155;margin-bottom:4px}
+  ol{margin-bottom:12px;padding-left:20px}
+  ol li{color:#334155;margin-bottom:6px}
+  code{font-family:'JetBrains Mono',monospace;font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:3px;color:#0D1B4B}
+  pre{font-family:'JetBrains Mono',monospace;font-size:11px;background:#0f172a;color:#e2e8f0;padding:20px;border-radius:8px;margin:16px 0;white-space:pre-wrap;line-height:1.6}
+  pre .kw{color:#C5FFBC}
+  pre .cm{color:#64748b}
+  pre .str{color:#fbbf24}
+  pre .var{color:#93c5fd}
+  .callout{background:#eff6ff;border-left:4px solid #3b82f6;padding:16px 20px;border-radius:0 8px 8px 0;margin:16px 0}
+  .callout-green{background:#f0fdf4;border-left-color:#0C9E54}
+  .callout-warn{background:#fffbeb;border-left:4px solid #f59e0b}
+  .callout-danger{background:#fef2f2;border-left:4px solid #ef4444}
+  .callout strong{color:#0f172a}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12px}
+  th{background:#0D1B4B;color:#fff;padding:10px 14px;text-align:left;font-weight:600;font-size:11px;letter-spacing:0.5px}
+  td{padding:9px 14px;border-bottom:1px solid #e2e8f0;color:#334155;vertical-align:top}
+  tr:nth-child(even) td{background:#f8fafc}
+  .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:0.5px}
+  .badge-green{background:#dcfce7;color:#166534}
+  .badge-blue{background:#dbeafe;color:#1e40af}
+  .badge-orange{background:#ffedd5;color:#9a3412}
+  .badge-red{background:#fee2e2;color:#991b1b}
+  .badge-gray{background:#f1f5f9;color:#475569}
+  .step{display:flex;gap:16px;margin-bottom:20px}
+  .step-num{width:36px;height:36px;min-width:36px;background:#0D1B4B;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .step-content{flex:1}
+  .step-title{font-weight:700;color:#0f172a;margin-bottom:4px;font-size:14px}
+  .step-desc{font-size:12.5px;color:#475569}
+  .env-row{display:flex;gap:16px;padding:10px 0;border-bottom:1px solid #e2e8f0;align-items:flex-start}
+  .env-key{font-family:'JetBrains Mono',monospace;font-size:11px;color:#0D1B4B;min-width:280px;font-weight:600}
+  .env-desc{flex:1;font-size:12px;color:#475569}
+  .env-where{font-size:11px;font-weight:600;color:#0C9E54;min-width:140px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:16px 0}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:16px 0}
+  .kpi-box{border:2px solid #e2e8f0;border-radius:12px;padding:18px;text-align:center}
+  .kpi-num{font-size:28px;font-weight:800;color:#0D1B4B}
+  .kpi-lbl{font-size:11px;color:#64748b;margin-top:4px}
+  .checklist-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #e2e8f0}
+  .check-icon{width:20px;height:20px;min-width:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:1px}
+  .check-done{background:#dcfce7;color:#166534}
+  .check-todo{background:#fee2e2;color:#991b1b}
+  .check-text{flex:1;font-size:12.5px;color:#334155}
+  .check-text strong{color:#0f172a}
+  footer{text-align:center;padding:20px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;margin-top:40px}
+  @media (max-width:768px){
+    body{font-size:12px}
+    .cover{padding:48px 20px;min-height:auto}
+    .cover-logo{font-size:44px;letter-spacing:-2px}
+    .cover-sub{font-size:16px}
+    .cover-doc{font-size:20px;padding:10px 18px}
+    .cover-meta span{display:block;margin:4px 0}
+    .toc{padding:32px 20px}
+    .page{padding:32px 20px}
+    h1{font-size:22px}
+    h2{font-size:15px;margin-top:24px}
+    h3{font-size:13px}
+    .two-col,.three-col{grid-template-columns:1fr}
+    .env-row{flex-direction:column;gap:4px}
+    .env-key{min-width:auto;word-break:break-all}
+    .env-where{min-width:auto}
+    table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    pre{font-size:10px;padding:14px}
+    .kpi-num{font-size:22px}
+    .step{gap:10px}
+    .step-num{width:28px;height:28px;min-width:28px;font-size:11px}
+  }
+  @media print{.page{page-break-after:always}body{font-size:12px}}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-logo">snippd</div>
+  <div class="cover-sub">Smart Grocery Intelligence Platform</div>
+  <div style="margin:40px 0">
+    <div class="cover-doc">OPERATIONS &amp; DEPLOYMENT</div>
+  </div>
+  <p style="color:rgba(255,255,255,0.7);font-size:15px;max-width:580px;line-height:1.8">
+    Complete operational runbook covering environment setup, deployment pipelines, database migrations, Edge Function deployment, monitoring, on-call procedures, and production readiness checklists.
+  </p>
+  <div class="cover-meta">
+    <span>Version 1.0</span>
+    <span>April 2026</span>
+    <span>Classification: Internal — Engineering</span>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <div class="toc-section"><span class="toc-num">1.</span><a href="#overview">Deployment Overview</a></div>
+  <div class="toc-section"><span class="toc-num">2.</span><a href="#envs">Environments</a></div>
+  <div class="toc-section"><span class="toc-num">3.</span><a href="#env-vars">Environment Variables Reference</a></div>
+  <div class="toc-section"><span class="toc-num">4.</span><a href="#local">Local Development Setup</a></div>
+  <div class="toc-section"><span class="toc-num">5.</span><a href="#db-migrations">Database Migrations</a></div>
+  <div class="toc-section"><span class="toc-num">6.</span><a href="#edge-deploy">Edge Function Deployment</a></div>
+  <div class="toc-section"><span class="toc-num">7.</span><a href="#app-build">Mobile App Build &amp; Release</a></div>
+  <div class="toc-section"><span class="toc-num">8.</span><a href="#cron">Scheduled Jobs</a></div>
+  <div class="toc-section"><span class="toc-num">9.</span><a href="#monitoring-ops">Monitoring &amp; Alerting</a></div>
+  <div class="toc-section"><span class="toc-num">10.</span><a href="#oncall">On-Call Procedures</a></div>
+  <div class="toc-section"><span class="toc-num">11.</span><a href="#rollback">Rollback Procedures</a></div>
+  <div class="toc-section"><span class="toc-num">12.</span><a href="#readiness">Production Readiness Checklist</a></div>
+</div>
+
+<!-- 1. OVERVIEW -->
+<div class="page" id="overview">
+  <div class="page-eyebrow">Section 1 · Operations &amp; Deployment</div>
+  <h1>Deployment Overview</h1>
+  <div class="page-divider"></div>
+
+  <p>Snippd is a managed platform: the mobile app is distributed via the Apple App Store and Google Play Store; the backend runs entirely on Supabase (PostgreSQL + Auth + Edge Functions). There is no self-managed server infrastructure.</p>
+
+  <h2 class="green">Infrastructure Stack</h2>
+  <table>
+    <tr><th>Layer</th><th>Provider</th><th>Service</th><th>Managed By</th></tr>
+    <tr><td>Mobile App</td><td>Expo / EAS</td><td>EAS Build + OTA updates</td><td>Engineering</td></tr>
+    <tr><td>App Distribution</td><td>Apple App Store / Google Play</td><td>Store distribution</td><td>Engineering + App Store accounts</td></tr>
+    <tr><td>Database</td><td>Supabase</td><td>PostgreSQL 15 (managed)</td><td>Supabase SaaS</td></tr>
+    <tr><td>Authentication</td><td>Supabase</td><td>Supabase Auth (JWT + TOTP)</td><td>Supabase SaaS</td></tr>
+    <tr><td>Edge Functions</td><td>Supabase</td><td>Deno runtime, globally distributed</td><td>Engineering (deploy)</td></tr>
+    <tr><td>Object Storage</td><td>Supabase</td><td>Receipt images, assets</td><td>Supabase SaaS</td></tr>
+    <tr><td>AI / LLM</td><td>Google Cloud</td><td>Gemini 1.5 Flash API</td><td>Engineering (API key)</td></tr>
+    <tr><td>Email</td><td>Resend</td><td>Transactional security emails</td><td>Engineering (API key)</td></tr>
+    <tr><td>Scheduled Jobs</td><td>Supabase pg_cron</td><td>security-escalate every 5 min</td><td>Engineering (SQL setup)</td></tr>
+  </table>
+
+  <h2>Deployment Topology</h2>
+  <pre>
+[Developer Machine]
+    │
+    ├── expo start → Expo Go (development)
+    ├── eas build → [EAS Cloud Build]
+    │                    │
+    │                    └── .ipa / .aab → App Store / Play Store
+    │
+    └── supabase functions deploy → [Supabase Edge Network]
+                                          │
+                                    [Supabase Project: gsnbpfpekqqjlmkgvwvb]
+                                          ├── PostgreSQL (with RLS)
+                                          ├── Supabase Auth
+                                          ├── Edge Functions
+                                          │   ├── gemini-proxy
+                                          │   ├── security-ingest
+                                          │   ├── security-alert
+                                          │   └── security-escalate
+                                          └── pg_cron → security-escalate (*/5 * * * *)
+  </pre>
+</div>
+
+<!-- 2. ENVIRONMENTS -->
+<div class="page" id="envs">
+  <div class="page-eyebrow">Section 2</div>
+  <h1>Environments</h1>
+  <div class="page-divider"></div>
+
+  <table>
+    <tr><th>Environment</th><th>Purpose</th><th>Supabase Project</th><th>App Build</th><th>Secrets</th></tr>
+    <tr><td><strong>Local Dev</strong></td><td>Developer machines, feature development</td><td>Production project (dev data)</td><td>Expo Go / expo start</td><td>.env.local (dev tokens, spending-limited API keys)</td></tr>
+    <tr><td><strong>Staging</strong></td><td>Pre-release testing, QA, UAT</td><td>Separate Supabase project (recommended)</td><td>EAS build profile: staging</td><td>Supabase vault (staging secrets)</td></tr>
+    <tr><td><strong>Production</strong></td><td>Live app for end users</td><td>gsnbpfpekqqjlmkgvwvb</td><td>EAS build profile: production</td><td>Supabase vault (prod secrets)</td></tr>
+  </table>
+
+  <div class="callout callout-warn">
+    <strong>Current Gap:</strong> A staging environment has not been set up. All development currently runs against the production Supabase project. Priority action: create a staging Supabase project and separate EAS build profiles before next public release.
+  </div>
+
+  <h2>ENVIRONMENT Variable in Edge Functions</h2>
+  <p>The <code>ENVIRONMENT</code> secret in Supabase controls which environment label appears in security alert emails and event logs. Set this correctly per project:</p>
+  <pre>
+<span class="cm"># Production</span>
+supabase secrets set ENVIRONMENT=production
+
+<span class="cm"># Staging</span>
+supabase secrets set ENVIRONMENT=staging
+  </pre>
+</div>
+
+<!-- 3. ENV VARS -->
+<div class="page" id="env-vars">
+  <div class="page-eyebrow">Section 3</div>
+  <h1>Environment Variables Reference</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Client App (.env.local)</h2>
+  <p>These variables are bundled into the app build. <strong>EXPO_PUBLIC_ prefix</strong> means they are accessible in the JavaScript bundle. Never put service_role or secrets with this prefix.</p>
+
+  <div class="env-row"><div class="env-key">EXPO_PUBLIC_SUPABASE_URL</div><div class="env-desc">Your Supabase project URL. Found in Supabase Dashboard → Settings → API</div><div class="env-where">Client app</div></div>
+  <div class="env-row"><div class="env-key">EXPO_PUBLIC_SUPABASE_ANON_KEY</div><div class="env-desc">Public anon key for Supabase client. Safe to bundle — RLS protects data. Never use service_role key here.</div><div class="env-where">Client app</div></div>
+  <div class="env-row"><div class="env-key">EXPO_PUBLIC_SECURITY_INGEST_PUBLIC_TOKEN</div><div class="env-desc">Read-only public token for client → security-ingest calls. Separate from the server-side SECURITY_INGEST_SECRET.</div><div class="env-where">Client app</div></div>
+  <div class="env-row"><div class="env-key">EXPO_PUBLIC_FIELD_ENC_KEY</div><div class="env-desc">AES-256-GCM field encryption key. ⚠️ Currently EXPO_PUBLIC_ — should be migrated to server-side vault.</div><div class="env-where">Client app (migrate)</div></div>
+
+  <h2 class="green">Supabase Edge Function Secrets (Vault)</h2>
+  <p>Set via <code>supabase secrets set KEY=value</code>. Never committed to source code. Accessible as <code>Deno.env.get('KEY')</code> in Edge Functions.</p>
+
+  <div class="env-row"><div class="env-key">SUPABASE_URL</div><div class="env-desc">Auto-injected by Supabase runtime. Do not set manually.</div><div class="env-where">Auto-injected</div></div>
+  <div class="env-row"><div class="env-key">SUPABASE_SERVICE_ROLE_KEY</div><div class="env-desc">Full DB access bypassing RLS. Only available inside Edge Functions. NEVER expose to client.</div><div class="env-where">Supabase vault</div></div>
+  <div class="env-row"><div class="env-key">SECURITY_INGEST_SECRET</div><div class="env-desc">Server-side secret for Edge Function authentication. Different from the public client token. 32-byte hex minimum.</div><div class="env-where">Supabase vault</div></div>
+  <div class="env-row"><div class="env-key">GEMINI_API_KEY</div><div class="env-desc">Google AI Studio API key for Gemini 1.5 Flash. Used only by gemini-proxy function.</div><div class="env-where">Supabase vault</div></div>
+  <div class="env-row"><div class="env-key">RESEND_API_KEY</div><div class="env-desc">Resend transactional email API key. Used only by security-alert and security-escalate functions.</div><div class="env-where">Supabase vault</div></div>
+  <div class="env-row"><div class="env-key">ALERT_TO_EMAIL</div><div class="env-desc">Security alert recipient. Default: ddavis@getsnippd.com</div><div class="env-where">Supabase vault</div></div>
+  <div class="env-row"><div class="env-key">ALERT_FROM_EMAIL</div><div class="env-desc">Security alert sender. Default: security@getsnippd.com</div><div class="env-where">Supabase vault</div></div>
+  <div class="env-row"><div class="env-key">ENVIRONMENT</div><div class="env-desc">Environment label in alerts: 'production' or 'staging'</div><div class="env-where">Supabase vault</div></div>
+
+  <h2 class="green">Setting All Secrets at Once</h2>
+  <pre>
+supabase secrets set \
+  <span class="var">SECURITY_INGEST_SECRET</span>=<span class="str">"$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"</span> \
+  <span class="var">RESEND_API_KEY</span>=<span class="str">"re_..."</span> \
+  <span class="var">ALERT_TO_EMAIL</span>=<span class="str">"ddavis@getsnippd.com"</span> \
+  <span class="var">ALERT_FROM_EMAIL</span>=<span class="str">"security@getsnippd.com"</span> \
+  <span class="var">GEMINI_API_KEY</span>=<span class="str">"AIza..."</span> \
+  <span class="var">ENVIRONMENT</span>=<span class="str">"production"</span>
+
+<span class="cm"># Verify secrets are set</span>
+supabase secrets list
+  </pre>
+</div>
+
+<!-- 4. LOCAL DEV -->
+<div class="page" id="local">
+  <div class="page-eyebrow">Section 4</div>
+  <h1>Local Development Setup</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Prerequisites</h2>
+  <ul>
+    <li>Node.js 20+ LTS</li>
+    <li>npm 10+</li>
+    <li>Expo CLI: <code>npm install -g expo-cli</code></li>
+    <li>Supabase CLI: <code>npm install -g supabase</code></li>
+    <li>Expo Go app on physical iOS/Android device (for testing)</li>
+    <li>Android Studio or Xcode (for simulator builds)</li>
+  </ul>
+
+  <h2 class="green">First-Time Setup</h2>
+  <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Clone and install</div><div class="step-desc">
+    <pre style="margin:8px 0">git clone https://github.com/your-org/snippd.git
+cd snippd
+npm install</pre>
+  </div></div></div>
+
+  <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Create .env.local</div><div class="step-desc">Copy the example and fill in values from Supabase Dashboard → Settings → API:
+    <pre style="margin:8px 0">cp .env.example .env.local
+<span class="cm"># Edit .env.local with your Supabase URL and anon key</span></pre>
+  </div></div></div>
+
+  <div class="step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Run migrations in Supabase</div><div class="step-desc">In Supabase Dashboard → SQL Editor, run these files in order:
+    <pre style="margin:8px 0">sql/00_rls_policies.sql
+sql/01_rate_limiting.sql
+sql/02_audit_triggers.sql
+sql/03_fresh_start.sql
+sql/04_households.sql
+sql/05_referrals.sql
+sql/06_security_schema.sql</pre>
+  </div></div></div>
+
+  <div class="step"><div class="step-num">4</div><div class="step-content"><div class="step-title">Set Supabase secrets</div><div class="step-desc">
+    <pre style="margin:8px 0">supabase login
+supabase link --project-ref gsnbpfpekqqjlmkgvwvb
+supabase secrets set GEMINI_API_KEY="..." RESEND_API_KEY="..." <span class="cm"># etc.</span></pre>
+  </div></div></div>
+
+  <div class="step"><div class="step-num">5</div><div class="step-content"><div class="step-title">Deploy Edge Functions</div><div class="step-desc">
+    <pre style="margin:8px 0">supabase functions deploy gemini-proxy
+supabase functions deploy security-ingest
+supabase functions deploy security-alert
+supabase functions deploy security-escalate</pre>
+  </div></div></div>
+
+  <div class="step"><div class="step-num">6</div><div class="step-content"><div class="step-title">Start the app</div><div class="step-desc">
+    <pre style="margin:8px 0">npm start        <span class="cm"># Starts on port 8082</span>
+<span class="cm"># Scan QR with Expo Go app on device, or press 'a' for Android, 'i' for iOS simulator</span></pre>
+  </div></div></div>
+
+  <h2>Development Scripts</h2>
+  <table>
+    <tr><th>Command</th><th>Description</th></tr>
+    <tr><td><code>npm start</code></td><td>Start Expo dev server on port 8082</td></tr>
+    <tr><td><code>npm run android</code></td><td>Start on Android emulator or connected device</td></tr>
+    <tr><td><code>npm run ios</code></td><td>Start on iOS simulator (macOS only)</td></tr>
+    <tr><td><code>npm run web</code></td><td>Start web version (experimental)</td></tr>
+    <tr><td><code>supabase functions serve</code></td><td>Run Edge Functions locally for development</td></tr>
+    <tr><td><code>supabase db diff</code></td><td>Show pending schema changes</td></tr>
+  </table>
+</div>
+
+<!-- 5. DB MIGRATIONS -->
+<div class="page" id="db-migrations">
+  <div class="page-eyebrow">Section 5</div>
+  <h1>Database Migrations</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Migration File Inventory</h2>
+  <table>
+    <tr><th>File</th><th>Description</th><th>Idempotent?</th><th>Dependencies</th></tr>
+    <tr><td><code>sql/00_rls_policies.sql</code></td><td>Row-Level Security policies for all core tables</td><td><span class="badge badge-green">Yes</span> (DROP POLICY IF EXISTS)</td><td>Tables must exist</td></tr>
+    <tr><td><code>sql/01_rate_limiting.sql</code></td><td>Rolling window rate limiter function + log table</td><td><span class="badge badge-green">Yes</span> (CREATE OR REPLACE)</td><td>None</td></tr>
+    <tr><td><code>sql/02_audit_triggers.sql</code></td><td>DML audit triggers on profiles + cart tables</td><td><span class="badge badge-green">Yes</span> (CREATE OR REPLACE)</td><td>system_audit_logs table</td></tr>
+    <tr><td><code>sql/03_fresh_start.sql</code></td><td>Weekly close function, streak/level/credits logic</td><td><span class="badge badge-green">Yes</span> (CREATE OR REPLACE)</td><td>profiles table</td></tr>
+    <tr><td><code>sql/04_households.sql</code></td><td>Households, household_members, RBAC triggers</td><td><span class="badge badge-orange">Partial</span> (CREATE TABLE IF NOT EXISTS)</td><td>profiles table</td></tr>
+    <tr><td><code>sql/05_referrals.sql</code></td><td>Referral tracking, credit functions, fraud guard</td><td><span class="badge badge-orange">Partial</span> (uses DO blocks)</td><td>profiles, households</td></tr>
+    <tr><td><code>sql/06_security_schema.sql</code></td><td>Security events, alerts, indicators, approved domains</td><td><span class="badge badge-green">Yes</span> (IF NOT EXISTS throughout)</td><td>None (self-contained)</td></tr>
+  </table>
+
+  <h2>Migration Procedure (Production)</h2>
+  <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Backup first</div><div class="step-desc">Supabase Dashboard → Database → Backups → "Create Backup Now"</div></div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Run in Supabase SQL Editor</div><div class="step-desc">Copy file contents, paste into SQL Editor, run. Watch for errors before proceeding to next file.</div></div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Verify</div><div class="step-desc">Run a quick sanity check:
+    <pre style="margin:8px 0">SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+SELECT proname FROM pg_proc WHERE proname LIKE 'fn_%' OR proname LIKE 'close_%' OR proname LIKE 'check_%';
+SELECT * FROM approved_domains;  <span class="cm">-- should show 6 seeded domains</span></pre>
+  </div></div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-content"><div class="step-title">Test RLS</div><div class="step-desc">Attempt to read another user's row with their JWT — should be blocked. Attempt to insert into system_audit_logs — should be blocked.</div></div></div>
+
+  <h2>Adding New Migrations</h2>
+  <ul>
+    <li>Name files sequentially: <code>07_feature_name.sql</code></li>
+    <li>Always use <code>IF NOT EXISTS</code> for CREATE TABLE/INDEX</li>
+    <li>Always use <code>CREATE OR REPLACE</code> for functions</li>
+    <li>Test on staging before running on production</li>
+    <li>Document the migration purpose in a comment at the top of the file</li>
+  </ul>
+</div>
+
+<!-- 6. EDGE FUNCTIONS -->
+<div class="page" id="edge-deploy">
+  <div class="page-eyebrow">Section 6</div>
+  <h1>Edge Function Deployment</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Deployment Commands</h2>
+  <pre>
+<span class="cm"># Deploy all functions</span>
+supabase functions deploy gemini-proxy
+supabase functions deploy security-ingest
+supabase functions deploy security-alert
+supabase functions deploy security-escalate
+
+<span class="cm"># Deploy with specific project ref</span>
+supabase functions deploy security-ingest --project-ref gsnbpfpekqqjlmkgvwvb
+
+<span class="cm"># View function logs</span>
+supabase functions logs security-ingest --tail
+
+<span class="cm"># Test locally before deploying</span>
+supabase functions serve security-ingest --env-file .env.local
+curl -X POST http://localhost:54321/functions/v1/security-ingest \
+  -H "x-security-token: test-token" \
+  -H "Content-Type: application/json" \
+  -d '{"event_type":"LOGIN_FAILED","category":"AUTH","source_system":"test","summary":"test event"}'
+  </pre>
+
+  <h2>Function Configuration</h2>
+  <table>
+    <tr><th>Function</th><th>Auth Required</th><th>Secrets Needed</th><th>Invoked By</th></tr>
+    <tr><td>gemini-proxy</td><td>Supabase JWT (anon/authed)</td><td>GEMINI_API_KEY</td><td>ReceiptUploadScreen, ChefStashScreen</td></tr>
+    <tr><td>security-ingest</td><td>x-security-token header</td><td>SECURITY_INGEST_SECRET, SUPABASE_SERVICE_ROLE_KEY</td><td>SecurityMonitor.js (client), other functions</td></tr>
+    <tr><td>security-alert</td><td>x-security-token header</td><td>SECURITY_INGEST_SECRET, RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, ALERT_TO_EMAIL, ALERT_FROM_EMAIL</td><td>security-ingest (async), security-escalate</td></tr>
+    <tr><td>security-escalate</td><td>x-security-token header</td><td>All of the above</td><td>pg_cron every 5 minutes</td></tr>
+  </table>
+
+  <h2>Post-Deploy Smoke Test</h2>
+  <pre>
+<span class="cm"># 1. Test security-ingest</span>
+curl -X POST $SUPABASE_URL/functions/v1/security-ingest \
+  -H <span class="str">"x-security-token: $SECURITY_INGEST_SECRET"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d '{
+    "event_type": "LOGIN_FAILED",
+    "category": "AUTH",
+    "source_system": "smoke-test",
+    "summary": "Smoke test event — please ignore"
+  }'
+<span class="cm"># Expected: {"status":"recorded","severity":"LOW",...}</span>
+
+<span class="cm"># 2. Verify in database</span>
+<span class="cm"># SELECT * FROM security_events WHERE source_system = 'smoke-test' ORDER BY created_at DESC LIMIT 1;</span>
+
+<span class="cm"># 3. Test gemini-proxy (OCR mode) — requires valid imageBase64</span>
+<span class="cm"># POST $SUPABASE_URL/functions/v1/gemini-proxy with Authorization: Bearer {userJWT}</span>
+<span class="cm"># Body: {"imageBase64": "...", "mimeType": "image/jpeg"}</span>
+  </pre>
+</div>
+
+<!-- 7. APP BUILD -->
+<div class="page" id="app-build">
+  <div class="page-eyebrow">Section 7</div>
+  <h1>Mobile App Build &amp; Release</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">EAS Build Setup (Recommended)</h2>
+  <p>Expo Application Services (EAS) provides cloud builds, code signing, and OTA updates. Install and configure:</p>
+
+  <pre>
+npm install -g eas-cli
+eas login
+eas build:configure   <span class="cm"># Creates eas.json</span>
+  </pre>
+
+  <h2>Recommended eas.json</h2>
+  <pre>
+{
+  <span class="str">"cli"</span>: { <span class="str">"version"</span>: <span class="str">">= 14.0.0"</span> },
+  <span class="str">"build"</span>: {
+    <span class="str">"development"</span>: {
+      <span class="str">"developmentClient"</span>: <span class="kw">true</span>,
+      <span class="str">"distribution"</span>: <span class="str">"internal"</span>,
+      <span class="str">"env"</span>: { <span class="str">"ENVIRONMENT"</span>: <span class="str">"development"</span> }
+    },
+    <span class="str">"staging"</span>: {
+      <span class="str">"distribution"</span>: <span class="str">"internal"</span>,
+      <span class="str">"ios"</span>: { <span class="str">"simulator"</span>: <span class="kw">false</span> },
+      <span class="str">"env"</span>: { <span class="str">"ENVIRONMENT"</span>: <span class="str">"staging"</span> }
+    },
+    <span class="str">"production"</span>: {
+      <span class="str">"distribution"</span>: <span class="str">"store"</span>,
+      <span class="str">"ios"</span>: { <span class="str">"autoIncrement"</span>: <span class="kw">true</span> },
+      <span class="str">"android"</span>: { <span class="str">"autoIncrement"</span>: <span class="kw">true</span> }
+    }
+  },
+  <span class="str">"submit"</span>: {
+    <span class="str">"production"</span>: {
+      <span class="str">"ios"</span>: { <span class="str">"appleId"</span>: <span class="str">"your@apple.id"</span>, <span class="str">"ascAppId"</span>: <span class="str">"YOUR_APP_STORE_ID"</span> },
+      <span class="str">"android"</span>: { <span class="str">"serviceAccountKeyPath"</span>: <span class="str">"./google-service-account.json"</span> }
+    }
+  }
+}
+  </pre>
+
+  <h2>Build &amp; Submit Commands</h2>
+  <pre>
+<span class="cm"># iOS production build + submit to App Store</span>
+eas build --platform ios --profile production
+eas submit --platform ios --profile production
+
+<span class="cm"># Android production build + submit to Google Play</span>
+eas build --platform android --profile production
+eas submit --platform android --profile production
+
+<span class="cm"># OTA update (JS changes only, no native rebuild needed)</span>
+eas update --branch production --message "Fix: budget dashboard calculation"
+  </pre>
+
+  <h2>App Store Requirements</h2>
+  <table>
+    <tr><th>Requirement</th><th>Status</th><th>Notes</th></tr>
+    <tr><td>App icon (1024×1024 PNG)</td><td><span class="badge badge-green">Ready</span></td><td>assets/icon.png</td></tr>
+    <tr><td>Splash screen</td><td><span class="badge badge-green">Ready</span></td><td>assets/splash-icon.png</td></tr>
+    <tr><td>Privacy policy URL</td><td><span class="badge badge-orange">Needed</span></td><td>Required before App Store submission</td></tr>
+    <tr><td>App Store screenshots</td><td><span class="badge badge-orange">Needed</span></td><td>Required per device size</td></tr>
+    <tr><td>IAP products configured</td><td><span class="badge badge-orange">Pending</span></td><td>$4.99/mo and $99 lifetime in App Store Connect</td></tr>
+    <tr><td>Push notification entitlement</td><td><span class="badge badge-gray">Not yet</span></td><td>Not implemented in current version</td></tr>
+    <tr><td>iOS bundle ID registered</td><td><span class="badge badge-orange">Needed</span></td><td>com.snippd.app in Apple Developer portal</td></tr>
+    <tr><td>Android signing keystore</td><td><span class="badge badge-orange">Needed</span></td><td>Generate and store in EAS</td></tr>
+  </table>
+</div>
+
+<!-- 8. CRON -->
+<div class="page" id="cron">
+  <div class="page-eyebrow">Section 8</div>
+  <h1>Scheduled Jobs</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">security-escalate Cron Job</h2>
+  <p>The security-escalate Edge Function must run every 5 minutes. Set up via pg_cron in Supabase SQL Editor:</p>
+  <pre>
+<span class="cm">-- Enable pg_cron extension (if not already enabled)</span>
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> pg_cron;
+
+<span class="cm">-- Create the cron job</span>
+<span class="kw">SELECT</span> cron.schedule(
+  <span class="str">'security-escalate-job'</span>,
+  <span class="str">'*/5 * * * *'</span>,
+  $$
+    <span class="kw">SELECT</span> net.http_post(
+      url        := current_setting(<span class="str">'app.supabase_url'</span>) || <span class="str">'/functions/v1/security-escalate'</span>,
+      headers    := jsonb_build_object(
+        <span class="str">'Content-Type'</span>,     <span class="str">'application/json'</span>,
+        <span class="str">'x-security-token'</span>, current_setting(<span class="str">'app.security_ingest_secret'</span>)
+      ),
+      body       := <span class="str">'{}'</span>::jsonb
+    );
+  $$
+);
+
+<span class="cm">-- Set app-level settings used by cron</span>
+<span class="kw">ALTER DATABASE</span> postgres <span class="kw">SET</span> app.supabase_url = <span class="str">'https://gsnbpfpekqqjlmkgvwvb.supabase.co'</span>;
+<span class="kw">ALTER DATABASE</span> postgres <span class="kw">SET</span> app.security_ingest_secret = <span class="str">'&lt;your-secret&gt;'</span>;
+
+<span class="cm">-- Verify job is scheduled</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> cron.job <span class="kw">WHERE</span> jobname = <span class="str">'security-escalate-job'</span>;
+  </pre>
+
+  <h2>Security Event Data Cleanup Cron</h2>
+  <pre>
+<span class="cm">-- Purge resolved LOW severity events older than 30 days</span>
+<span class="kw">SELECT</span> cron.schedule(
+  <span class="str">'purge-low-security-events'</span>,
+  <span class="str">'0 3 * * *'</span>,  <span class="cm">-- Daily at 3 AM</span>
+  $$ <span class="kw">SELECT</span> fn_purge_low_severity_events(); $$
+);
+  </pre>
+
+  <h2>Cron Job Monitoring</h2>
+  <pre>
+<span class="cm">-- Check recent cron job runs</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> cron.job_run_details
+<span class="kw">WHERE</span> jobid = (SELECT jobid <span class="kw">FROM</span> cron.job <span class="kw">WHERE</span> jobname = <span class="str">'security-escalate-job'</span>)
+<span class="kw">ORDER BY</span> start_time <span class="kw">DESC LIMIT</span> 10;
+
+<span class="cm">-- If cron fails for 30+ min, security-escalate health check will email you</span>
+  </pre>
+</div>
+
+<!-- 9. MONITORING -->
+<div class="page" id="monitoring-ops">
+  <div class="page-eyebrow">Section 9</div>
+  <h1>Monitoring &amp; Alerting</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">Alert Channels</h2>
+  <table>
+    <tr><th>Alert Type</th><th>Channel</th><th>Recipient</th><th>Trigger</th></tr>
+    <tr><td>HIGH security event</td><td>Resend email</td><td>ddavis@getsnippd.com</td><td>HIGH severity event, 5 min cooldown</td></tr>
+    <tr><td>CRITICAL security event</td><td>Resend email</td><td>ddavis@getsnippd.com</td><td>CRITICAL severity event, 60 sec cooldown</td></tr>
+    <tr><td>Pipeline health failure</td><td>Resend email (direct)</td><td>ddavis@getsnippd.com</td><td>0 events in 30 minutes</td></tr>
+    <tr><td>MEDIUM volume escalation</td><td>Resend email (via HIGH event)</td><td>ddavis@getsnippd.com</td><td>10+ MEDIUM events same type in 1 hour</td></tr>
+  </table>
+
+  <h2>Key Metrics to Monitor</h2>
+  <table>
+    <tr><th>Metric</th><th>Query</th><th>Alert Threshold</th></tr>
+    <tr><td>Security events / hour</td><td><code>SELECT count(*) FROM security_events WHERE created_at > NOW()-'1h'::interval</code></td><td>&gt;100 (spike)</td></tr>
+    <tr><td>CRITICAL events (unresolved)</td><td><code>SELECT count(*) FROM security_events WHERE severity='CRITICAL' AND resolved=false</code></td><td>Any &gt; 0</td></tr>
+    <tr><td>Failed alert deliveries</td><td><code>SELECT count(*) FROM security_alerts WHERE status='FAILED' AND retry_count>=3</code></td><td>Any &gt; 0</td></tr>
+    <tr><td>Blocked IPs (active)</td><td><code>SELECT count(*) FROM blocked_indicators WHERE active=true AND indicator_type='IP'</code></td><td>Informational</td></tr>
+    <tr><td>Active referral fraud flags</td><td><code>SELECT count(*) FROM referrals WHERE fraud_score > 50</code></td><td>&gt;5</td></tr>
+  </table>
+
+  <h2>Supabase Dashboard Monitoring</h2>
+  <ul>
+    <li><strong>Database → Table Editor</strong> — Review security_events, blocked_indicators, security_alerts</li>
+    <li><strong>Edge Functions → Logs</strong> — View real-time function logs for each function</li>
+    <li><strong>Auth → Users</strong> — Review sign-up patterns, suspicious bulk registrations</li>
+    <li><strong>Database → Extensions → pg_cron → job_run_details</strong> — Verify cron jobs running</li>
+    <li><strong>Logs → Postgres</strong> — Raw database query logs for forensic investigation</li>
+  </ul>
+</div>
+
+<!-- 10. ON-CALL + 11. ROLLBACK + 12. READINESS -->
+<div class="page" id="oncall">
+  <div class="page-eyebrow">Section 10 · 11 · 12</div>
+  <h1>On-Call, Rollback &amp; Production Readiness</h1>
+  <div class="page-divider"></div>
+
+  <h2 class="green">On-Call Escalation Path</h2>
+  <table>
+    <tr><th>Severity</th><th>Response Time</th><th>Who</th><th>Action</th></tr>
+    <tr><td><span class="badge badge-red">CRITICAL</span></td><td>Immediate (&lt;15 min)</td><td>ddavis@getsnippd.com (email + review)</td><td>Review alert email, follow relevant playbook (Security doc)</td></tr>
+    <tr><td><span class="badge badge-orange">HIGH</span></td><td>&lt;1 hour</td><td>ddavis@getsnippd.com</td><td>Review Supabase security_events, assess scope</td></tr>
+    <tr><td><span class="badge badge-blue">MEDIUM</span></td><td>Next business day</td><td>Engineering</td><td>Review MEDIUM digest, update thresholds if noise</td></tr>
+    <tr><td>Pipeline health failure</td><td>Immediate</td><td>ddavis@getsnippd.com</td><td>Check Edge Function status, pg_cron job, app health</td></tr>
+  </table>
+
+  <h2>Rollback Procedures</h2>
+
+  <h3>Edge Function Rollback</h3>
+  <p>Supabase does not provide one-click rollback for Edge Functions. Rollback by redeploying the previous version from git:</p>
+  <pre>
+git checkout &lt;previous-commit-hash&gt; -- supabase/functions/security-ingest/index.ts
+supabase functions deploy security-ingest
+  </pre>
+
+  <h3>Database Migration Rollback</h3>
+  <p>Migrations are additive (no DROP statements in normal workflow). For emergency rollback:</p>
+  <pre>
+<span class="cm">-- 1. Restore from backup in Supabase Dashboard → Database → Backups</span>
+<span class="cm">-- 2. Or manually revert specific changes (e.g., drop new columns)</span>
+<span class="cm">-- Always test rollback in staging first</span>
+  </pre>
+
+  <h3>Mobile App Rollback (OTA)</h3>
+  <pre>
+<span class="cm"># Roll back to previous OTA channel</span>
+eas update --branch production --message "Rollback: revert to previous build"
+<span class="cm"># Native (store build) rollbacks require submitting a previous build to the stores</span>
+  </pre>
+
+  <h2 class="green">Production Readiness Checklist</h2>
+
+  <h3>Database</h3>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>All 6 SQL migrations run</strong> in production Supabase project</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>RLS verified</strong> — tested that users cannot access other users' data</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>pg_cron enabled</strong> and security-escalate job scheduled</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Backups enabled</strong> — Point-in-Time Recovery enabled in Supabase</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>approved_domains seeded</strong> — 6 domains in table</div></div>
+
+  <h3>Edge Functions</h3>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>All 4 functions deployed</strong> to production Supabase project</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>All secrets set</strong> in Supabase vault (verify with supabase secrets list)</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Smoke test passed</strong> — security-ingest returns 200 for test event</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Alert email verified</strong> — send CRITICAL test event, confirm email received</div></div>
+
+  <h3>App Build</h3>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>EAS configured</strong> with eas.json and code signing certificates</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>IAP products created</strong> in App Store Connect and Google Play Console</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>Privacy policy published</strong> at accessible URL</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>App Store screenshots</strong> prepared for all required device sizes</div></div>
+  <div class="checklist-item"><div class="check-icon check-todo">!</div><div class="check-text"><strong>TestFlight / Internal Testing</strong> completed with at least 5 users</div></div>
+
+  <footer>Snippd Operations &amp; Deployment · Version 1.0 · April 2026 · Internal — Engineering</footer>
+</div>
+
+</body>
+</html>

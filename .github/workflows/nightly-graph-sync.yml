@@ -1,0 +1,80 @@
+name: Nightly Graph Sync
+
+# Runs at 02:00 UTC every day.
+# graph-insights and admin-graph-stats read from this graph — keep it fresh.
+# Manual trigger available in GitHub Actions → "Run workflow".
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      skip_co_occurrences:
+        description: 'Skip co-occurrence sync (faster, use when only preferences changed)'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+      skip_cohort:
+        description: 'Skip cohort similarity computation'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+jobs:
+  graph-sync:
+    name: Sync Neo4j Memory Graph
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NEO4J_URI:                 ${{ secrets.NEO4J_URI }}
+      NEO4J_USER:                ${{ secrets.NEO4J_USER }}
+      NEO4J_PASSWORD:            ${{ secrets.NEO4J_PASSWORD }}
+      NEO4J_DATABASE:            ${{ secrets.NEO4J_DATABASE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Neo4j connectivity
+        run: |
+          node -e "
+            const neo4j = require('neo4j-driver');
+            const driver = neo4j.driver(
+              process.env.NEO4J_URI,
+              neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASSWORD)
+            );
+            driver.verifyConnectivity()
+              .then(() => { console.log('Neo4j reachable'); driver.close(); })
+              .catch(e => { console.error('Neo4j unreachable:', e.message); driver.close(); process.exit(1); });
+          "
+
+      - name: Run graph schema check
+        run: npx ts-node --project tsconfig.test.json src/services/graph/graphSchema.ts
+
+      - name: Run graph sync
+        run: npx ts-node --project tsconfig.test.json src/services/graph/graphSync.ts
+        env:
+          SKIP_CO_OCCURRENCES: ${{ github.event.inputs.skip_co_occurrences || 'false' }}
+          SKIP_COHORT:         ${{ github.event.inputs.skip_cohort || 'false' }}
+
+      - name: Report summary
+        if: always()
+        run: |
+          echo "## Graph Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Neo4j DB:** ${{ secrets.NEO4J_DATABASE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
