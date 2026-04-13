@@ -37,6 +37,9 @@ yarn-error.*
 # Claude Code local settings (machine-specific permission overrides)
 .claude/settings.local.json
 
+# Supabase CLI local state (machine-specific, not for source control)
+supabase/.temp/
+
 # typescript
 *.tsbuildinfo
 
