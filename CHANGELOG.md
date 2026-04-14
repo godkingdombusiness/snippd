@@ -3,6 +3,9 @@ Auto-maintained by Claude Code. Updated after every change.
 Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
+### Fixed
+- `supabase/migrations/002_rls_hardening.sql` — Rewritten after live DB audit revealed all tables already have RLS and the correct schema. Migration now only does the two things actually missing: drops `model_predictions_select_own` and adds `recommendation_exposures_update_own` UPDATE policy.
+- `supabase/functions/ingest-event/index.ts` — `api_rate_limit_log` insert now uses `endpoint` column (the live table column name), not `function_name`.
 
 ## [0.3.0] — 2026-04-13
 
