@@ -74,13 +74,44 @@ Ingests one or more behavioral events. Writes to `event_stream`. Optionally writ
 }
 ```
 
+### Rate limiting
+
+JWT-authenticated requests only (API key calls are not rate-limited):
+
+- **Max:** 200 requests per user per hour
+- **Enforcement:** `api_rate_limit_log` table — one row inserted per request, counted over the rolling 60-minute window
+- **When exceeded:** `429 Too Many Requests`
+  ```json
+  { "error": "Rate limit exceeded", "retry_after_seconds": 60 }
+  ```
+- **Cleanup:** Records older than 2 hours are deleted on ~1% of requests (probabilistic GC)
+
+### Input validation
+
+All fields are validated before DB writes. Unknown fields are rejected.
+
+| Field | Rules |
+|---|---|
+| `event_name` | Required, string, max 100 characters |
+| `session_id` | Required, valid UUID (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
+| `user_id` | Required, string |
+| `retailer_key` | Optional; if present: alphanumeric + underscore only, max 50 chars |
+| `category` | Optional; string, max 100 chars |
+| `metadata` | Optional; JSON object (not array), max 10 keys, nesting depth ≤ 2 |
+| Unknown fields | Rejected with 400 |
+
 ### Error responses
 | Status | Condition |
 |---|---|
-| 400 | Missing required fields, invalid JSON, no events provided |
+| 400 | Validation error, unknown field, invalid JSON, missing required fields |
 | 401 | No auth header or invalid JWT |
 | 405 | Non-POST method |
+| 429 | Rate limit exceeded (JWT auth only) |
 | 500 | Supabase insert error or missing env vars |
+
+### Request logging
+
+Every request writes one row to `ingestion_run_log` (`source_key = 'ingest-event'`) with `stage = 'success'` or `'error'`, HTTP `status` code, and `metadata: { user_id, duration_ms, event_count }`.
 
 ---
 
@@ -181,13 +212,28 @@ Computes the optimal coupon stack for a basket at a given retailer. Returns vali
 | `MAX_REDEMPTIONS_REACHED` | Qty exceeds `max_redemptions` |
 | `COUPON_FLOOR_APPLIED` | Coupon would push price negative; clamped to $0 |
 
+### Input validation
+
+| Field | Rules |
+|---|---|
+| `retailer_key` | Required; alphanumeric + underscore only, max 50 chars |
+| `items` | Required; array, 1–50 entries |
+| `items[].id` | Optional; if provided must be a valid UUID |
+| `items[].quantity` | Integer, 1–100 |
+| `items[].regular_price_cents` | Positive integer, max 100 000 (≤ $1,000) |
+| `items[].offers` / `available_offers` | Max 10 per item (excess silently truncated during coercion) |
+
 ### Error responses
 | Status | Condition |
 |---|---|
-| 400 | Missing `retailer_key` or `items`, invalid JSON |
+| 400 | Validation failure — descriptive message identifies the field and rule |
 | 401 | Missing or invalid JWT |
 | 405 | Non-POST method |
 | 500 | DB error or missing env vars |
+
+### Request logging
+
+Every request writes one row to `ingestion_run_log` (`source_key = 'stack-compute'`) with `stage = 'success'` or `'error'`, HTTP `status`, and `metadata: { user_id, duration_ms, item_count }`.
 
 ---
 

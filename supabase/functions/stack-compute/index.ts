@@ -119,6 +119,90 @@ interface StackResult {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Validation constants
+// ─────────────────────────────────────────────────────────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RETAILER_KEY_RE = /^[a-z0-9_]{1,50}$/i;
+const MAX_ITEMS = 50;
+const MAX_OFFERS_PER_ITEM = 10;
+const MAX_QUANTITY = 100;
+const MAX_PRICE_CENTS = 100_000;
+
+function isValidUUID(v: unknown): v is string {
+  return typeof v === 'string' && UUID_RE.test(v);
+}
+
+interface ItemValidationError {
+  index: number;
+  field: string;
+  message: string;
+}
+
+function validateItems(rawItems: unknown[]): { errors: ItemValidationError[] } {
+  const errors: ItemValidationError[] = [];
+
+  for (let i = 0; i < rawItems.length; i++) {
+    const r = rawItems[i] as Record<string, unknown>;
+
+    // product_id (field name is `id` in stack items) — UUID if provided
+    if (r.id !== undefined && !isValidUUID(r.id)) {
+      errors.push({ index: i, field: 'id', message: 'id must be a valid UUID' });
+    }
+
+    // quantity: 1–100
+    if (r.quantity !== undefined) {
+      const qty = Number(r.quantity);
+      if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QUANTITY) {
+        errors.push({ index: i, field: 'quantity', message: `quantity must be an integer between 1 and ${MAX_QUANTITY}` });
+      }
+    }
+
+    // regular_price_cents: positive integer, max 100 000
+    if (r.regular_price_cents !== undefined) {
+      const price = Number(r.regular_price_cents);
+      if (!Number.isInteger(price) || price <= 0 || price > MAX_PRICE_CENTS) {
+        errors.push({ index: i, field: 'regular_price_cents', message: `regular_price_cents must be a positive integer, max ${MAX_PRICE_CENTS}` });
+      }
+    }
+
+    // offers / available_offers: max 10
+    const offersField = Array.isArray(r.offers) ? r.offers : Array.isArray(r.available_offers) ? r.available_offers : null;
+    if (offersField && offersField.length > MAX_OFFERS_PER_ITEM) {
+      errors.push({ index: i, field: 'offers', message: `offers must have at most ${MAX_OFFERS_PER_ITEM} entries per item` });
+    }
+  }
+
+  return { errors };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Request logging → ingestion_run_log
+// ─────────────────────────────────────────────────────────────
+
+async function logRequest(
+  db: ReturnType<typeof createClient>,
+  params: {
+    retailerKey: string;
+    stage: 'success' | 'error';
+    status: number;
+    metadata: Record<string, unknown>;
+  },
+): Promise<void> {
+  try {
+    await db.from('ingestion_run_log').insert({
+      source_key:   'stack-compute',
+      retailer_key: params.retailerKey,
+      stage:        params.stage,
+      status:       String(params.status),
+      metadata:     params.metadata,
+    });
+  } catch {
+    // Logging failure must never break the main request
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Utilities
 // ─────────────────────────────────────────────────────────────
 
@@ -190,16 +274,16 @@ async function loadPolicy(
 
   return {
     retailerKey,
-    maxStackItems:          policyNum(p['max_stack_items'],          DEFAULT_POLICY.maxStackItems),
-    allowedCouponTypes:     policyArr(p['allowed_coupon_types'],     DEFAULT_POLICY.allowedCouponTypes),
-    maxTotalCouponValueCents: policyNum(p['max_total_coupon_value'], DEFAULT_POLICY.maxTotalCouponValueCents),
-    maxManufacturerCoupons: policyNum(p['max_manufacturer_coupons'], DEFAULT_POLICY.maxManufacturerCoupons),
-    maxStoreCoupons:        policyNum(p['max_store_coupons'],        DEFAULT_POLICY.maxStoreCoupons),
-    roundingMode:           (p['rounding_mode']?.value as RoundingMode) ?? DEFAULT_POLICY.roundingMode,
-    blockSaleAndDigital:    policyBool(r['block_sale_and_digital'],  DEFAULT_POLICY.blockSaleAndDigital),
-    blockSaleAndLoyalty:    policyBool(r['block_sale_and_loyalty'],  DEFAULT_POLICY.blockSaleAndLoyalty),
-    blockBogoAndCoupon:     policyBool(r['block_bogo_and_coupon'],   DEFAULT_POLICY.blockBogoAndCoupon),
-    blockCouponAndLoyalty:  false,
+    maxStackItems:            policyNum(p['max_stack_items'],          DEFAULT_POLICY.maxStackItems),
+    allowedCouponTypes:       policyArr(p['allowed_coupon_types'],     DEFAULT_POLICY.allowedCouponTypes),
+    maxTotalCouponValueCents: policyNum(p['max_total_coupon_value'],   DEFAULT_POLICY.maxTotalCouponValueCents),
+    maxManufacturerCoupons:   policyNum(p['max_manufacturer_coupons'], DEFAULT_POLICY.maxManufacturerCoupons),
+    maxStoreCoupons:          policyNum(p['max_store_coupons'],        DEFAULT_POLICY.maxStoreCoupons),
+    roundingMode:             (p['rounding_mode']?.value as RoundingMode) ?? DEFAULT_POLICY.roundingMode,
+    blockSaleAndDigital:      policyBool(r['block_sale_and_digital'],  DEFAULT_POLICY.blockSaleAndDigital),
+    blockSaleAndLoyalty:      policyBool(r['block_sale_and_loyalty'],  DEFAULT_POLICY.blockSaleAndLoyalty),
+    blockBogoAndCoupon:       policyBool(r['block_bogo_and_coupon'],   DEFAULT_POLICY.blockBogoAndCoupon),
+    blockCouponAndLoyalty:    false,
   };
 }
 
@@ -335,7 +419,7 @@ function validateItem(
   const mfr = candidates.filter((o) => o.offerType === 'MANUFACTURER_COUPON');
   if (mfr.length > policy.maxManufacturerCoupons) {
     const sorted = [...mfr].sort((a, b) => (b.discountCents ?? 0) - (a.discountCents ?? 0));
-    const keep = sorted.slice(0, policy.maxManufacturerCoupons);
+    const keep   = sorted.slice(0, policy.maxManufacturerCoupons);
     const reject = sorted.slice(policy.maxManufacturerCoupons);
     for (const o of reject) {
       warnings.push({ code: 'MANUFACTURER_LIMIT', offerId: o.id, itemId: item.id, message: `Manufacturer coupon limit (${policy.maxManufacturerCoupons}) reached; rejected ${o.id}` });
@@ -380,9 +464,9 @@ function calculateLine(
   policy: RetailerPolicy,
 ): StackLineResult {
   const ordered = OFFER_ORDER.flatMap((t) => validOffers.filter((o) => o.offerType === t));
-  const qty = item.quantity;
+  const qty     = item.quantity;
   const regular = item.regularPriceCents;
-  let running = regular;
+  let running   = regular;
   let salePriceCents = regular;
   const appliedOffers: AppliedOffer[] = [];
   let lineRebateCents = 0;
@@ -401,14 +485,12 @@ function calculateLine(
     }
 
     else if (offer.offerType === 'BOGO') {
-      if (qty < 2) { continue; }
+      if (qty < 2) continue;
       const pairs = Math.floor(qty / 2);
       const model = offer.bogoModel ?? 'second_free';
       if (model === 'half_off_both') {
         running = applyRounding(running * 0.5, R);
       } else {
-        // second_free / cheapest_free: effective per-unit price = (2*price) / 2 = price — but 1 of each 2 is free
-        // We reduce per-unit price proportionally: savings = pairs * running / qty
         const savingsPerUnit = applyRounding((pairs * running) / qty, R);
         running = Math.max(0, running - savingsPerUnit);
       }
@@ -419,8 +501,8 @@ function calculateLine(
       const buyQ = offer.buyQty ?? 1;
       const getQ = offer.getQty ?? 1;
       if (qty >= buyQ + getQ) {
-        const freeSets = Math.floor(qty / (buyQ + getQ));
-        const freeUnits = freeSets * getQ;
+        const freeSets   = Math.floor(qty / (buyQ + getQ));
+        const freeUnits  = freeSets * getQ;
         const savingsPerUnit = applyRounding((freeUnits * running) / qty, R);
         running = Math.max(0, running - savingsPerUnit);
       } else { continue; }
@@ -454,26 +536,26 @@ function calculateLine(
     const saved = Math.max(0, before - after);
     if (saved > 0 || offer.offerType === 'REBATE') {
       appliedOffers.push({
-        offerId: offer.id,
-        offerType: offer.offerType,
-        description: offer.description,
-        savingsCents: saved,
-        appliedToQty: qty,
+        offerId:               offer.id,
+        offerType:             offer.offerType,
+        description:           offer.description,
+        savingsCents:          saved,
+        appliedToQty:          qty,
         runningPriceBeforeCents: before,
-        runningPriceAfterCents: after,
+        runningPriceAfterCents:  after,
       });
     }
   }
 
-  const finalPriceCents = Math.max(0, running);
+  const finalPriceCents  = Math.max(0, running);
   const lineTotalRegular = regular * qty;
   const lineTotalFinal   = finalPriceCents * qty;
 
   return {
-    itemId:              item.id,
-    itemName:            item.name,
-    quantity:            qty,
-    regularPriceCents:   regular,
+    itemId:               item.id,
+    itemName:             item.name,
+    quantity:             qty,
+    regularPriceCents:    regular,
     salePriceCents,
     finalPriceCents,
     lineTotalRegularCents: lineTotalRegular,
@@ -481,8 +563,8 @@ function calculateLine(
     lineSavingsCents:      lineTotalRegular - lineTotalFinal,
     lineRebateCents,
     appliedOffers,
-    rejectedOfferIds:    [],
-    warnings:            [],
+    rejectedOfferIds: [],
+    warnings:         [],
   };
 }
 
@@ -507,6 +589,8 @@ const json = (body: unknown, status = 200) =>
 // ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+  const startMs = Date.now();
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
@@ -518,65 +602,116 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Server misconfigured: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' }, 500);
   }
 
-  // Auth — JWT or service key header
+  // Auth — JWT required
   const authHeader = req.headers.get('authorization') ?? '';
   const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-  if (!authHeader.startsWith('Bearer ')) {
-    return json({ error: 'Unauthorized' }, 401);
-  }
+  if (!authHeader.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
   const jwt = authHeader.slice(7);
   const { data: userData, error: authErr } = await db.auth.getUser(jwt);
-  if (authErr || !userData?.user) {
-    return json({ error: 'Unauthorized' }, 401);
-  }
+  if (authErr || !userData?.user) return json({ error: 'Unauthorized' }, 401);
 
+  const jwtUserId = userData.user.id;
+
+  // Parse body
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
+    await logRequest(db, {
+      retailerKey: 'unknown',
+      stage:    'error',
+      status:   400,
+      metadata: { user_id: jwtUserId, duration_ms: Date.now() - startMs, error: 'Invalid JSON body' },
+    });
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const retailerKey = typeof body.retailer_key === 'string' ? body.retailer_key.toLowerCase() : '';
-  const basketId    = typeof body.basket_id    === 'string' ? body.basket_id    : crypto.randomUUID();
+  // ── Input validation ──────────────────────────────────────────
 
-  if (!retailerKey) return json({ error: 'retailer_key is required' }, 400);
+  // retailer_key: required, max 50 chars, alphanumeric + underscore
+  const retailerKeyRaw = body.retailer_key;
+  if (typeof retailerKeyRaw !== 'string' || !RETAILER_KEY_RE.test(retailerKeyRaw)) {
+    await logRequest(db, {
+      retailerKey: 'unknown',
+      stage:    'error',
+      status:   400,
+      metadata: { user_id: jwtUserId, duration_ms: Date.now() - startMs, error: 'retailer_key validation failed' },
+    });
+    return json({ error: 'retailer_key is required, alphanumeric with underscores only, max 50 characters' }, 400);
+  }
+  const retailerKey = retailerKeyRaw.toLowerCase();
 
+  // items: required, array, 1–50 items
   const rawItems = Array.isArray(body.items) ? body.items as unknown[] : [];
-  if (!rawItems.length) return json({ error: 'items array is required and must be non-empty' }, 400);
+  if (rawItems.length === 0) {
+    await logRequest(db, {
+      retailerKey,
+      stage:    'error',
+      status:   400,
+      metadata: { user_id: jwtUserId, duration_ms: Date.now() - startMs, error: 'items array is required and must be non-empty' },
+    });
+    return json({ error: 'items array is required and must be non-empty' }, 400);
+  }
+  if (rawItems.length > MAX_ITEMS) {
+    await logRequest(db, {
+      retailerKey,
+      stage:    'error',
+      status:   400,
+      metadata: { user_id: jwtUserId, duration_ms: Date.now() - startMs, error: `items must have at most ${MAX_ITEMS} entries` },
+    });
+    return json({ error: `items must have at most ${MAX_ITEMS} entries` }, 400);
+  }
+
+  // Per-item validation
+  const { errors: itemErrors } = validateItems(rawItems);
+  if (itemErrors.length > 0) {
+    const msg = itemErrors.map((e) => `items[${e.index}].${e.field}: ${e.message}`).join('; ');
+    await logRequest(db, {
+      retailerKey,
+      stage:    'error',
+      status:   400,
+      metadata: { user_id: jwtUserId, duration_ms: Date.now() - startMs, error: msg },
+    });
+    return json({ error: msg }, 400);
+  }
+
+  const basketId = typeof body.basket_id === 'string' ? body.basket_id : crypto.randomUUID();
 
   // Coerce raw items → StackItem
   const items: StackItem[] = rawItems.map((raw: unknown) => {
     const r = raw as Record<string, unknown>;
-    const rawOffers = Array.isArray(r.offers) ? r.offers as unknown[] : [];
+    // Support both `offers` and `available_offers` field names
+    const rawOffers = Array.isArray(r.offers) ? r.offers
+      : Array.isArray(r.available_offers) ? r.available_offers
+      : [] as unknown[];
     return {
-      id:                 String(r.id ?? crypto.randomUUID()),
-      name:               typeof r.name === 'string' ? r.name : undefined,
-      regularPriceCents:  typeof r.regular_price_cents === 'number' ? r.regular_price_cents : 0,
-      quantity:           typeof r.quantity === 'number' ? r.quantity : 1,
-      category:           typeof r.category === 'string' ? r.category : undefined,
-      brand:              typeof r.brand    === 'string' ? r.brand    : undefined,
-      offers: rawOffers.map((o: unknown) => {
+      id:                String(r.id ?? crypto.randomUUID()),
+      name:              typeof r.name === 'string' ? r.name : undefined,
+      regularPriceCents: typeof r.regular_price_cents === 'number' ? r.regular_price_cents : 0,
+      quantity:          typeof r.quantity === 'number' ? r.quantity : 1,
+      category:          typeof r.category === 'string' ? r.category : undefined,
+      brand:             typeof r.brand    === 'string' ? r.brand    : undefined,
+      offers: rawOffers.slice(0, MAX_OFFERS_PER_ITEM).map((o: unknown) => {
         const oo = o as Record<string, unknown>;
         return {
-          id:             String(oo.id ?? crypto.randomUUID()),
-          offerType:      String(oo.offer_type ?? 'SALE') as OfferType,
-          description:    typeof oo.description     === 'string' ? oo.description     : undefined,
-          discountCents:  typeof oo.discount_cents  === 'number' ? oo.discount_cents  : undefined,
-          discountPct:    typeof oo.discount_pct    === 'number' ? oo.discount_pct    : undefined,
-          finalPriceCents:typeof oo.final_price_cents === 'number' ? oo.final_price_cents : undefined,
-          bogoModel:      typeof oo.bogo_model      === 'string' ? oo.bogo_model as BogoModel : undefined,
-          buyQty:         typeof oo.buy_qty         === 'number' ? oo.buy_qty         : undefined,
-          getQty:         typeof oo.get_qty         === 'number' ? oo.get_qty         : undefined,
-          requiredQty:    typeof oo.required_qty    === 'number' ? oo.required_qty    : undefined,
-          maxRedemptions: typeof oo.max_redemptions === 'number' ? oo.max_redemptions : undefined,
-          stackable:      typeof oo.stackable       === 'boolean' ? oo.stackable      : true,
-          exclusionGroup: typeof oo.exclusion_group === 'string' ? oo.exclusion_group : undefined,
-          priority:       typeof oo.priority        === 'number' ? oo.priority        : undefined,
-          expiresAt:      typeof oo.expires_at      === 'string' ? oo.expires_at      : undefined,
-          couponType:     typeof oo.coupon_type     === 'string' ? oo.coupon_type     : undefined,
-          rebateCents:    typeof oo.rebate_cents    === 'number' ? oo.rebate_cents    : undefined,
+          id:              String(oo.id ?? crypto.randomUUID()),
+          offerType:       String(oo.offer_type ?? 'SALE') as OfferType,
+          description:     typeof oo.description      === 'string' ? oo.description      : undefined,
+          discountCents:   typeof oo.discount_cents   === 'number' ? oo.discount_cents   : undefined,
+          discountPct:     typeof oo.discount_pct     === 'number' ? oo.discount_pct     : undefined,
+          finalPriceCents: typeof oo.final_price_cents === 'number' ? oo.final_price_cents : undefined,
+          bogoModel:       typeof oo.bogo_model       === 'string' ? oo.bogo_model as BogoModel : undefined,
+          buyQty:          typeof oo.buy_qty          === 'number' ? oo.buy_qty          : undefined,
+          getQty:          typeof oo.get_qty          === 'number' ? oo.get_qty          : undefined,
+          requiredQty:     typeof oo.required_qty     === 'number' ? oo.required_qty     : undefined,
+          maxRedemptions:  typeof oo.max_redemptions  === 'number' ? oo.max_redemptions  : undefined,
+          stackable:       typeof oo.stackable        === 'boolean' ? oo.stackable       : true,
+          exclusionGroup:  typeof oo.exclusion_group  === 'string' ? oo.exclusion_group  : undefined,
+          priority:        typeof oo.priority         === 'number' ? oo.priority         : undefined,
+          expiresAt:       typeof oo.expires_at       === 'string' ? oo.expires_at       : undefined,
+          couponType:      typeof oo.coupon_type      === 'string' ? oo.coupon_type      : undefined,
+          rebateCents:     typeof oo.rebate_cents     === 'number' ? oo.rebate_cents     : undefined,
         } as StackOffer;
       }),
     };
@@ -586,11 +721,11 @@ Deno.serve(async (req: Request) => {
   const policy = await loadPolicy(db, retailerKey);
 
   // Run validation + calculation per item
-  const allWarnings:   StackWarning[] = [];
-  const allRejected:   string[]       = [];
-  const allApplied:    AppliedOffer[] = [];
+  const allWarnings:   StackWarning[]    = [];
+  const allRejected:   string[]          = [];
+  const allApplied:    AppliedOffer[]    = [];
   const lines:         StackLineResult[] = [];
-  const mfrCount = { n: 0 };
+  const mfrCount   = { n: 0 };
   const storeCount = { n: 0 };
 
   for (const item of items) {
@@ -609,7 +744,6 @@ Deno.serve(async (req: Request) => {
   const inStackSavings     = lines.reduce((s, l) => s + l.lineSavingsCents,      0);
   const rebateCents        = lines.reduce((s, l) => s + l.lineRebateCents,       0);
 
-  // Explanation summary
   const pctSaved = basketRegularCents > 0
     ? ((inStackSavings / basketRegularCents) * 100).toFixed(1)
     : '0.0';
@@ -624,32 +758,43 @@ Deno.serve(async (req: Request) => {
     lines,
     basketRegularCents,
     basketFinalCents,
-    totalSavingsCents:     inStackSavings + rebateCents,
-    inStackSavingsCents:   inStackSavings,
+    totalSavingsCents:   inStackSavings + rebateCents,
+    inStackSavingsCents: inStackSavings,
     rebateCents,
-    appliedOffers:  allApplied,
-    warnings:       allWarnings,
-    rejectedOfferIds: [...new Set(allRejected)],
+    appliedOffers:       allApplied,
+    warnings:            allWarnings,
+    rejectedOfferIds:    [...new Set(allRejected)],
     explanationSummary,
-    computedAt:     new Date().toISOString(),
+    computedAt:          new Date().toISOString(),
     modelVersion,
   };
 
   // Optionally persist to stack_results
-  const shouldPersist = body.persist === true;
-  if (shouldPersist) {
+  if (body.persist === true) {
     await db.from('stack_results').insert([{
-      user_id:         userData.user.id,
-      retailer_key:    retailerKey,
-      model_version:   modelVersion,
-      variant_type:    'computed',
-      candidate:       result,
-      budget_fit:      0,
-      preference_fit:  0,
+      user_id:          jwtUserId,
+      retailer_key:     retailerKey,
+      model_version:    modelVersion,
+      variant_type:     'computed',
+      candidate:        result,
+      budget_fit:       0,
+      preference_fit:   0,
       simplicity_score: 0,
-      score:           0,
+      score:            0,
     }]);
   }
+
+  // Log success
+  await logRequest(db, {
+    retailerKey,
+    stage:    'success',
+    status:   200,
+    metadata: {
+      user_id:     jwtUserId,
+      duration_ms: Date.now() - startMs,
+      item_count:  items.length,
+    },
+  });
 
   return json({ status: 'ok', result });
 });

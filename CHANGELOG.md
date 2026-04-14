@@ -3,8 +3,35 @@ Auto-maintained by Claude Code. Updated after every change.
 Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
+
+## [0.3.0] — 2026-04-13
+
+### Added
+- `supabase/migrations/002_rls_hardening.sql` — Enables RLS on `stack_results` (read own policy); adds `api_rate_limit_log` table (service-role only, used for rate limiting); adds `recommendation_exposures` UPDATE policy for authenticated users; adds `source_key`, `stage`, `metadata` columns to `ingestion_run_log` and makes `week_of` nullable so Edge Functions can write request logs.
+- `src/lib/neo4jClient.ts` — Neo4j driver singleton (`getSession`, `verifyConnectivity`, `closeDriver`, `isNeo4jConfigured`). Reads `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`, `NEO4J_DATABASE` env vars.
+- `src/services/graph/graphSchema.ts` — `initializeSchema(session)`: 7 node uniqueness constraints + 6 property/relationship indexes, all `IF NOT EXISTS`. Documents 10 relationship types.
+- `src/services/graph/graphSync.ts` — `runGraphSync(db, session)`: syncs active users' preference scores, purchase history (90 days), cart acceptance events, and product co-occurrences into Neo4j nightly. Orchestrates `syncCohortSimilarity`.
+- `src/services/graph/graphRetrieval.ts` — `getUserGraphContext(userId)`: 6 Cypher queries + 2 cohort lookups in parallel. Full graceful degradation. `getRelatedProducts(key)`: top-5 co-occurring products.
+- `src/services/graph/graphCohort.ts` — `syncCohortSimilarity(session)`: pairwise cosine similarity, writes `SHOWS_PATTERN` edges. `getCohortPreferences` and `getCohortBrandPreferences`.
+
+### Changed
+- `supabase/functions/ingest-event/index.ts` — Added: rate limiting (200 req/user/hour via `api_rate_limit_log`, 1% cleanup of records > 2h old, 429 with `retry_after_seconds: 60`); strict input validation (event_name max 100 chars, session_id UUID, retailer_key alphanumeric+underscore max 50, category max 100, metadata max 10 keys depth ≤ 2, unknown field rejection); request logging to `ingestion_run_log` on every success and error with `source_key`, `stage`, `status`, `metadata`.
+- `supabase/functions/stack-compute/index.ts` — Added: enhanced input validation (retailer_key pattern, items max 50, per-item UUID check, quantity 1–100, price ≤ 100 000 cents, offers max 10 per item); request logging to `ingestion_run_log`; supports `available_offers` as alias for `offers` in item payloads.
+- `src/services/cartEngine.ts` — Integrated Neo4j graph context: rejected-category skip; category ×1.15; buy history +0.20; co-occurrence +0.10; cohort category +0.08; cohort brand +0.06.
+
 ### Fixed
-- `.github/workflows/nightly-graph-sync.yml` — converted `options` from inline YAML array (`['false', 'true']`) to block list format so GitHub Actions registers the workflow and shows the "Run workflow" button.
+- `.github/workflows/nightly-graph-sync.yml` — converted `options` from inline YAML array to block list format so GitHub Actions registers the workflow.
+
+### Database
+- `stack_results` — RLS enabled; `stack_results_select_own` policy added.
+- `model_predictions` — Removed `model_predictions_select_own` policy; service role only.
+- `recommendation_exposures` — Added `recommendation_exposures_update_own` policy (authenticated users can update their own rows).
+- `api_rate_limit_log` — New table: `id`, `user_id`, `function_name`, `request_at`. RLS enabled, service role only.
+- `ingestion_run_log` — Added columns: `source_key text`, `stage text`, `metadata jsonb`. `week_of` made nullable.
+
+### API
+- `POST /functions/v1/ingest-event` — Rate limited: 200 req/user/hour. Strict field whitelist. Validation errors return 400 with descriptive message. Rate limit returns 429 `{ error, retry_after_seconds: 60 }`.
+- `POST /functions/v1/stack-compute` — Validates retailer_key pattern, items count (1–50), per-item fields (UUID, qty 1–100, price ≤ $1000). Supports `available_offers` alias.
 
 ### Added
 - `.github/workflows/nightly-graph-sync.yml` — GitHub Actions cron at `0 2 * * *` (02:00 UTC). Steps: checkout → Node 20 setup → `npm ci` → Neo4j connectivity check → `graphSchema.ts` (idempotent schema check) → `graphSync.ts` (full sync). `workflow_dispatch` with `skip_co_occurrences` and `skip_cohort` inputs for manual partial runs. Posts run summary to GitHub Actions step summary.

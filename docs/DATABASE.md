@@ -123,6 +123,7 @@ Tracks every recommendation shown to a user, with click/accept/dismiss outcomes.
 
 **RLS**
 - `recommendation_exposures_select_own` — SELECT own rows only
+- `recommendation_exposures_update_own` — UPDATE own rows only (added in migration 002; used by client SDK to mark outcomes)
 
 **Analytics view**
 - `v_recommendation_funnel` — groups by `recommendation_type + model_version`, shows click/accept/dismiss rates
@@ -205,6 +206,9 @@ Stores raw model prediction scores for audit and training.
 
 **Indexes**
 - `idx_model_pred_user` — `(user_id, created_at DESC)`
+
+**RLS**
+- RLS is enabled. **No user-facing policy** — service role only (reads bypass RLS by default). Authenticated users cannot read prediction rows directly. (Migration 002 removed the previous `model_predictions_select_own` policy.)
 
 **RLS**
 - `model_predictions_select_own` — SELECT own rows only
@@ -342,6 +346,9 @@ Computed `StackResult` objects, optionally persisted by the stacking engine.
 
 **Indexes**
 - `idx_stack_results_user` — `(user_id, retailer_key, variant_type, created_at DESC)`
+
+**RLS** *(added in migration 002)*
+- `stack_results_select_own` — authenticated users can SELECT their own rows
 
 **Analytics view**
 - `v_stack_performance` — average scores by retailer_key + variant_type
@@ -531,17 +538,45 @@ Audit log written after `normalizeAndPublish()` completes.
 
 ### ingestion_run_log
 
-One row per ingestion worker run (success or failure).
+One row per ingestion worker run **or Edge Function request**. Dual-purpose after migration 002: pipeline rows use `ingestion_id + week_of`; Edge Function rows use `source_key + stage`.
 
 | Column | Type | Notes |
 |---|---|---|
-| `ingestion_id` | uuid | FK → `ingestion_jobs` |
-| `status` | text | `completed` \| `failed` \| `retryable` |
-| `deals_extracted` | int | |
-| `deals_published` | int | |
-| `coupons_matched` | int | |
-| `candidates_written` | int | |
-| `error_message` | text | |
+| `ingestion_id` | uuid | FK → `ingestion_jobs` (null for Edge Function rows) |
+| `retailer_key` | text NOT NULL | Retailer context |
+| `week_of` | date | Nullable since migration 002 (null for Edge Function rows) |
+| `status` | text NOT NULL | Pipeline: `completed\|failed\|retryable`; Edge Function: HTTP status code e.g. `200`, `429` |
+| `source_key` | text | `ingest-event` or `stack-compute` (null for pipeline rows) |
+| `stage` | text | `success` or `error` (null for pipeline rows) |
+| `metadata` | jsonb | `{ user_id, duration_ms, event_count or item_count }` |
+| `deals_extracted` | int DEFAULT 0 | Pipeline only |
+| `deals_published` | int DEFAULT 0 | Pipeline only |
+| `coupons_matched` | int DEFAULT 0 | Pipeline only |
+| `candidates_written` | int DEFAULT 0 | Pipeline only |
+| `error_message` | text | Pipeline error detail |
+
+**Indexes**
+- `idx_ingestion_run_log_job` — `(ingestion_id, created_at DESC)`
+- `idx_ingestion_run_log_source_stage` — `(source_key, stage, created_at DESC) WHERE source_key IS NOT NULL` *(migration 002)*
+
+---
+
+### api_rate_limit_log
+
+One row per ingest-event request, used to enforce 200 req/user/hour rate limiting. Records older than 2 hours are pruned on ~1% of requests.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL | JWT user being rate-limited |
+| `function_name` | text NOT NULL DEFAULT 'ingest-event' | Source function |
+| `request_at` | timestamptz NOT NULL DEFAULT now() | |
+
+**Indexes**
+- `idx_api_rate_limit_user_time` — `(user_id, request_at DESC)` — used for per-user hourly count queries
+
+**RLS**
+- RLS enabled. No user-facing policy — service role only.
 
 ---
 

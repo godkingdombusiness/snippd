@@ -413,6 +413,7 @@ The graph services sync Supabase behavioral data into Neo4j and retrieve context
 | `NEO4J_URI` | `neo4j+s://xxxx.databases.neo4j.io` | Neo4j Aura or self-hosted URI |
 | `NEO4J_USER` | `neo4j` | Database user (default: `neo4j`) |
 | `NEO4J_PASSWORD` | `<password>` | Database password |
+| `NEO4J_DATABASE` | `neo4j` | Database name. On AuraDB Free set this to the instance ID (it differs from `'neo4j'`). Defaults to `'neo4j'` if unset. |
 
 ### neo4jClient
 
