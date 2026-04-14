@@ -124,10 +124,10 @@ async function enforceRateLimit(
 ): Promise<{ limited: boolean; count: number }> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-  // Insert this request's record
+  // Insert this request's record (column is 'endpoint' on the live table)
   await db.from('api_rate_limit_log').insert({
-    user_id: userId,
-    function_name: 'ingest-event',
+    user_id:  userId,
+    endpoint: 'ingest-event',
   });
 
   // Count all records (including the one just inserted) in the last hour
