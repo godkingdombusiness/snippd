@@ -14,13 +14,17 @@ on:
         required: false
         default: 'false'
         type: choice
-        options: ['false', 'true']
+        options:
+          - 'false'
+          - 'true'
       skip_cohort:
         description: 'Skip cohort similarity computation'
         required: false
         default: 'false'
         type: choice
-        options: ['false', 'true']
+        options:
+          - 'false'
+          - 'true'
 
 jobs:
   graph-sync:
