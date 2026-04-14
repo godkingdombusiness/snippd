@@ -3,6 +3,9 @@ Auto-maintained by Claude Code. Updated after every change.
 Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
+### Fixed
+- `.github/workflows/nightly-graph-sync.yml` — converted `options` from inline YAML array (`['false', 'true']`) to block list format so GitHub Actions registers the workflow and shows the "Run workflow" button.
+
 ### Added
 - `.github/workflows/nightly-graph-sync.yml` — GitHub Actions cron at `0 2 * * *` (02:00 UTC). Steps: checkout → Node 20 setup → `npm ci` → Neo4j connectivity check → `graphSchema.ts` (idempotent schema check) → `graphSync.ts` (full sync). `workflow_dispatch` with `skip_co_occurrences` and `skip_cohort` inputs for manual partial runs. Posts run summary to GitHub Actions step summary.
 - `scripts/set-github-secrets.sh` — reads `.env` and pushes all 6 required secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`) to GitHub Actions via `gh secret set`.
