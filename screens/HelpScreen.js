@@ -142,7 +142,7 @@ const CONTACT_OPTIONS = [
     key: 'privacy',
     title: 'Privacy Policy',
     sub: 'How we handle your data',
-    action: () => Linking.openURL('https://getsnippd.com/privacy'),
+    action: null, // resolved at render time via navigation
   },
 ];
 
@@ -312,7 +312,7 @@ export default function HelpScreen({ navigation }) {
                     styles.contactRow,
                     i === arr.length - 1 && { borderBottomWidth: 0 },
                   ]}
-                  onPress={opt.action}
+                  onPress={opt.key === 'privacy' ? () => navigation.navigate('PrivacyPolicy') : opt.action}
                   activeOpacity={0.8}
                 >
                   <View style={styles.contactInfo}>

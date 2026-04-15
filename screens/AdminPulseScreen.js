@@ -288,6 +288,38 @@ export default function AdminPulseScreen({ navigation }) {
           <Feather name="chevron-right" size={18} color={GRAY} />
         </TouchableOpacity>
 
+        {/* ── CIRCULAR UPLOAD ───────────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.graphViewerBtn}
+          onPress={() => navigation.navigate('AdminCircularUpload')}
+          activeOpacity={0.82}
+        >
+          <View style={styles.graphViewerLeft}>
+            <Feather name="upload-cloud" size={20} color={GREEN} />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.graphViewerTitle}>Circular Upload</Text>
+              <Text style={styles.graphViewerSub}>Upload weekly flyers · queue ingestion jobs</Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={18} color={GRAY} />
+        </TouchableOpacity>
+
+        {/* ── ANALYTICS DASHBOARD ──────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.graphViewerBtn}
+          onPress={() => navigation.navigate('AdminAnalytics')}
+          activeOpacity={0.82}
+        >
+          <View style={styles.graphViewerLeft}>
+            <Feather name="bar-chart-2" size={20} color={GREEN} />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.graphViewerTitle}>Analytics Dashboard</Text>
+              <Text style={styles.graphViewerSub}>Pipeline health · savings · Vertex readiness</Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={18} color={GRAY} />
+        </TouchableOpacity>
+
         <View style={{ height: 48 }} />
 
       </ScrollView>

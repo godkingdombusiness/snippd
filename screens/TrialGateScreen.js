@@ -21,7 +21,7 @@ const PERKS = [
 
 export default function TrialGateScreen({ navigation }) {
   const handleSignOut = () => {
-    supabase.auth.signOut();
+    supabase.auth.signOut({ scope: 'global' });
   };
 
   return (

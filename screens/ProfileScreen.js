@@ -32,6 +32,7 @@ const MENU_SECTIONS = [
       { label: 'Edit Profile',        screen: 'EditProfile' },
       { label: 'Preferred Stores',    screen: 'PreferredStores' },
       { label: 'Budget Preferences',  screen: 'BudgetPreferences' },
+      { label: 'Nutrition profile',   screen: 'NutritionProfile' },
     ],
   },
   {
@@ -57,7 +58,7 @@ const MENU_SECTIONS = [
     title: 'Support',
     items: [
       { label: 'Help and Support', screen: 'Help' },
-      { label: 'Privacy Policy',   action: 'alert' },
+      { label: 'Privacy Policy',   screen: 'PrivacyPolicy' },
     ],
   },
 ];
@@ -69,6 +70,7 @@ export default function ProfileScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [wealthData, setWealthData] = useState(null);
 
   const performGlobalReset = () => resetToScreen('Auth');
 
@@ -84,6 +86,20 @@ export default function ProfileScreen({ navigation }) {
         .eq('user_id', user.id)
         .single();
       if (profileRes) setProfile(profileRes);
+
+      // Fetch wealth momentum summary
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        try {
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/get-wealth-momentum`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+          });
+          if (resp.ok) {
+            const wm = await resp.json();
+            setWealthData(wm);
+          }
+        } catch { /* wealth data is non-critical */ }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -100,30 +116,17 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleSignOut = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to log out of Snippd?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setSigningOut(true);
-            await supabase.auth.signOut();
-            performGlobalReset();
-          } catch (e) {
-            performGlobalReset();
-          } finally {
-            setSigningOut(false);
-          }
-        },
-      },
-    ]);
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (e) {
+      console.warn('signOut error', e);
+    }
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'This will permanently delete your account and all saved data. This cannot be undone.',
+      'This permanently deletes your account and all your data. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -131,33 +134,20 @@ export default function ProfileScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              setDeleting(true);
-              const { data: { session } } = await supabase.auth.getSession();
-              const token = session?.access_token;
-              if (!token) throw new Error('No active session');
-
-              const res = await fetch(
-                `${SUPABASE_URL}/functions/v1/delete-account`,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                  },
-                },
-              );
-              const body = await res.json();
-              if (!res.ok) throw new Error(body.error ?? 'Delete failed');
-
-              // Sign out locally after server confirms deletion
-              await supabase.auth.signOut();
-              performGlobalReset();
+              const { error } = await supabase
+                .rpc('delete_my_account');
+              if (error) throw error;
+              await supabase.auth.signOut({
+                scope: 'local'
+              });
             } catch (e) {
-              setDeleting(false);
-              Alert.alert('Error', e.message || 'Could not delete account. Please try again.');
+              Alert.alert(
+                'Error',
+                e?.message ?? 'Could not delete account. Try again.'
+              );
             }
-          },
-        },
+          }
+        }
       ]
     );
   };
@@ -190,6 +180,34 @@ export default function ProfileScreen({ navigation }) {
             </View>
         </View>
 
+        {wealthData && (
+          <View style={styles.wealthCard}>
+            <Text style={styles.wealthTitle}>Wealth Momentum</Text>
+            <View style={styles.wealthRow}>
+              <View style={styles.wealthStat}>
+                <Text style={styles.wealthValue}>
+                  ${((wealthData.lifetime_wealth_created ?? 0) / 100).toFixed(2)}
+                </Text>
+                <Text style={styles.wealthLabel}>Lifetime Saved</Text>
+              </View>
+              <View style={styles.wealthDivider} />
+              <View style={styles.wealthStat}>
+                <Text style={[styles.wealthValue, { color: GREEN }]}>
+                  ${((wealthData.current_velocity ?? 0) / 100).toFixed(2)}/wk
+                </Text>
+                <Text style={styles.wealthLabel}>Velocity</Text>
+              </View>
+              <View style={styles.wealthDivider} />
+              <View style={styles.wealthStat}>
+                <Text style={styles.wealthValue}>
+                  ${((wealthData.inflation_shield_total ?? 0) / 100).toFixed(2)}
+                </Text>
+                <Text style={styles.wealthLabel}>Inflation Shield</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {MENU_SECTIONS.map(section => (
           <View key={section.title} style={styles.menuSection}>
             <Text style={styles.menuSectionTitle}>{section.title}</Text>
@@ -206,8 +224,17 @@ export default function ProfileScreen({ navigation }) {
                     }
                   }}
                 >
-                   <Text style={styles.menuLabel}>{item.label}</Text>
-                   <Text style={styles.menuArrow}>›</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuLabel}>{item.label}</Text>
+                    {item.screen === 'NutritionProfile' && (
+                      <Text style={styles.menuSub}>
+                        {profile?.nutrition_profile_set
+                          ? 'Calorie targets set'
+                          : 'Set up household calories'}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.menuArrow}>›</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -257,9 +284,17 @@ const styles = StyleSheet.create({
   menuCard: { backgroundColor: WHITE, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: BORDER },
   menuRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 18, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   menuLabel: { fontSize: 15, color: NAVY },
+  menuSub:   { fontSize: 12, color: GRAY, marginTop: 2 },
   menuArrow: { fontSize: 20, color: '#D1D5DB' },
   signOutBtn: { backgroundColor: WHITE, borderRadius: 18, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: BORDER },
   signOutBtnTxt: { fontSize: 16, fontWeight: 'bold', color: NAVY },
   deleteBtn: { backgroundColor: '#FEF2F2', borderRadius: 18, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
-  deleteBtnTxt: { fontSize: 15, fontWeight: 'bold', color: RED }
+  deleteBtnTxt: { fontSize: 15, fontWeight: 'bold', color: RED },
+  wealthCard: { backgroundColor: WHITE, borderRadius: 20, marginHorizontal: 20, marginTop: 20, padding: 16, borderWidth: 1, borderColor: BORDER, ...SHADOW },
+  wealthTitle: { fontSize: 11, fontWeight: 'bold', color: GRAY, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
+  wealthRow: { flexDirection: 'row', alignItems: 'center' },
+  wealthStat: { flex: 1, alignItems: 'center' },
+  wealthValue: { fontSize: 15, fontWeight: 'bold', color: NAVY, marginBottom: 2 },
+  wealthLabel: { fontSize: 10, color: GRAY },
+  wealthDivider: { width: 1, height: 28, backgroundColor: BORDER },
 });

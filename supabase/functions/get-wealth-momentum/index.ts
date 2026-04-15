@@ -12,6 +12,15 @@ const json = (body: unknown, status = 200) =>
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 
+function logRequest(db: ReturnType<typeof createClient>, stage: string, status: string, meta?: Record<string, unknown>) {
+  db.from('ingestion_run_log').insert({
+    source_key: 'get-wealth-momentum',
+    stage,
+    status,
+    metadata: meta ?? null,
+  }).then(() => {}).catch(() => {});
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS });
@@ -93,6 +102,7 @@ Deno.serve(async (req: Request) => {
       inflation_offset: snap.inflation_offset || 0,
     }));
 
+    logRequest(supabase, 'fetch', '200', { user_id: user.id, snapshot_count: snapshots?.length ?? 0 });
     return json({
       success: true,
       data: {
@@ -107,6 +117,11 @@ Deno.serve(async (req: Request) => {
 
   } catch (error) {
     console.error('[get-wealth-momentum]', error);
+    const supabaseUrl2 = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceKey2  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    if (supabaseUrl2 && serviceKey2) {
+      logRequest(createClient(supabaseUrl2, serviceKey2), 'fetch', '500', { error: String(error) });
+    }
     return json({
       error: error.message || 'Internal server error',
       success: false

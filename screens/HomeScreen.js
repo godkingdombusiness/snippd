@@ -8,7 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { tracker } from '../lib/eventTracker';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -47,6 +49,24 @@ export default function HomeScreen({ navigation }) {
   const [savingsTotal, setSavingsTotal] = useState(0);
   const [initials, setInitials] = useState('??');
   const [credits, setCredits] = useState(0);
+  const [showPlanBanner, setShowPlanBanner] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const dayOfWeek = new Date().getDay(); // 0=Sun, 3=Wed, 4=Thu, 5=Fri
+        const isWedToFri = dayOfWeek >= 3 && dayOfWeek <= 5;
+        const neverViewed = !(await AsyncStorage.getItem('weekly_plan_last_viewed'));
+        if (!isWedToFri && !neverViewed) return;
+        const shownAt = await AsyncStorage.getItem('plan_banner_shown_at');
+        if (shownAt) {
+          const ageHours = (Date.now() - new Date(shownAt).getTime()) / (1000 * 60 * 60);
+          if (ageHours < 24) return;
+        }
+        setShowPlanBanner(true);
+      } catch { /* non-critical */ }
+    })();
+  }, []);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -76,7 +96,18 @@ export default function HomeScreen({ navigation }) {
     setRefreshing(false);
   }, []);
 
-  useFocusEffect(useCallback(() => { fetchProfile(); }, [fetchProfile]));
+  useFocusEffect(useCallback(() => {
+    fetchProfile();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user?.id) return;
+      tracker.trackEvent({
+        event_name: 'HOME_FEED_VIEWED',
+        user_id:    session.user.id,
+        session_id: session.access_token || String(Date.now()),
+        screen_name: 'HomeScreen',
+      });
+    });
+  }, [fetchProfile]));
 
   const handlePress = (routeName, params = {}) => {
     if (navigation) navigation.navigate(routeName, params);
@@ -230,6 +261,22 @@ export default function HomeScreen({ navigation }) {
             <HubAction icon="video" label="Studio" onPress={() => handlePress('StudioTab')} />
         </View>
 
+        {/* WEEKLY PLAN BANNER */}
+        {showPlanBanner && (
+          <TouchableOpacity
+            style={styles.planBanner}
+            activeOpacity={0.88}
+            onPress={() => navigation.navigate('PlanTab')}
+          >
+            <View style={styles.planBannerAccent} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.planBannerTitle}>This week's dinner plan is ready</Text>
+              <Text style={styles.planBannerSub}>5 nights of deals — tap to build your plan</Text>
+            </View>
+            <Feather name="calendar" size={20} color="#0C7A3D" />
+          </TouchableOpacity>
+        )}
+
         {/* BANNERS */}
         <Banner icon="video-outline" title="Join the Studio" sub="Create content & earn credits." onPress={() => handlePress('StudioTab')} />
         <Banner icon="barcode-scan" title="Snap My Receipt" sub="Earn 5 credits instantly." onPress={() => handlePress('ReceiptUpload')} />
@@ -302,6 +349,10 @@ const styles = StyleSheet.create({
   hubActionItem: { alignItems: 'center' },
   hubActionSquare: { width: 62, height: 62, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 8, borderWidth: 1, borderColor: BRAND.border, backgroundColor: 'white', ...CARD_SHADOW },
   hubActionLabel: { fontSize: 12, color: BRAND.darkSection, fontWeight: 'bold' },
+  planBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: BRAND.white, borderRadius: 14, marginTop: 14, padding: 14, borderWidth: 1, borderColor: '#BBF7D0', overflow: 'hidden' },
+  planBannerAccent: { width: 4, borderRadius: 2, alignSelf: 'stretch', backgroundColor: '#0C7A3D', marginRight: 12 },
+  planBannerTitle: { fontSize: 14, fontWeight: '700', color: BRAND.darkSection, marginBottom: 2 },
+  planBannerSub: { fontSize: 12, color: BRAND.greyText },
   unifiedBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: BRAND.white, padding: 16, borderRadius: 20, borderWidth: 1.5, borderColor: BRAND.primaryGreen, marginTop: 12 },
   bannerIconContainer: { width: 40, height: 40, borderRadius: 10, backgroundColor: BRAND.mintPop, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
   bannerTitle: { fontSize: 15, color: BRAND.darkSection, fontWeight: 'bold' },

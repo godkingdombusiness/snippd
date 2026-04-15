@@ -4,6 +4,7 @@ import {
   TouchableOpacity, Alert, Dimensions,
   ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 
@@ -595,6 +596,24 @@ export default function StudioScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* ── WEEKLY PLAN CARD ─────────────────────────────────────────────── */}
+        <View style={styles.pad}>
+          <TouchableOpacity
+            style={styles.planCard}
+            activeOpacity={0.88}
+            onPress={() => navigation.navigate('PlanTab')}
+          >
+            <View style={styles.planCardLeft}>
+              <Text style={styles.planCardEyebrow}>THIS WEEK</Text>
+              <Text style={styles.planCardTitle}>5 dinners built from deals</Text>
+              <Text style={styles.planCardSub}>See what's on sale and plan your week</Text>
+            </View>
+            <View style={styles.planCardIcon}>
+              <Feather name="calendar" size={24} color="#0C7A3D" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* ── EARNINGS INFO ───────────────────────────────────────────────── */}
         <View style={styles.pad}>
           <View style={styles.earningsCard}>
@@ -799,6 +818,23 @@ const styles = StyleSheet.create({
   createBtnLocked: { backgroundColor: '#C4C9D6', shadowOpacity: 0 },
   createBtnPlus: { fontSize: 22, color: WHITE, fontWeight: 'normal', lineHeight: 26 },
   createBtnTxt: { fontSize: 16, fontWeight: 'bold', color: WHITE },
+
+  // PLAN CARD
+  planCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F0FAF5', borderRadius: 14,
+    borderWidth: 1, borderColor: '#BBF7D0',
+    padding: 16,
+  },
+  planCardLeft: { flex: 1 },
+  planCardEyebrow: { fontSize: 9, fontWeight: '700', color: '#0C7A3D', letterSpacing: 1.2, marginBottom: 4 },
+  planCardTitle: { fontSize: 15, fontWeight: '700', color: '#0D1B4B', marginBottom: 2 },
+  planCardSub: { fontSize: 12, color: '#64748B' },
+  planCardIcon: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center',
+    marginLeft: 12,
+  },
 
   // EARNINGS
   earningsCard: {

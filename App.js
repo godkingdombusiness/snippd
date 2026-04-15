@@ -12,6 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { Feather } from '@expo/vector-icons'; 
 import { supabase } from './lib/supabase';
+import { tracker } from './src/lib/eventTracker';
 
 // ── TAB SCREENS ──────────────────────────────────────────────────────────────
 import HomeScreen from './screens/HomeScreen';
@@ -22,6 +23,7 @@ import ProfileScreen from './screens/ProfileScreen';
 
 // ── STACK SCREENS ────────────────────────────────────────────────────────────
 import AuthScreen from './screens/AuthScreen';
+import SignInScreen from './screens/SignInScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import StackDetailScreen from './screens/StackDetailScreen';
 import WinsScreen from './screens/WinsScreen';
@@ -53,6 +55,12 @@ import CategoryInsightScreen from './screens/CategoryInsightScreen';
 import { useSessionGuard } from './lib/sessionGuard';
 import { TrialProvider, useTrialStatus } from './lib/trialContext';
 import TrialGateScreen from './screens/TrialGateScreen';
+import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
+import AdminCircularUploadScreen from './screens/AdminCircularUploadScreen';
+import AdminAnalyticsDashboardScreen from './screens/AdminAnalyticsDashboardScreen';
+import WeeklyPlanScreen from './screens/WeeklyPlanScreen';
+import WeeklyPlanPersonalizationScreen from './screens/WeeklyPlanPersonalizationScreen';
+import NutritionProfileScreen from './screens/NutritionProfileScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -60,6 +68,7 @@ const Stack = createNativeStackNavigator();
 // ── PER-TAB STACK NAVIGATORS ─────────────────────────────────────────────────
 const HomeStackNav     = createNativeStackNavigator();
 const DiscoverStackNav = createNativeStackNavigator();
+const PlanStackNav     = createNativeStackNavigator();
 const CartStackNav     = createNativeStackNavigator();
 const StudioStackNav   = createNativeStackNavigator();
 const ProfileStackNav  = createNativeStackNavigator();
@@ -109,6 +118,7 @@ function HomeStack() {
       <HomeStackNav.Screen name="BudgetPreferences"  component={BudgetPreferencesScreen} />
       <HomeStackNav.Screen name="BudgetDashboard"    component={BudgetDashboardScreen} />
       <HomeStackNav.Screen name="CategoryInsight"    component={CategoryInsightScreen} />
+      <HomeStackNav.Screen name="PrivacyPolicy"      component={PrivacyPolicyScreen} />
     </HomeStackNav.Navigator>
   );
 }
@@ -123,6 +133,17 @@ function DiscoverStack() {
       <DiscoverStackNav.Screen name="Cart"        component={CartScreen} options={{ presentation: 'modal' }} />
       <DiscoverStackNav.Screen name="ChefStash"   component={ChefStashScreen} />
     </DiscoverStackNav.Navigator>
+  );
+}
+
+// ── PLAN STACK ───────────────────────────────────────────────────────────────
+function PlanStack() {
+  return (
+    <PlanStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <PlanStackNav.Screen name="WeeklyPlanPersonalization" component={WeeklyPlanPersonalizationScreen} />
+      <PlanStackNav.Screen name="WeeklyPlan"                component={WeeklyPlanScreen} />
+      <PlanStackNav.Screen name="NutritionProfile"          component={NutritionProfileScreen} />
+    </PlanStackNav.Navigator>
   );
 }
 
@@ -172,7 +193,11 @@ function ProfileStack() {
       <ProfileStackNav.Screen name="ReceiptUpload"     component={ReceiptUploadScreen} />
       <ProfileStackNav.Screen name="MFASetup"          component={MFASetupScreen} />
       <ProfileStackNav.Screen name="WealthMomentum"   component={WealthMomentumScreen} />
-      <ProfileStackNav.Screen name="AdminGraph"       component={AdminGraphScreen} />
+      <ProfileStackNav.Screen name="AdminGraph"           component={AdminGraphScreen} />
+      <ProfileStackNav.Screen name="PrivacyPolicy"        component={PrivacyPolicyScreen} />
+      <ProfileStackNav.Screen name="AdminCircularUpload"  component={AdminCircularUploadScreen} />
+      <ProfileStackNav.Screen name="AdminAnalytics"       component={AdminAnalyticsDashboardScreen} />
+      <ProfileStackNav.Screen name="NutritionProfile"     component={NutritionProfileScreen} />
     </ProfileStackNav.Navigator>
   );
 }
@@ -263,6 +288,15 @@ function MainTabs() {
           ),
         }}
       />
+      <Tab.Screen
+        name="PlanTab"
+        component={PlanStack}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} label="Plan" iconName="calendar" />
+          ),
+        }}
+      />
 
       <Tab.Screen
         name="SnippdTab"
@@ -324,6 +358,10 @@ function RootNavigator() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setInitialRoute('MainApp');
+        tracker.setAccessToken(session.access_token);
+        tracker.setDefaultUserId(session.user.id);
+        tracker.setDefaultSessionId(session.access_token);
+        tracker.trackAppOpened({ user_id: session.user.id, session_id: session.access_token });
       } else {
         setInitialRoute('Auth');
       }
@@ -331,8 +369,14 @@ function RootNavigator() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
+      (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          tracker.setAccessToken(session.access_token);
+          tracker.setDefaultUserId(session.user.id);
+          tracker.setDefaultSessionId(session.access_token);
+        }
         if (event === 'SIGNED_OUT') {
+          tracker.setAccessToken('');
           setInitialRoute('Auth');
           // Actually navigate — initialRouteName alone doesn't move the stack
           resetToScreen('Auth');
@@ -365,13 +409,15 @@ function RootNavigator() {
         initialRouteName={resolvedRoute}
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Auth"       component={AuthScreen} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="MainApp"    component={MainTabs} />
-        <Stack.Screen name="TrialGate"  component={TrialGateScreen} />
-        <Stack.Screen name="TestAgent"  component={AppTestAgent} />
-        <Stack.Screen name="MFAVerify"  component={MFAVerifyScreen} />
-        <Stack.Screen name="MFASetup"   component={MFASetupScreen} />
+        <Stack.Screen name="Auth"             component={SignInScreen} />
+        <Stack.Screen name="Onboarding"      component={OnboardingScreen} />
+        <Stack.Screen name="MainApp"         component={MainTabs} />
+        <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
+        <Stack.Screen name="TestAgent"       component={AppTestAgent} />
+        <Stack.Screen name="MFAVerify"       component={MFAVerifyScreen} />
+        <Stack.Screen name="MFASetup"        component={MFASetupScreen} />
+        <Stack.Screen name="PrivacyPolicy"   component={PrivacyPolicyScreen} />
+        <Stack.Screen name="NutritionProfile" component={NutritionProfileScreen} />
       </Stack.Navigator>
     </View>
   );

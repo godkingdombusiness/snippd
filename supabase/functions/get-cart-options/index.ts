@@ -38,6 +38,15 @@ const json = (body: unknown, status = 200) =>
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 
+function logRequest(db: ReturnType<typeof createClient>, stage: string, status: string, meta?: Record<string, unknown>) {
+  db.from('ingestion_run_log').insert({
+    source_key: 'get-cart-options',
+    stage,
+    status,
+    metadata: meta ?? null,
+  }).then(() => {}).catch(() => {});
+}
+
 // ─────────────────────────────────────────────────────────────
 // Inline stacking engine (Deno cannot import from src/)
 // ─────────────────────────────────────────────────────────────
@@ -522,7 +531,7 @@ Deno.serve(async (req: Request) => {
 
     const elapsedMs = Date.now() - startMs;
 
-    return json({
+    const response = json({
       status:       'ok',
       carts,
       computed_at:  new Date().toISOString(),
@@ -530,9 +539,12 @@ Deno.serve(async (req: Request) => {
       week_of:      weekOf,
       elapsed_ms:   elapsedMs,
     });
+    logRequest(db, 'compute', '200', { user_id: userId, retailer_key: retailerKey, cart_count: carts.length, elapsed_ms: elapsedMs });
+    return response;
 
   } catch (err) {
     console.error('[get-cart-options] Error:', err);
+    logRequest(db, 'compute', '500', { error: String(err) });
     return json({ error: String(err) }, 500);
   }
 });

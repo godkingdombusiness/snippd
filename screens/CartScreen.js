@@ -1,326 +1,309 @@
-import { useState, useCallback, useEffect } from 'react';
+/**
+ * CartScreen — Personal cart + optional shared household cart.
+ *
+ * Primary: items from AsyncStorage key 'snippd_cart'
+ *   (written by WeeklyPlanScreen "Lock in" and DiscoverScreen "Add to cart").
+ *
+ * Secondary: household_cart_items from Supabase (if household exists).
+ *
+ * "Verify Receipt" → ReceiptUpload screen.
+ */
+
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert, StatusBar,
-  SectionList,
+  ActivityIndicator, RefreshControl, ScrollView,
+  StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { supabase, SUPABASE_URL } from '../lib/supabase';
-import { tracker } from '../lib/eventTracker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
+import { tracker } from '../src/lib/eventTracker';
 
-const GREEN   = '#0C9E54';
-const NAVY    = '#0D1B4B';
-const WHITE   = '#FFFFFF';
-const GRAY    = '#8A8F9E';
-const OFF_WHITE = '#F8F9FA';
-const PALE_GREEN = '#F0FDF4';
+// ── Constants ──────────────────────────────────────────────────────
+const CART_KEY    = 'snippd_cart';
+
+const GREEN       = '#0C9E54';
+const FOREST      = '#0C7A3D';
+const NAVY        = '#0D1B4B';
+const WHITE       = '#FFFFFF';
+const GRAY        = '#8A8F9E';
+const OFF_WHITE   = '#F8F9FA';
+const PALE_GREEN  = '#F0FDF4';
 const LIGHT_GREEN = '#E8F8F0';
-const BORDER  = '#F0F1F3';
-const RED     = '#EF4444';
-const AMBER   = '#F59E0B';
-const BLUE    = '#3B82F6';
-const PURPLE  = '#A855F7';
+const BORDER      = '#E2E8F0';
+const RED         = '#EF4444';
+const AMBER       = '#F59E0B';
+const PURPLE      = '#A855F7';
 
-const fmt = (cents) => cents ? '$' + (cents / 100).toFixed(2) : null;
+const fmt = (cents) => '$' + ((cents || 0) / 100).toFixed(2);
 
-// Category accent colors
-const CAT_COLORS = {
-  Produce:   { bg: PALE_GREEN,  dot: GREEN },
-  Protein:   { bg: '#FEF2F2',  dot: RED },
-  Dairy:     { bg: '#EFF6FF',  dot: BLUE },
-  Pantry:    { bg: '#FFF7ED',  dot: AMBER },
-  Snacks:    { bg: '#FDF4FF',  dot: PURPLE },
-  Household: { bg: '#F0F9FF',  dot: '#0EA5E9' },
-  Frozen:    { bg: '#EFF6FF',  dot: '#6366F1' },
-  Beverages: { bg: '#ECFDF5',  dot: '#10B981' },
-  Other:     { bg: OFF_WHITE,  dot: GRAY },
+// ── Deal-type badge colours ────────────────────────────────────────
+const DEAL_BADGE = {
+  BOGO:                { bg: '#DCFCE7', text: '#15803D', label: 'BOGO' },
+  SALE:                { bg: '#DBEAFE', text: '#1D4ED8', label: 'SALE' },
+  DIGITAL_COUPON:      { bg: '#EDE9FE', text: '#6D28D9', label: 'DIGITAL' },
+  LOYALTY_PRICE:       { bg: '#FEF3C7', text: '#92400E', label: 'LOYALTY' },
+  MANUFACTURER_COUPON: { bg: '#FCE7F3', text: '#9D174D', label: 'MFR' },
+  MULTI:               { bg: '#FEE2E2', text: '#B91C1C', label: 'MULTI' },
 };
 
-// Persona display labels (matches EditProfileScreen keys)
-const PERSONA_LABEL = {
-  savvy_stacker:    'The Savvy Stacker',
-  pantry_hero:      'The Pantry Hero',
-  meal_master:      'The Meal Master',
-  budget_champion:  'The Budget Champion',
-  smart_shopper:    'The Smart Shopper',
-  family_feeder:    'The Family Feeder',
-  deal_finder:      'The Deal Finder',
-  wellness_warrior: 'The Wellness Warrior',
-};
+function DealBadge({ dealType }) {
+  if (!dealType) return null;
+  const cfg = DEAL_BADGE[dealType];
+  if (!cfg) return null;
+  return (
+    <View style={[s.badge, { backgroundColor: cfg.bg }]}>
+      <Text style={[s.badgeTxt, { color: cfg.text }]}>{cfg.label}</Text>
+    </View>
+  );
+}
 
-// Source labels
-const SOURCE_LABEL = {
-  meal_plan:   { text: 'Meal Plan',   color: GREEN, bg: LIGHT_GREEN },
-  snippd_deal: { text: 'Snippd Deal', color: AMBER, bg: '#FEF3C7' },
-  user_added:  { text: 'Manual',      color: GRAY,  bg: OFF_WHITE },
-};
+// ── Cart math helpers ──────────────────────────────────────────────
+function computeBogoPrice(item) {
+  // BOGO: customer pays for one, gets two.
+  // sale_cents should already be the per-unit price; we display qty=2.
+  const unitCents = item.sale_cents || item.reg_cents || 0;
+  return {
+    quantity:     2,
+    youPayCents:  unitCents,                         // pay for 1
+    regTotalCents: (item.reg_cents || unitCents) * 2, // would cost 2× regular
+    savingsCents:  item.reg_cents || unitCents,       // save 1 unit
+    savingsPct:    50,                               // always 50%
+  };
+}
 
+function computeItemTotals(item) {
+  if (item.deal_type === 'BOGO') return computeBogoPrice(item);
+  const qty         = Math.max(1, item.quantity || 1);
+  const saleCents   = item.sale_cents || item.reg_cents || 0;
+  const regCents    = item.reg_cents  || item.sale_cents || 0;
+  return {
+    quantity:      qty,
+    youPayCents:   saleCents * qty,
+    regTotalCents: regCents  * qty,
+    savingsCents:  Math.max(0, regCents - saleCents) * qty,
+    savingsPct:    regCents > 0
+      ? Math.round(((regCents - saleCents) / regCents) * 100)
+      : 0,
+  };
+}
+
+// ── Personal cart item row ─────────────────────────────────────────
+function PersonalItemRow({ item, onRemove }) {
+  const totals = computeItemTotals(item);
+  const isBogo = item.deal_type === 'BOGO';
+
+  return (
+    <View style={s.itemRow}>
+      <View style={s.itemMain}>
+        <View style={s.itemTopRow}>
+          <Text style={s.itemName} numberOfLines={2}>
+            {item.product_name || item.name}
+            {totals.quantity > 1 ? `  ×${totals.quantity}` : ''}
+          </Text>
+          <TouchableOpacity
+            style={s.removeBtn}
+            onPress={() => onRemove(item)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="x" size={13} color={GRAY} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={s.itemMeta}>
+          {item.retailer || item.retailer_key ? (
+            <Text style={s.retailerTxt}>{item.retailer || item.retailer_key}</Text>
+          ) : null}
+          <DealBadge dealType={item.deal_type} />
+          {item.day ? (
+            <Text style={s.dayTxt}>{item.day}</Text>
+          ) : null}
+        </View>
+
+        {isBogo && (
+          <Text style={s.bogoNote}>Buy 2 — second is free</Text>
+        )}
+      </View>
+
+      <View style={s.itemPricing}>
+        {totals.regTotalCents > totals.youPayCents ? (
+          <Text style={s.strikePrice}>{fmt(totals.regTotalCents)}</Text>
+        ) : null}
+        <Text style={s.salePrice}>{fmt(totals.youPayCents)}</Text>
+        {totals.savingsCents > 0 ? (
+          <View style={s.saveBadge}>
+            <Text style={s.saveTxt}>save {fmt(totals.savingsCents)}</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+// ── Cart totals ────────────────────────────────────────────────────
+function computeCartTotals(items) {
+  let regularTotal  = 0;
+  let youPay        = 0;
+  let atRegisterSav = 0;
+
+  for (const item of items) {
+    const t = computeItemTotals(item);
+    regularTotal  += t.regTotalCents;
+    youPay        += t.youPayCents;
+    atRegisterSav += t.savingsCents;
+  }
+
+  const trueFinal    = youPay; // no rebates modelled yet
+  const totalSavings = Math.max(0, regularTotal - trueFinal);
+  const savingsPct   = regularTotal > 0
+    ? ((totalSavings / regularTotal) * 100).toFixed(1)
+    : '0.0';
+
+  return {
+    regularTotal,
+    atRegisterSavings: atRegisterSav,
+    youPay,
+    trueFinal,
+    totalSavings,
+    savingsPct,
+  };
+}
+
+// ── Coupon checklist ───────────────────────────────────────────────
+function CouponChecklist({ items }) {
+  const couponItems = items.filter(i =>
+    i.deal_type === 'DIGITAL_COUPON' || i.deal_type === 'MANUFACTURER_COUPON'
+  );
+  if (couponItems.length === 0) return null;
+
+  return (
+    <View style={s.checklistCard}>
+      <Text style={s.checklistTitle}>BEFORE YOU CHECKOUT</Text>
+      {couponItems.map((item, i) => {
+        const totals = computeItemTotals(item);
+        return (
+          <View key={i} style={s.checklistRow}>
+            <Feather name="square" size={14} color={FOREST} />
+            <Text style={s.checklistTxt}>
+              Clip coupon for {item.product_name || item.name}
+              {totals.savingsCents > 0 ? ` — saves ${fmt(totals.savingsCents)}` : ''}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ── MAIN COMPONENT ─────────────────────────────────────────────────
 export default function CartScreen({ navigation }) {
-  const [loading, setLoading]       = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [sections, setSections]     = useState([]);
-  const [household, setHousehold]   = useState(null);
-  const [myRole, setMyRole]         = useState('VIEWER');
-  const [summary, setSummary]       = useState({ total: 0, saved: 0, items: 0, purchased: 0 });
-  const [activeFilter, setActiveFilter] = useState('active');
-  const [membersMap, setMembersMap]     = useState({}); // user_id → { username, persona }
+  const [personalItems, setPersonalItems] = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [refreshing,    setRefreshing]    = useState(false);
 
+  // ── Load cart from AsyncStorage ──────────────────────────────────
   const loadCart = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Find household membership
-      const { data: membership } = await supabase
-        .from('household_members')
-        .select('household_id, role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!membership?.household_id) {
-        setSections([]);
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-
-      setMyRole(membership.role);
-
-      const { data: hh } = await supabase
-        .from('households')
-        .select('id, name, owner_id')
-        .eq('id', membership.household_id)
-        .single();
-      setHousehold(hh);
-
-      // Fetch member profiles for attribution display
-      const { data: members } = await supabase
-        .from('household_members')
-        .select('user_id, profiles(username, chef_persona)')
-        .eq('household_id', membership.household_id);
-      const map = {};
-      (members || []).forEach(m => {
-        map[m.user_id] = {
-          username: m.profiles?.username || '',
-          persona:  PERSONA_LABEL[m.profiles?.chef_persona] || '',
-        };
-      });
-      setMembersMap(map);
-
-      // Fetch cart items
-      let query = supabase
-        .from('household_cart_items')
-        .select('*')
-        .eq('household_id', membership.household_id)
-        .order('added_at', { ascending: false });
-
-      if (activeFilter === 'active') {
-        query = query.in('status', ['active', 'purchased']);
-      }
-
-      const { data: items } = await query;
-      const allItems = items || [];
-
-      const active    = allItems.filter(i => i.status === 'active');
-      const purchased = allItems.filter(i => i.status === 'purchased');
-      setSummary({
-        total:     active.reduce((s, i) => s + (i.unit_price_cents || 0) * (i.quantity || 1), 0),
-        saved:     active.reduce((s, i) => s + (i.save_cents || 0) * (i.quantity || 1), 0),
-        items:     active.length,
-        purchased: purchased.length,
-      });
-
-      // Group by category
-      const grouped = {};
-      allItems.forEach(item => {
-        const cat = item.category || 'Other';
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(item);
-      });
-
-      const sorted = Object.entries(grouped)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([cat, data]) => ({
-          title: cat,
-          data: data.sort((a, b) => {
-            if (a.status === b.status) return 0;
-            return a.status === 'active' ? -1 : 1;
-          }),
-        }));
-
-      setSections(sorted);
-    } catch (_) {
+      const raw = await AsyncStorage.getItem(CART_KEY);
+      const items = raw ? JSON.parse(raw) : [];
+      setPersonalItems(Array.isArray(items) ? items : []);
+    } catch {
+      setPersonalItems([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeFilter]);
+  }, []);
 
   useEffect(() => { loadCart(); }, [loadCart]);
 
   const onRefresh = () => { setRefreshing(true); loadCart(); };
 
-  const cycleStatus = async (item) => {
-    if (myRole === 'VIEWER') return;
-    const next = { active: 'purchased', purchased: 'active', removed: 'active' }[item.status] || 'active';
-    setSections(prev => prev.map(s => ({
-      ...s,
-      data: s.data.map(i => i.id === item.id ? { ...i, status: next } : i),
-    })));
-    await supabase
-      .from('household_cart_items')
-      .update({ status: next, updated_at: new Date().toISOString() })
-      .eq('id', item.id);
+  // ── Remove single item ───────────────────────────────────────────
+  const removeItem = useCallback(async (item) => {
+    const updated = personalItems.filter(i => i.id !== item.id);
+    setPersonalItems(updated);
+    await AsyncStorage.setItem(CART_KEY, JSON.stringify(updated));
 
-    if (next === 'purchased') {
+    try {
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if (userId) {
-        tracker.trackCheckoutCompleted({
-          user_id: userId,
+      if (session?.user?.id) {
+        tracker.trackItemRemovedFromCart({
+          user_id: session.user.id,
           session_id: session.access_token || String(Date.now()),
           screen_name: 'CartScreen',
-          cart_value_cents: (item.unit_price_cents || 0) * (item.quantity || 1),
-          item_count: item.quantity || 1,
-          retailer_key: item.retailer_key || item.retailer || undefined,
+          product_name: item.product_name || item.name,
+          item_id: item.id,
+          quantity: item.quantity || 1,
+          price_cents: item.sale_cents || 0,
+          retailer: item.retailer || item.retailer_key,
         });
       }
-    }
+    } catch { /* tracking failure is non-critical */ }
+  }, [personalItems]);
+
+  // ── Clear entire cart ────────────────────────────────────────────
+  const clearCart = () => {
+    Alert.alert(
+      'Clear Cart',
+      'Remove all items from your cart?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            setPersonalItems([]);
+            await AsyncStorage.removeItem(CART_KEY);
+          },
+        },
+      ]
+    );
   };
 
-  const removeItem = async (item) => {
-    if (myRole === 'VIEWER') {
-      Alert.alert('Read Only', 'Only Shoppers and the Stack Manager can modify the cart.');
-      return;
-    }
-    await supabase
-      .from('household_cart_items')
-      .update({ status: 'removed', updated_at: new Date().toISOString() })
-      .eq('id', item.id);
+  const totals = computeCartTotals(personalItems);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    if (userId) {
-      tracker.trackItemRemovedFromCart({
-        user_id: userId,
-        session_id: session.access_token || String(Date.now()),
-        screen_name: 'CartScreen',
-        product_name: item.product_name,
-        item_id: item.id,
-        quantity: item.quantity || 1,
-        price_cents: item.unit_price_cents || 0,
-        retailer: item.retailer || item.retailer_key,
-      });
-    }
+  if (loading) {
+    return <View style={s.center}><ActivityIndicator size="large" color={GREEN} /></View>;
+  }
 
-    loadCart();
-  };
-
-  // ── No household ────────────────────────────────────────────────────────────
-  if (!loading && !household) {
+  // ── Empty state ──────────────────────────────────────────────────
+  if (personalItems.length === 0) {
     return (
       <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={s.header}>
+          <Text style={s.headerTitle}>Your Cart</Text>
+          <View style={s.headerRight} />
+        </View>
         <View style={s.emptyWrap}>
           <View style={s.emptyIcon}>
             <Feather name="shopping-cart" size={32} color={GREEN} />
           </View>
-          <Text style={s.emptyTitle}>No Household Yet</Text>
+          <Text style={s.emptyTitle}>Cart is empty</Text>
           <Text style={s.emptySub}>
-            Create or join a household to use the shared cart. Requires the Snippd Family Plan ($30/mo).
+            Lock in your weekly plan or add deals from Explore to fill your cart.
           </Text>
-          <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.getParent()?.navigate('ProfileTab')}>
-            <Text style={s.emptyBtnTxt}>Set Up Household</Text>
+          <TouchableOpacity
+            style={s.emptyBtn}
+            onPress={() => navigation.getParent()?.navigate('PlanTab')}
+          >
+            <Text style={s.emptyBtnTxt}>View Weekly Plan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.emptyBtn, { backgroundColor: WHITE, borderWidth: 1.5, borderColor: GREEN, marginTop: 10 }]}
+            onPress={() => navigation.getParent()?.navigate('DiscoverTab')}
+          >
+            <Text style={[s.emptyBtnTxt, { color: GREEN }]}>Browse Deals</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (loading) {
-    return <View style={s.center}><ActivityIndicator size="large" color={GREEN} /></View>;
-  }
-
-  // ── Section header ──────────────────────────────────────────────────────────
-  const renderSectionHeader = ({ section }) => {
-    const cc = CAT_COLORS[section.title] || CAT_COLORS.Other;
-    const activeCount = section.data.filter(i => i.status === 'active').length;
-    return (
-      <View style={[s.catHeader, { backgroundColor: cc.bg }]}>
-        <View style={[s.catDot, { backgroundColor: cc.dot }]} />
-        <Text style={[s.catTitle, { color: cc.dot }]}>{section.title}</Text>
-        <Text style={s.catCount}>{activeCount} active</Text>
-      </View>
-    );
-  };
-
-  // ── Item row ────────────────────────────────────────────────────────────────
-  const renderItem = ({ item, index, section }) => {
-    const sc = SOURCE_LABEL[item.source] || SOURCE_LABEL.user_added;
-    const isPurchased = item.status === 'purchased';
-    const isLast = index === section.data.length - 1;
-
-    return (
-      <TouchableOpacity
-        style={[s.itemRow, isLast && { borderBottomWidth: 0 }]}
-        onPress={() => cycleStatus(item)}
-        activeOpacity={myRole === 'VIEWER' ? 1 : 0.8}
-      >
-        <View style={[s.checkbox, isPurchased && s.checkboxDone]}>
-          {isPurchased && <Feather name="check" size={12} color={WHITE} />}
-        </View>
-
-        <View style={s.itemInfo}>
-          <View style={s.itemTopRow}>
-            <Text
-              style={[s.itemName, isPurchased && s.strike]}
-              numberOfLines={1}
-            >
-              {item.product_name}{item.quantity > 1 ? `  ×${item.quantity}` : ''}
-            </Text>
-            {item.unit_price_cents ? (
-              <Text style={[s.itemPrice, isPurchased && s.strike]}>
-                {fmt(item.unit_price_cents * (item.quantity || 1))}
-              </Text>
-            ) : null}
-          </View>
-
-          <View style={s.itemMeta}>
-            <View style={[s.srcBadge, { backgroundColor: sc.bg }]}>
-              <Text style={[s.srcBadgeTxt, { color: sc.color }]}>{sc.text}</Text>
-            </View>
-            {item.added_by_user_id || item.added_by_username ? (() => {
-              const m = membersMap[item.added_by_user_id];
-              const uname = m?.username || item.added_by_username || '';
-              const persona = m?.persona || '';
-              return (
-                <Text style={s.attribution}>
-                  {uname ? `@${uname}` : ''}{persona ? `  ${persona}` : ''}
-                </Text>
-              );
-            })() : null}
-            {item.retailer ? <Text style={s.retailer}>{item.retailer}</Text> : null}
-            {item.save_cents > 0 ? (
-              <View style={s.saveBadge}>
-                <Text style={s.saveBadgeTxt}>Save {fmt(item.save_cents)}</Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        {myRole !== 'VIEWER' && item.status !== 'removed' && (
-          <TouchableOpacity
-            style={s.removeBtn}
-            onPress={() => removeItem(item)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="x" size={14} color={GRAY} />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
+  // ── Loaded state ─────────────────────────────────────────────────
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
@@ -328,234 +311,248 @@ export default function CartScreen({ navigation }) {
       {/* Header */}
       <View style={s.header}>
         <View>
-          <Text style={s.headerTitle}>{household?.name || 'Shared Cart'}</Text>
-          <Text style={s.headerSub}>{myRole.replace('_', ' ')} · {summary.items} active item{summary.items !== 1 ? 's' : ''}</Text>
+          <Text style={s.headerTitle}>Your Cart</Text>
+          <Text style={s.headerSub}>{personalItems.length} item{personalItems.length !== 1 ? 's' : ''}</Text>
         </View>
-        <TouchableOpacity style={s.addBtn} onPress={() => navigation.navigate('DiscoverTab')}>
-          <Feather name="plus" size={18} color={WHITE} />
-        </TouchableOpacity>
+        <View style={s.headerRight}>
+          <TouchableOpacity style={s.clearBtn} onPress={clearCart}>
+            <Text style={s.clearBtnTxt}>Clear</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.addBtn}
+            onPress={() => navigation.getParent()?.navigate('DiscoverTab')}
+          >
+            <Feather name="plus" size={18} color={WHITE} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* In-store summary + progress */}
+      {/* Summary bar */}
       <View style={s.summaryBar}>
         <View style={s.summaryItem}>
-          <Text style={s.summaryVal}>{fmt(summary.total) || '$0.00'}</Text>
-          <Text style={s.summaryLabel}>IN CART</Text>
+          <Text style={s.summaryVal}>{fmt(totals.youPay)}</Text>
+          <Text style={s.summaryLabel}>YOU PAY</Text>
         </View>
         <View style={s.summaryDivider} />
         <View style={s.summaryItem}>
-          <Text style={[s.summaryVal, { color: '#4ADE80' }]}>{fmt(summary.saved) || '$0.00'}</Text>
+          <Text style={[s.summaryVal, { color: '#4ADE80' }]}>{fmt(totals.totalSavings)}</Text>
           <Text style={s.summaryLabel}>SAVING</Text>
         </View>
         <View style={s.summaryDivider} />
         <View style={s.summaryItem}>
-          <Text style={s.summaryVal}>{summary.purchased}</Text>
-          <Text style={s.summaryLabel}>CHECKED</Text>
+          <Text style={s.summaryVal}>{totals.savingsPct}%</Text>
+          <Text style={s.summaryLabel}>OFF REGULAR</Text>
         </View>
       </View>
 
-      {/* In-store progress bar */}
-      {summary.items + summary.purchased > 0 && (() => {
-        const total   = summary.items + summary.purchased;
-        const pct     = total > 0 ? summary.purchased / total : 0;
-        const done    = pct === 1;
-        return (
-          <View style={s.progressWrap}>
-            <View style={s.progressTrackDark}>
-              <View style={[s.progressFillGreen, { width: `${Math.round(pct * 100)}%` }]} />
-            </View>
-            <Text style={s.progressTxt}>
-              {done
-                ? '✓ All items checked!'
-                : `${summary.purchased} of ${total} checked`}
-            </Text>
-          </View>
-        );
-      })()}
-
-      {/* Smart Carts banner */}
-      <TouchableOpacity
-        style={s.smartCartsBanner}
-        onPress={() => navigation.navigate('CartOptions', { retailer_key: 'publix' })}
-        activeOpacity={0.85}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GREEN} />}
       >
-        <View style={s.smartCartsLeft}>
-          <View style={s.smartCartsIconWrap}>
-            <Feather name="cpu" size={14} color={GREEN} />
-          </View>
-          <View>
-            <Text style={s.smartCartsTitle}>Smart Carts</Text>
-            <Text style={s.smartCartsSub}>3 personalised carts built for you</Text>
-          </View>
-        </View>
-        <Feather name="chevron-right" size={16} color={GREEN} />
-      </TouchableOpacity>
 
-      {/* Filter + role */}
-      <View style={s.filterRow}>
-        {[{ key: 'active', label: 'Active' }, { key: 'all', label: 'All Items' }].map(f => (
-          <TouchableOpacity
-            key={f.key}
-            style={[s.filterChip, activeFilter === f.key && s.filterChipOn]}
-            onPress={() => setActiveFilter(f.key)}
-          >
-            <Text style={[s.filterChipTxt, activeFilter === f.key && s.filterChipTxtOn]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
-        <View style={{ flex: 1 }} />
-        <View style={s.roleBadge}>
-          <Text style={s.roleBadgeTxt}>{myRole.replace('_', ' ')}</Text>
-        </View>
-      </View>
-
-      {sections.length === 0 ? (
-        <View style={s.emptyCart}>
-          <Feather name="inbox" size={28} color={GRAY} />
-          <Text style={s.emptyCartTxt}>Cart is empty</Text>
-          <Text style={s.emptyCartSub}>Add deals from Discover or ingredients from Chef Stash.</Text>
-        </View>
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          renderSectionHeader={renderSectionHeader}
-          contentContainerStyle={s.list}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GREEN} />}
-          ListFooterComponent={<View style={{ height: 100 }} />}
-        />
-      )}
-
-      {/* Source legend */}
-      {sections.length > 0 && (
-        <View style={s.legend}>
-          {Object.values(SOURCE_LABEL).map((val, i) => (
-            <View key={i} style={s.legendItem}>
-              <View style={[s.legendDot, { backgroundColor: val.color }]} />
-              <Text style={s.legendTxt}>{val.text}</Text>
+        {/* Item list */}
+        <View style={s.sectionCard}>
+          {personalItems.map((item, i) => (
+            <View key={item.id || i}>
+              <PersonalItemRow item={item} onRemove={removeItem} />
+              {i < personalItems.length - 1 && <View style={s.itemSep} />}
             </View>
           ))}
         </View>
-      )}
+
+        {/* Coupon checklist */}
+        <CouponChecklist items={personalItems} />
+
+        {/* Totals receipt */}
+        <View style={s.receiptCard}>
+          <Text style={s.receiptTitle}>ORDER SUMMARY</Text>
+
+          <View style={s.receiptRow}>
+            <Text style={s.receiptLabel}>Regular total</Text>
+            <Text style={[s.receiptVal, s.strikeVal]}>{fmt(totals.regularTotal)}</Text>
+          </View>
+
+          <View style={s.receiptRow}>
+            <Text style={s.receiptLabel}>At-register savings</Text>
+            <Text style={[s.receiptVal, { color: GREEN }]}>−{fmt(totals.atRegisterSavings)}</Text>
+          </View>
+
+          <View style={[s.receiptRow, s.receiptRowBig]}>
+            <Text style={s.receiptLabelBig}>You pay at register</Text>
+            <Text style={s.receiptValBig}>{fmt(totals.youPay)}</Text>
+          </View>
+
+          <View style={s.receiptDivider} />
+
+          <View style={[s.receiptRow, s.receiptRowTotal]}>
+            <Text style={s.receiptTotalLabel}>True cost</Text>
+            <Text style={s.receiptTotalVal}>{fmt(totals.trueFinal)}</Text>
+          </View>
+
+          <Text style={s.withoutSnippd}>
+            Without Snippd: <Text style={s.withoutSnippdStrike}>{fmt(totals.regularTotal)}</Text>
+          </Text>
+        </View>
+
+        {/* Verify receipt button */}
+        <TouchableOpacity
+          style={s.verifyBtn}
+          onPress={() =>
+            navigation.navigate('ReceiptUpload', {
+              cartItems: personalItems,
+              totals: {
+                regular_total_cents:       totals.regularTotal,
+                at_register_savings_cents: totals.atRegisterSavings,
+                you_pay_cents:             totals.youPay,
+                rebate_total_cents:        0,
+                true_final_cents:          totals.trueFinal,
+              },
+            })
+          }
+          activeOpacity={0.88}
+        >
+          <Feather name="camera" size={17} color={WHITE} style={{ marginRight: 8 }} />
+          <Text style={s.verifyBtnTxt}>Verify Receipt</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 120 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ── Styles ─────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: OFF_WHITE },
-  center:    { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  container:  { flex: 1, backgroundColor: OFF_WHITE },
+  center:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  scroll:     { padding: 16, gap: 12 },
 
+  // Header
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
     backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER,
   },
-  headerTitle: { fontSize: 17, fontWeight: 'bold', color: NAVY },
-  headerSub:   { fontSize: 12, color: GRAY, marginTop: 1 },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: NAVY },
+  headerSub:   { fontSize: 11, color: GRAY, marginTop: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  clearBtn:    { paddingHorizontal: 10, paddingVertical: 5 },
+  clearBtnTxt: { fontSize: 12, fontWeight: '600', color: RED },
   addBtn: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: GREEN,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: GREEN, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
   },
 
+  // Summary bar
   summaryBar: {
     flexDirection: 'row', backgroundColor: NAVY,
     paddingVertical: 12, paddingHorizontal: 20,
   },
   summaryItem:    { flex: 1, alignItems: 'center' },
-  summaryVal:     { fontSize: 18, fontWeight: 'bold', color: WHITE, marginBottom: 2 },
-  summaryLabel:   { fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 'bold', letterSpacing: 0.8 },
+  summaryVal:     { fontSize: 17, fontWeight: '800', color: WHITE, marginBottom: 2 },
+  summaryLabel:   { fontSize: 8, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 0.8 },
   summaryDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginVertical: 4 },
 
-  // In-store progress bar
-  progressWrap: {
-    backgroundColor: NAVY, paddingHorizontal: 16, paddingBottom: 10, gap: 5,
+  // Item rows
+  sectionCard: {
+    backgroundColor: WHITE, borderRadius: 16,
+    borderWidth: 1, borderColor: BORDER,
+    overflow: 'hidden',
   },
-  progressTrackDark: {
-    height: 6, backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 3, overflow: 'hidden',
-  },
-  progressFillGreen: {
-    height: '100%', backgroundColor: '#4ADE80', borderRadius: 3,
-  },
-  progressTxt: {
-    fontSize: 10, color: 'rgba(255,255,255,0.6)',
-    fontWeight: 'bold', letterSpacing: 0.3,
-  },
-
-  smartCartsBanner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: LIGHT_GREEN, borderBottomWidth: 1, borderBottomColor: '#C6F6D5',
-  },
-  smartCartsLeft:   { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  smartCartsIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
-  smartCartsTitle:  { fontSize: 13, fontWeight: '800', color: NAVY },
-  smartCartsSub:    { fontSize: 11, color: GRAY, fontWeight: '500', marginTop: 1 },
-
-  filterRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 10,
-    backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER, gap: 8,
-  },
-  filterChip:    { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1.5, borderColor: BORDER, backgroundColor: WHITE },
-  filterChipOn:  { backgroundColor: NAVY, borderColor: NAVY },
-  filterChipTxt: { fontSize: 12, fontWeight: 'bold', color: NAVY },
-  filterChipTxtOn: { color: WHITE },
-  roleBadge:    { backgroundColor: LIGHT_GREEN, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  roleBadgeTxt: { fontSize: 10, fontWeight: 'bold', color: GREEN },
-
-  list: { paddingHorizontal: 0, paddingTop: 8 },
-
-  catHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 7, gap: 8,
-    marginTop: 8, marginHorizontal: 16, borderRadius: 10,
-  },
-  catDot:   { width: 8, height: 8, borderRadius: 4 },
-  catTitle: { flex: 1, fontSize: 12, fontWeight: 'bold', letterSpacing: 0.5 },
-  catCount: { fontSize: 10, color: GRAY },
-
   itemRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: WHITE, paddingHorizontal: 16, paddingVertical: 13,
-    borderBottomWidth: 1, borderBottomColor: '#F9FAFB', gap: 12, marginHorizontal: 16,
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
   },
-  checkbox:     { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', backgroundColor: WHITE },
-  checkboxDone: { backgroundColor: GREEN, borderColor: GREEN },
-  itemInfo:     { flex: 1 },
-  itemTopRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 },
-  itemName:     { flex: 1, fontSize: 14, fontWeight: 'bold', color: NAVY, marginRight: 8 },
-  itemPrice:    { fontSize: 14, fontWeight: 'bold', color: NAVY },
-  strike:       { textDecorationLine: 'line-through', color: GRAY },
-  itemMeta:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  srcBadge:     { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  srcBadgeTxt:  { fontSize: 9, fontWeight: 'bold', letterSpacing: 0.3 },
-  attribution:  { fontSize: 10, color: GRAY, fontWeight: 'normal' },
-  retailer:     { fontSize: 10, color: GRAY },
-  saveBadge:    { backgroundColor: LIGHT_GREEN, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  saveBadgeTxt: { fontSize: 9, fontWeight: 'bold', color: GREEN },
-  removeBtn:    { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: OFF_WHITE },
-
-  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  emptyIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: LIGHT_GREEN, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: 'bold', color: NAVY, marginBottom: 8 },
-  emptySub:   { fontSize: 14, color: GRAY, textAlign: 'center', lineHeight: 21, marginBottom: 20 },
-  emptyBtn:   { backgroundColor: GREEN, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14, shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  emptyBtnTxt: { color: WHITE, fontSize: 15, fontWeight: 'bold' },
-  emptyCart:   { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 32 },
-  emptyCartTxt: { fontSize: 17, fontWeight: 'bold', color: NAVY },
-  emptyCartSub: { fontSize: 13, color: GRAY, textAlign: 'center', lineHeight: 19 },
-
-  legend: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    flexDirection: 'row', justifyContent: 'center', gap: 16,
-    paddingVertical: 10, paddingBottom: 16,
-    backgroundColor: WHITE, borderTopWidth: 1, borderTopColor: BORDER,
+  itemSep: { height: 1, backgroundColor: BORDER, marginHorizontal: 16 },
+  itemMain:   { flex: 1 },
+  itemTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 5 },
+  itemName: {
+    flex: 1, fontSize: 14, fontWeight: '700', color: NAVY, lineHeight: 19,
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot:  { width: 6, height: 6, borderRadius: 3 },
-  legendTxt:  { fontSize: 10, color: GRAY },
+  removeBtn: {
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: OFF_WHITE, flexShrink: 0,
+  },
+  itemMeta:  { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  retailerTxt: { fontSize: 11, color: GRAY },
+  dayTxt:      { fontSize: 10, color: GRAY, fontWeight: '600', textTransform: 'uppercase' },
+  badge: { borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 },
+  badgeTxt: { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
+  bogoNote: { fontSize: 11, color: GREEN, fontWeight: '500', marginTop: 4 },
+
+  // Pricing column
+  itemPricing: { alignItems: 'flex-end', gap: 2, minWidth: 72 },
+  strikePrice: { fontSize: 11, color: GRAY, textDecorationLine: 'line-through' },
+  salePrice:   { fontSize: 15, fontWeight: '800', color: NAVY },
+  saveBadge:   { backgroundColor: PALE_GREEN, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  saveTxt:     { fontSize: 9, fontWeight: '700', color: GREEN },
+
+  // Coupon checklist
+  checklistCard: {
+    backgroundColor: '#FFFBEB', borderRadius: 16,
+    borderWidth: 1, borderColor: '#FDE68A',
+    padding: 16, gap: 10,
+  },
+  checklistTitle: {
+    fontSize: 9, fontWeight: '800', color: '#92400E',
+    letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2,
+  },
+  checklistRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  checklistTxt:   { flex: 1, fontSize: 13, color: NAVY, lineHeight: 18 },
+
+  // Receipt totals
+  receiptCard: {
+    backgroundColor: WHITE, borderRadius: 16,
+    borderWidth: 1, borderColor: BORDER,
+    padding: 16,
+  },
+  receiptTitle: {
+    fontSize: 9, fontWeight: '800', color: GRAY,
+    letterSpacing: 1.5, marginBottom: 12,
+  },
+  receiptRow:      { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  receiptRowBig:   { marginTop: 4 },
+  receiptRowTotal: { marginTop: 2 },
+  receiptLabel:    { fontSize: 13, color: NAVY },
+  receiptVal:      { fontSize: 13, fontWeight: '600', color: NAVY },
+  strikeVal:       { textDecorationLine: 'line-through', color: GRAY },
+  receiptLabelBig: { fontSize: 14, fontWeight: '700', color: NAVY },
+  receiptValBig:   { fontSize: 16, fontWeight: '800', color: NAVY },
+  receiptDivider:  { height: 1, backgroundColor: BORDER, marginVertical: 10 },
+  receiptTotalLabel: { fontSize: 15, fontWeight: '800', color: FOREST },
+  receiptTotalVal:   { fontSize: 20, fontWeight: '900', color: FOREST },
+  withoutSnippd:     { fontSize: 11, color: GRAY, marginTop: 8, textAlign: 'center' },
+  withoutSnippdStrike: { textDecorationLine: 'line-through' },
+
+  // Verify button
+  verifyBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: FOREST, borderRadius: 16,
+    paddingVertical: 18, paddingHorizontal: 24,
+    shadowColor: FOREST,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
+  },
+  verifyBtnTxt: { fontSize: 16, fontWeight: '800', color: WHITE },
+
+  // Empty state
+  emptyWrap: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: LIGHT_GREEN, alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  emptyTitle: { fontSize: 20, fontWeight: '800', color: NAVY, marginBottom: 8 },
+  emptySub: { fontSize: 14, color: GRAY, textAlign: 'center', lineHeight: 21, marginBottom: 20 },
+  emptyBtn: {
+    backgroundColor: GREEN, borderRadius: 14,
+    paddingHorizontal: 28, paddingVertical: 14,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25, shadowRadius: 6, elevation: 3,
+  },
+  emptyBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '700' },
 });

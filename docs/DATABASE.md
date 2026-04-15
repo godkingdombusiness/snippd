@@ -423,35 +423,42 @@ FROM recommendation_exposures GROUP BY recommendation_type, model_version;
 
 ### ingestion_jobs
 
-One row per weekly-ad PDF to be processed. Created by `trigger-ingestion` Edge Function.
+One row per weekly-ad PDF to be processed. Created by `trigger-ingestion` Edge Function or seeded manually.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid PK | |
 | `retailer_key` | text NOT NULL | e.g. `publix` |
 | `week_of` | date NOT NULL | Monday of the deal week |
-| `storage_path` | text NOT NULL | Path in `deal-pdfs` bucket |
-| `status` | text NOT NULL | `queued` \| `processing` \| `parsed` \| `completed` \| `failed` |
+| `storage_path` | text NOT NULL UNIQUE | Flat filename in `deal-pdfs` bucket (e.g. `publix-2026-04-15-weekly-flyer.pdf`) |
+| `source_type` | text | `pdf_weekly_ad` |
+| `status` | text NOT NULL | `queued` \| `processing` \| `parsed` \| `done` \| `failed` |
 | `attempts` | int NOT NULL | Incremented on each worker run |
-| `deal_count` | int | Populated after `parseFlyer()` |
-| `error_message` | text | Last failure message |
-| `started_at` | timestamptz | |
-| `parsed_at` | timestamptz | Set after Gemini OCR completes |
+| `deal_count` | int | Populated after Gemini OCR completes |
+| `error` | text | Last failure message (original column) |
+| `last_error` | text | Alias used by earlier code |
+| `error_message` | text | Used by worker (migration 017) |
+| `started_at` | timestamptz | Set when worker picks up job (migration 017) |
+| `parsed_at` | timestamptz | Set after Gemini OCR completes (migration 017) |
 | `completed_at` | timestamptz | |
+| `processing_started_at` | timestamptz | Original column |
 
 **Indexes**
 - `idx_ingestion_jobs_status` — `(status, created_at ASC)` — worker polling
 - `idx_ingestion_jobs_retailer_week` — `(retailer_key, week_of)`
+- `ingestion_jobs_storage_path_uniq` — UNIQUE on `storage_path` (migration 017b)
+
+**Constraint:** `ingestion_jobs_status_check` — `status IN ('queued','processing','parsed','done','failed')` (migration 017b added `parsed` and `done`)
 
 ---
 
 ### flyer_deal_staging
 
-Raw deals extracted from a flyer PDF before normalization.
+Raw deals extracted from a flyer PDF before normalization. FK to `ingestion_jobs` (not `flyer_ingestions`).
 
 | Column | Type | Notes |
 |---|---|---|
-| `ingestion_id` | uuid NOT NULL | FK → `ingestion_jobs` |
+| `ingestion_id` | uuid | FK → `ingestion_jobs.id` (NOT NULL dropped — FK constraint removed in migration 017) |
 | `retailer_key` | text NOT NULL | |
 | `week_of` | date NOT NULL | |
 | `product_name` | text NOT NULL | |
@@ -461,9 +468,13 @@ Raw deals extracted from a flyer PDF before normalization.
 | `deal_type` | text | Raw string from Gemini |
 | `quantity_required` | int | |
 | `category` | text | |
-| `confidence_score` | numeric | 0–1 |
+| `confidence_score` | numeric(4,3) | 0–1 (migration 017) |
 | `needs_review` | boolean | True if confidence < 0.7 |
 | `status` | text | `staged` \| `published` \| `rejected` |
+| `savings_amount` | numeric(10,2) | migration 017 |
+| `is_bogo` | boolean | Default false (migration 017) |
+| `dietary_flags` | text[] | Default `{}` (migration 017) |
+| `deal_description` | text | migration 017 |
 
 ---
 
@@ -474,17 +485,20 @@ Normalized deal catalog. One row per deal per week, deduped.
 | Column | Type | Notes |
 |---|---|---|
 | `retailer_key` | text NOT NULL | |
+| `retailer_id` | uuid | NOT NULL dropped (migration 017) — worker does not write this |
 | `week_of` | date NOT NULL | |
-| `normalized_key` | text NOT NULL | `brand_product_name` |
-| `dedupe_key` | text NOT NULL UNIQUE | `retailer_key::normalized_key::week_of` |
-| `offer_type` | text NOT NULL | Mapped to `OfferType` |
+| `normalized_key` | text | `brand_product_name` (migration 017) |
+| `dedupe_key` | text NOT NULL | `retailer_key::normalized_key::week_of` |
+| `offer_type` | text | Mapped to `OfferType` (migration 017) |
 | `sale_price_cents` | int | |
 | `regular_price_cents` | int | |
 | `expires_on` | date | Sunday of `week_of` |
-| `confidence_score` | numeric | From staging |
-| `source` | text | `flyer` |
+| `confidence_score` | numeric(4,3) | From staging (migration 017) |
+| `source` | text | `flyer` (migration 017) |
+| `raw_text` | text | migration 017 |
+| `ingestion_id` | uuid | migration 017 |
 
-**Index:** `idx_offer_sources_dedupe` (UNIQUE on `dedupe_key`)
+**Note:** UNIQUE index on `dedupe_key` alone could not be added (existing duplicate rows). The composite UNIQUE `(retailer_id, dedupe_key)` remains. Worker upserts bypass this path; deals go directly from `flyer_deal_staging` → `stack_candidates`.
 
 ---
 
@@ -506,19 +520,47 @@ Digital coupon inventory, loaded separately from flyers.
 
 ### stack_candidates
 
-Pre-computed deal candidates consumed by `cartEngine.buildCartOptions()`.
+Pre-computed deal candidates consumed by `get_weekly_plan` RPC and `cartEngine.buildCartOptions()`. Populated by ingestion worker (via `offer_sources`) or directly from `flyer_deal_staging` via SQL INSERT.
 
 | Column | Type | Notes |
 |---|---|---|
-| `retailer_key` | text NOT NULL | |
-| `week_of` | date NOT NULL | |
-| `dedupe_key` | text UNIQUE | FK to `offer_sources.dedupe_key` |
-| `stack_rank_score` | numeric NOT NULL | `savings_pct×0.6 + hasCoupon×0.4` (0–1) |
-| `savings_pct` | numeric | |
-| `has_coupon` | boolean | |
-| `items` | jsonb NOT NULL | `StackItem[]` compatible array |
+| `id` | uuid PK | |
+| `retailer` | text NOT NULL | Matches `retailer_key` |
+| `retailer_key` | text | |
+| `category` | text NOT NULL | Lowercase |
+| `item_name` | text NOT NULL | |
+| `brand` | text | |
+| `meal_type` | text NOT NULL | CHECK: `breakfast\|lunch\|dinner\|snack\|mixed` |
+| `base_price` | numeric NOT NULL | Regular price (dollars) |
+| `coupon_savings` | numeric NOT NULL DEFAULT 0 | |
+| `sale_savings` | numeric NOT NULL DEFAULT 0 | `regular_price - sale_price` |
+| `final_price` | numeric **GENERATED** | `GREATEST(base_price - coupon_savings - sale_savings, 0)` |
+| `has_coupon` | boolean NOT NULL DEFAULT false | |
+| `is_bogo` | boolean NOT NULL DEFAULT false | |
+| `is_active` | boolean NOT NULL DEFAULT true | |
+| `valid_from` | date | DEFAULT `CURRENT_DATE` |
+| `valid_to` | date | Sunday of deal week |
+| `stack_rank_score` | numeric NOT NULL DEFAULT 0 | Savings % or computed score |
+| `allergen_tags` | jsonb NOT NULL DEFAULT `[]` | |
+| `dietary_tags` | jsonb NOT NULL DEFAULT `[]` | |
+| `dedupe_key` | text UNIQUE | `retailer_key::normalized_key::week_of` (migration 017) |
+| `normalized_key` | text | `brand_product` normalized (migration 017) |
+| `week_of` | date | Monday of deal week (migration 017) |
+| `primary_category` | text | Worker-written; bridged to `category` by trigger (migration 017) |
+| `primary_brand` | text | Worker-written; bridged to `brand` by trigger (migration 017) |
+| `items` | jsonb | `StackItem[]` array (migration 017) |
+| `savings_pct` | numeric DEFAULT 0 | migration 017 |
+| `ingestion_id` | uuid | FK → `ingestion_jobs.id` (migration 017) |
 
-**Index:** `idx_stack_candidates_retailer_week_rank` — `(retailer_key, week_of, stack_rank_score DESC)` — primary query for cart engine
+**Generated column:** `final_price` — cannot be written directly; computed from `base_price - coupon_savings - sale_savings`.
+
+**Trigger:** `trg_sync_stack_candidate_columns` (BEFORE INSERT OR UPDATE) — populates `category`, `brand`, `retailer`, `item_name`, `is_active`, `valid_to`, `base_price`, `sale_savings` from worker-written columns when RPC-read columns are blank.
+
+**Indexes**
+- `idx_stack_candidates_retailer_week_rank` — `(retailer_key, week_of, stack_rank_score DESC)`
+- `stack_candidates_dedupe_key_unique` — UNIQUE on `dedupe_key` (migration 017)
+
+**Current data:** 189 active deals from 8 retailers (walgreens=51, dollargeneral=47, keyfoods=36, aldi=34, publix=14, target=4, cvs=3, dollar_general=2) as of 2026-04-14.
 
 ---
 
@@ -529,10 +571,13 @@ Audit log written after `normalizeAndPublish()` completes.
 | Column | Type | Notes |
 |---|---|---|
 | `ingestion_id` | uuid NOT NULL | FK → `ingestion_jobs` |
-| `deals_staged` | int | |
-| `deals_published` | int | |
-| `coupons_matched` | int | |
-| `candidates_written` | int | |
+| `deals_staged` | int | migration 017 |
+| `deals_published` | int | migration 017 |
+| `coupons_matched` | int | migration 017 |
+| `candidates_written` | int | migration 017 |
+| `retailer_key` | text | migration 017 |
+| `week_of` | date | migration 017 |
+| `published_at` | timestamptz | |
 
 ---
 
@@ -611,3 +656,81 @@ These tables support the React Native app and are not part of the behavioral int
 | `offer_sources` | Source catalog of available offers/coupons |
 | `digital_coupons` | Digital coupon inventory per retailer |
 | `stack_candidates` | Pre-computed candidate stacks for display |
+
+
+---
+
+### anonymized_signals
+
+De-identified aggregate table populated by `delete_my_account()` before personal data deletion. Contains no `user_id` — cannot be related back to individuals.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint PK | `GENERATED ALWAYS AS IDENTITY` |
+| `retailer_key` | text | May be null |
+| `category` | text NOT NULL | |
+| `event_name` | text NOT NULL | |
+| `week_of` | date NOT NULL | `date_trunc('week', timestamp)::date` |
+| `signal_count` | integer | Accumulated via ON CONFLICT upsert |
+| `updated_at` | timestamptz | |
+
+**Unique constraint:** `(retailer_key, category, event_name, week_of)` — enables `ON CONFLICT DO UPDATE` accumulation.
+**RLS:** Enabled, service role only. No user-facing read policy.
+
+---
+
+### delete_my_account() function
+
+SECURITY DEFINER function callable by authenticated users via `supabase.rpc('delete_my_account')`.
+
+1. Aggregates `event_stream` rows into `anonymized_signals` (preserves training signal without PII)
+2. Deletes from: `event_stream`, `user_preference_scores`, `user_state_snapshots`, `wealth_momentum_snapshots`, `recommendation_exposures`, `model_predictions`, `api_rate_limit_log`, `receipt_items`, `receipt_summaries`, `trip_results`, `profiles`
+3. Deletes from `auth.users` (terminates all sessions)
+
+
+
+---
+
+### profiles — consent columns (migration 006)
+
+Added by `supabase/migrations/006_privacy_consent.sql`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `consent_accepted` | boolean NOT NULL DEFAULT false | Set to `true` at onboarding step 5 |
+| `consent_accepted_at` | timestamptz | NULL until user accepts; written at onboarding |
+| `privacy_policy_version` | text | Policy version string agreed to (e.g. `'1.0'`) |
+
+**Index:** `profiles_consent_accepted_idx ON profiles (consent_accepted, consent_accepted_at)` — used for compliance reporting (find users who have/haven't accepted).
+
+Policy version `'1.0'` corresponds to `docs/PRIVACY_POLICY.md`.
+
+---
+
+### profiles — nutrition intelligence columns (migration 015)
+
+Added by `supabase/migrations/015_nutrition_profile.sql`.
+
+| Column | Type | Default | Notes |
+|---|---|---|---|
+| `household_members` | jsonb | `'[]'` | Array of `{ role, age_group, sex, kcal_min, kcal_max }` — life-stage records from `MEMBER_OPTIONS` |
+| `daily_calorie_target_min` | integer | NULL | Sum of household members' minimum daily kcal |
+| `daily_calorie_target_max` | integer | NULL | Sum of household members' maximum daily kcal |
+| `meal_calorie_target_min` | integer | NULL | `daily_calorie_target_min × 0.30` (dinner = 30% of daily per USDA 2020–2025) |
+| `meal_calorie_target_max` | integer | NULL | `daily_calorie_target_max × 0.30` |
+| `dietary_modes` | text[] | `'{}'` | Active dietary modes — values: `plant_based`, `low_carb`, `low_sodium`, `healthy_fats`, `high_protein`, `mediterranean`, `keto`, `diabetic_friendly` |
+| `nutrition_profile_set` | boolean | false | `true` once user saves NutritionProfileScreen for the first time |
+
+**household_members shape:**
+```json
+[
+  { "role": "adult_woman_19_50", "age_group": "19-50", "sex": "female", "kcal_min": 1800, "kcal_max": 2000 },
+  { "role": "child_4_8", "age_group": "4-8", "sex": "either", "kcal_min": 1200, "kcal_max": 1600 }
+]
+```
+
+**Dietary mode conflicts (enforced client-side):**
+- `plant_based` deselects `keto` and `high_protein`
+- `keto` deselects `low_carb` (keto is stricter)
+
+**Source:** `src/constants/nutritionTargets.ts` — `MEMBER_OPTIONS`, `DIETARY_MODES`, `computeHouseholdCalorieTarget()`, `DIETARY_MODE_CONFLICTS`

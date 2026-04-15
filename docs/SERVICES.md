@@ -557,3 +557,124 @@ All 16 tests must pass before shipping stacking engine changes.
 ```bash
 npx tsc --noEmit --project tsconfig.test.json
 ```
+
+---
+
+## Background Jobs (pg_cron)
+
+All background jobs run as Supabase pg_cron schedules defined in `supabase/migrations/003_pg_cron_jobs.sql`. Each job calls an Edge Function via `net.http_post` with an `x-cron-secret` header.
+
+### One-time setup
+
+Run these in the Supabase SQL editor before applying migration 003:
+
+```sql
+ALTER DATABASE postgres SET app.supabase_functions_url
+  TO 'https://YOUR_PROJECT_REF.supabase.co/functions/v1';
+
+ALTER DATABASE postgres SET app.cron_secret
+  TO 'YOUR_CRON_SECRET';
+
+SELECT pg_reload_conf();
+```
+
+Also set the secret in Edge Function env:
+```bash
+supabase secrets set CRON_SECRET=YOUR_CRON_SECRET
+```
+
+### Schedule overview
+
+| Job name | Schedule (UTC) | Edge Function | What it does |
+|---|---|---|---|
+| `snippd-preference-updater` | Every hour at :05 | `run-preference-updater` | Decays + upserts preference scores, writes snapshots |
+| `snippd-graph-sync` | Daily 01:50 | `run-graph-sync` | Triggers GitHub Actions `nightly-graph-sync.yml` via workflow_dispatch |
+| `snippd-wealth-check` | Daily 04:00 | `run-wealth-check` | Scans `wealth_momentum_snapshots` for velocity drops >20% |
+| `snippd-rate-limit-cleanup` | Daily 05:00 | _(SQL only)_ | Deletes `api_rate_limit_log` entries older than 2 hours |
+
+### run-preference-updater
+
+**File:** `supabase/functions/run-preference-updater/index.ts`
+**Auth:** `x-cron-secret` or service-role Bearer JWT
+**What it does:** Forwards to the core `preference-updater` function with service-role auth. Logs outcome to `ingestion_run_log`.
+
+### run-graph-sync
+
+**File:** `supabase/functions/run-graph-sync/index.ts`
+**Auth:** `x-cron-secret` or service-role Bearer JWT
+**Required env vars:** `GITHUB_PAT`, `GITHUB_OWNER`, `GITHUB_REPO`
+**What it does:** Calls `POST /repos/{owner}/{repo}/actions/workflows/nightly-graph-sync.yml/dispatches` (GitHub API). Returns 204 = success. Accepts optional `skip_co_occurrences` and `skip_cohort` body fields.
+
+### run-wealth-check
+
+**File:** `supabase/functions/run-wealth-check/index.ts`
+**Auth:** `x-cron-secret` or service-role Bearer JWT
+**What it does:** Compares `velocity_score` in `wealth_momentum_snapshots` from the last 7 days vs the prior 7 days. Flags users with >20% drop. Logs attrition summary to `ingestion_run_log`.
+
+---
+
+## vertexTrainingExport
+
+**File:** `src/services/vertexTrainingExport.ts`
+**Purpose:** Exports 90-day labeled behavioral training data to Supabase Storage for Vertex AI model training.
+
+### What it does
+
+1. Queries `event_stream` in paginated batches (500 rows) over a 90-day rolling window
+2. Joins `recommendation_exposures`, `user_state_snapshots`, `stack_results` per event
+3. Labels each row by outcome: purchased=1.0, accepted=0.8, clicked=0.4, dismissed=0.0, other=0.1
+4. Serializes to JSONL (one JSON object per line)
+5. Uploads to `vertex-training-data` bucket at `training_data/vertex_training_YYYY-MM-DD.jsonl`
+6. Logs result to `ingestion_run_log`
+
+### Run manually
+
+```bash
+npx ts-node --project tsconfig.test.json src/services/vertexTrainingExport.ts
+```
+
+### Returns
+
+```typescript
+{
+  rows_exported: number;
+  storage_path:  string;
+  started_at:    string;
+  completed_at:  string;
+}
+```
+
+See `docs/VERTEX_TRAINING.md` for full training pipeline documentation.
+
+---
+
+## geniusStackEngine — Dietary Scoring Engine
+
+**File:** `src/services/geniusStackEngine.ts`
+**Purpose:** Applies dietary mode filters and calorie alignment scoring to `stack_candidates` deals. Used for client-side post-processing and standalone scoring runs.
+
+### Exports
+
+- `applyDietaryScoring(deals, profile)` → `ScoredDeal[]` — Pure function. Adds `genius_score` (capped 0–2.0) and `excluded`/`exclusion_reason` flags.
+- `runGeniusStackEngine(supabase, userId, headcount?)` → `{ scored, profile }` — Loads profile + active deals from Supabase and runs scoring.
+
+### Dietary modes and scoring rules
+
+| Mode | Rule |
+|---|---|
+| `plant_based` | Excludes `meat`/`seafood`; +0.15 to `produce`/`dairy`/`pantry` |
+| `low_carb` | −0.10 if `carbs_g > 25`; +0.08 to `meat`/`seafood`/`dairy` |
+| `keto` | −0.20 if `carbs_g > 15`; +0.08 to `meat`/`seafood`/`dairy` |
+| `low_sodium` | −0.15 for canned/processed/deli; +0.08 to `produce`/`meat` |
+| `healthy_fats` | +0.20 for salmon/tuna/avocado/olive/nuts; +0.12 to `seafood` |
+| `high_protein` | +0.10 if `protein_g > 25`; +0.15 to `meat`/`seafood` |
+| `mediterranean` | +0.20 to `seafood`; +0.10 to `produce`; +0.08 to `pantry` |
+| `diabetic_friendly` | Excludes sugar/syrup/candy/juice/soda; +0.10 to `produce`/`seafood`/`meat` |
+
+Calorie alignment: +0.08 if within 20% of per-person target; −0.05 if >150% over.
+
+### Run manually
+
+```bash
+npx ts-node --project tsconfig.test.json src/services/geniusStackEngine.ts <userId>
+```

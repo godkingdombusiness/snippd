@@ -28,9 +28,11 @@ interface StagedDeal {
   size: string | null;
   sale_price: number | null;   // dollars
   regular_price: number | null;
+  savings_amount: number | null; // dollars saved (from flyerParser enrichment)
   deal_type: string;
   quantity_required: number | null;
   category: string | null;
+  is_bogo: boolean;
   raw_text: string | null;
   confidence_score: number;
   needs_review: boolean;
@@ -99,6 +101,24 @@ function mapDealType(raw: string): OfferType {
 function savingsPct(salePriceDollars: number | null, regularPriceDollars: number | null): number {
   if (!salePriceDollars || !regularPriceDollars || regularPriceDollars <= 0) return 0;
   return Math.max(0, (regularPriceDollars - salePriceDollars) / regularPriceDollars);
+}
+
+/** Multi-factor stack rank score (0–1) */
+function computeStackRankScore(deal: StagedDeal, hasCoupon: boolean): number {
+  let score = 0;
+  const pct = deal.sale_price && deal.regular_price
+    ? ((deal.regular_price - deal.sale_price) / deal.regular_price) * 100
+    : 0;
+
+  score += Math.min(pct / 100, 0.50);
+  if (deal.is_bogo) score += 0.25;
+  if (deal.deal_type === 'MULTI' || deal.deal_type === 'BUY_X_GET_Y') score += 0.10;
+  if (deal.confidence_score > 0.9) score += 0.10;
+  const essentials = ['meat', 'seafood', 'produce', 'dairy', 'breakfast', 'bakery'];
+  if (deal.category && essentials.includes(deal.category)) score += 0.05;
+  // Coupon stacking bonus (legacy fallback for when is_bogo/deal_type aren't reliable)
+  if (hasCoupon && score < 0.50) score += 0.10;
+  return Math.min(parseFloat(score.toFixed(4)), 1.0);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -273,8 +293,7 @@ export async function normalizeAndPublish(
       }
 
       // ── 5. Write to stack_candidates ──────────────────────────
-      // stack_rank_score = (savings_pct × 0.6) + (has_coupon × 0.4)
-      const stackRankScore = Math.min(1, (pct * 0.6) + (hasCoupon ? 0.4 : 0));
+      const stackRankScore = computeStackRankScore(deal, hasCoupon);
 
       // Build StackItem-compatible items payload
       const stackItem = {

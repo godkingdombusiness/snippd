@@ -326,6 +326,16 @@ export default function ReceiptUploadScreen({ navigation }) {
           total_amount_cents: totalAmount,
           item_count: parsedItems.length,
         });
+
+        tracker.trackPurchaseCompleted({
+          user_id:         session.user.id,
+          session_id:      session.access_token || String(Date.now()),
+          screen_name:     'ReceiptUploadScreen',
+          retailer_key:    storeName.toLowerCase().replace(/\s+/g, '_'),
+          cart_value_cents: totalAmount,
+          savings_cents:   totalSaved,
+          item_count:      parsedItems.length,
+        });
       }
 
       // 3. Insert trip_result row

@@ -132,7 +132,7 @@ export default function MFAVerifyScreen({ navigation, route }) {
             style={s.backRow}
             onPress={async () => {
               const { supabase } = await import('../lib/supabase');
-              await supabase.auth.signOut();
+              await supabase.auth.signOut({ scope: 'global' });
               navigation.replace('Auth');
             }}
           >

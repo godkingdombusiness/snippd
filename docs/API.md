@@ -596,3 +596,187 @@ When `neo4j_configured` is `false`, `cart_insights` and `item_insights` are empt
 | 400 | Invalid JSON body |
 | 401 | Missing or invalid JWT |
 | 405 | Non-POST method |
+
+---
+
+## GET /functions/v1/health
+
+System health check. No authentication required.
+
+**File:** `supabase/functions/health/index.ts`
+
+### Response (200 OK)
+```json
+{
+  "status": "ok",
+  "version": "0.4.0",
+  "checks": {
+    "database": { "ok": true, "latency_ms": 12 },
+    "event_weights": { "ok": true, "latency_ms": 8 }
+  },
+  "timestamp": "2026-04-14T04:05:00.000Z",
+  "latency_ms": 24
+}
+```
+
+Returns `503` with `"status": "degraded"` if any check fails.
+
+---
+
+## POST /functions/v1/run-preference-updater
+
+Cron wrapper that forwards to `preference-updater`.
+
+**File:** `supabase/functions/run-preference-updater/index.ts`
+**Auth:** `x-cron-secret` header OR service-role Bearer JWT
+
+### Response
+```json
+{ "ok": true, "forwarded_to": "preference-updater", "result": { "users": 42, "rows": 318 }, "duration_ms": 1204 }
+```
+
+---
+
+## POST /functions/v1/run-graph-sync
+
+Triggers GitHub Actions `nightly-graph-sync.yml` via workflow_dispatch.
+
+**File:** `supabase/functions/run-graph-sync/index.ts`
+**Auth:** `x-cron-secret` header OR service-role Bearer JWT
+**Required env vars:** `GITHUB_PAT`, `GITHUB_OWNER`, `GITHUB_REPO`
+
+### Request body (optional)
+```json
+{ "skip_co_occurrences": false, "skip_cohort": false }
+```
+
+### Response
+```json
+{ "ok": true, "workflow": "nightly-graph-sync.yml", "duration_ms": 340 }
+```
+
+---
+
+## POST /functions/v1/run-wealth-check
+
+Scans `wealth_momentum_snapshots` for users with velocity attrition (>20% drop week-over-week).
+
+**File:** `supabase/functions/run-wealth-check/index.ts`
+**Auth:** `x-cron-secret` header OR service-role Bearer JWT
+
+### Response
+```json
+{
+  "ok": true,
+  "users_checked": 148,
+  "attrition_count": 7,
+  "attrition_users": [
+    { "user_id": "uuid", "current_velocity": 0.38, "baseline_velocity": 0.61, "drop_pct": 37 }
+  ],
+  "duration_ms": 520
+}
+```
+
+
+---
+
+## POST /functions/v1/run-ingestion-worker
+
+Processes up to 3 queued ingestion jobs from `ingestion_jobs`. Runs the full pipeline inline: Gemini Vision extraction → `flyer_deal_staging` → `offer_sources` → `offer_matches` → `stack_candidates`.
+
+**File:** `supabase/functions/run-ingestion-worker/index.ts`
+**Auth:** `x-cron-secret` header OR service-role Bearer JWT
+**Cron:** `*/30 * * * *` (every 30 minutes, job 39)
+
+### Response
+```json
+{
+  "ok": true,
+  "processed": 2,
+  "results": [
+    { "job_id": "uuid", "status": "parsed", "deals_extracted": 47, "candidates_written": 41 },
+    { "job_id": "uuid", "status": "retrying", "error": "Gemini API error 429" }
+  ],
+  "duration_ms": 8341
+}
+```
+
+---
+
+## POST /functions/v1/run-vertex-export
+
+Exports 90-day labeled training data to Supabase Storage bucket `vertex-training-data` as JSONL.
+
+**File:** `supabase/functions/run-vertex-export/index.ts`
+**Auth:** `x-cron-secret` header OR service-role Bearer JWT
+**Cron:** `0 3 * * 0` (every Sunday 03:00 UTC, job 41)
+
+### Response
+```json
+{
+  "ok": true,
+  "rows_exported": 14823,
+  "storage_path": "training_data/vertex_training_2026-04-14.jsonl",
+  "started_at": "2026-04-14T03:00:01Z",
+  "completed_at": "2026-04-14T03:02:47Z"
+}
+```
+
+
+---
+
+## RPC: get_weekly_plan
+
+PostgreSQL RPC function — called via `supabase.rpc('get_weekly_plan', params)` from the app or via REST `POST /rest/v1/rpc/get_weekly_plan`.
+
+**File:** `supabase/migrations/016_get_weekly_plan_fn.sql`
+**Auth:** `authenticated` JWT (SECURITY DEFINER — executes as function owner)
+
+### Parameters
+
+| Parameter | Type | Default | Notes |
+|---|---|---|---|
+| `p_user_id` | uuid | required | Auth user's UUID — loads profile for allergen + calorie filters |
+| `p_headcount` | integer | 4 | Number of people being fed |
+| `p_nights` | integer | 5 | Number of dinner nights to plan (1–7) |
+| `p_focus` | text | `'none'` | Scoring modifier: `'savings'`, `'protein'`, or `'none'` |
+| `p_week_of` | date | `CURRENT_DATE` | Week start date — used to filter `valid_from`/`valid_to` on deals |
+
+### Response shape (jsonb)
+
+```json
+{
+  "week_of": "2026-04-14",
+  "headcount": 4,
+  "nights": 5,
+  "focus": "none",
+  "health_focus": "none",
+  "weekly_budget": 15000,
+  "meal_calorie_target_min": 1620,
+  "meal_calorie_target_max": 1890,
+  "dietary_modes": ["low_carb"],
+  "dinners": [
+    {
+      "night": "Monday", "night_index": 1,
+      "protein": { ...stack_candidates row },
+      "side": { ...stack_candidates row },
+      "pantry_item": { ...stack_candidates row }
+    }
+  ],
+  "household_stack": [ ...up to 8 stack_candidates rows ],
+  "totals": {
+    "regular_total": 42.18,
+    "sale_total": 31.55,
+    "total_savings": 10.63
+  },
+  "data_source": "live"
+}
+```
+
+### Filtering logic
+- Excludes items where `allergen_tags` overlaps with `profiles.dietary_tags` using `?|` operator
+- `focus='savings'`: sort score = `stack_rank_score × 1.5`
+- `focus='protein'`: sort score = `protein_g / 50`
+- `focus='none'`: sort score = `stack_rank_score`
+- Dinner slots: protein from `meat/seafood/deli`, side from `produce`, pantry from `pantry/bakery/frozen/dairy`
+- Household stack: top 8 from `household/health/personal_care` by `stack_rank_score`
