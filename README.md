@@ -25,17 +25,27 @@ This folder is already a Git repository (commits exist). Add an **`origin`** rem
 2. **…** (View and More Actions) → **Remote** → **Add Remote…**.
 3. Remote name: `origin`. URL: your HTTPS or SSH clone URL from GitHub (green **Code** button).
 
-**Or in the terminal** (replace the URL with yours):
+**Or in the terminal**
 
-```bash
-git remote add origin https://github.com/YOUR_USER/snippd-beta-demo.git
-git push -u origin main
-```
+1. `cd` to **your real project folder** (do not use a literal `path\to\...` placeholder). On Windows PowerShell, quote paths that contain spaces:
 
-To fix a wrong URL later:
+   ```powershell
+   cd "C:\Users\YourName\snippd"
+   ```
 
-```bash
-git remote set-url origin https://github.com/YOUR_USER/snippd-beta-demo.git
-```
+2. If **`origin` is not set yet**:
+
+   ```powershell
+   git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
+   git push -u origin main
+   ```
+
+3. If you see **`remote origin already exists`**, do **not** run `add` again. Set or check the URL:
+
+   ```powershell
+   git remote -v
+   git remote set-url origin https://github.com/YOUR_USER/YOUR_REPO.git
+   git push -u origin main
+   ```
 
 Create an **empty** repository on GitHub first (no README/license if you want a clean first push). The default branch here is **`main`**.
