@@ -1,41 +1,27 @@
 ================================================================================
-Cloud Shell — deploy Snippd Agent Engine (read this if `deploy.sh` is "missing")
+Cloud Shell — deploy Snippd Agent Engine
 ================================================================================
 
-1) YOUR PROMPT ALREADY SHOWS THE FOLDER YOU ARE IN
-   Example:  ddavis@cloudshell:~/snippd-agent (project)$
-   That means you are ALREADY inside ~/snippd-agent.
-   Do NOT run:  cd snippd-agent
-   (That looks for ~/snippd-agent/snippd-agent which does not exist.)
+1) If your prompt is already ~/something, do NOT "cd something" again — you are there.
 
-2) CHECK YOU HAVE THE REAL PROJECT FILES
-   From your agent directory, run:
-      ls -la
-   You MUST see at least:
-      agent.py
-      deploy.sh
-      requirements.txt
-      agents/
-      tools/
+2) You need these files in the current directory:
+      agent.py  deploy.sh  requirements.txt  agents/  tools/
+   If `ls` does not show them, you are in the wrong folder (e.g. only main.py and '=ERROR').
 
-   If you only see main.py, requirements.txt, or a file named '=ERROR', this folder is
-   NOT the Snippd repo — you are in an old/junk directory or a partial copy.
-
-3) GET A CLEAN COPY OF THIS REPO ON CLOUD SHELL
-   Example (replace with your Git URL and branch):
+3) Clone this repository (after you push it to GitHub from your laptop), then:
       cd ~
       git clone https://github.com/YOUR_ORG/snippd-beta-demo.git
       cd snippd-beta-demo/snippd_agent
-   (Note: the folder name is snippd_agent with an UNDERSCORE — no hyphen.)
-
-4) RUN DEPLOY
-      chmod +x deploy.sh
+      chmod +x deploy.sh verify_tree.sh bootstrap_cloudshell.sh
+      ./verify_tree.sh
+      gcloud config set project YOUR_PROJECT_ID
       ./deploy.sh
 
-5) OPTIONAL: REMOVE JUNK IN ~/snippd-agent
-   Only if you are sure nothing important is there:
-      cd ~
-      rm -rf snippd-agent
-   Then use the path from step 3 instead.
+   Folder name must be snippd_agent (underscore), not snippd-agent (hyphen).
+
+4) Laptop: this workspace has git with an initial commit. Add your remote and push:
+      git remote add origin https://github.com/YOUR_ORG/snippd-beta-demo.git
+      git branch -M main
+      git push -u origin main
 
 ================================================================================
