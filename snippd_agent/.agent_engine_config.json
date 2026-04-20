@@ -1,0 +1,5 @@
+{
+  "display_name": "Snippd Stack Relay",
+  "description": "Multi-agent relay: Stack Architect with Truth Validator, Item Matchmaker, Savings Scout.",
+  "staging_bucket": "gs://REPLACE_ME_SET_BY_DEPLOY_SH"
+}

@@ -1,0 +1,4 @@
+store_code,item_name,title,description,discount_amount,source_url,expires_at,verified
+publix,Chicken Breast,$2 off Chicken,Digital coupon,2.00,https://www.publix.com/savings/digital-coupons,2026-03-01T05:00:00Z,true
+walgreens,Toothpaste,$1 off Toothpaste,App coupon,1.00,https://www.walgreens.com/offers,2026-03-05T05:00:00Z,true
+dollar_general,Laundry Detergent,$3 off Detergent,Digital coupon,3.00,https://www.dollargeneral.com/deals,2026-03-02T05:00:00Z,false

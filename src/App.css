@@ -1,0 +1,323 @@
+.snippd-app {
+  min-height: 100vh;
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 1rem 1.25rem 3rem;
+  box-sizing: border-box;
+}
+
+.snippd-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 0 1.25rem;
+  border-bottom: 1px solid rgba(120, 120, 120, 0.35);
+  margin-bottom: 1rem;
+}
+
+.snippd-nav a {
+  font-weight: 600;
+}
+
+.snippd-main {
+  width: 100%;
+}
+
+.snippd-screen {
+  text-align: left;
+}
+
+.snippd-header h1 {
+  margin-top: 0;
+}
+
+.snippd-muted {
+  color: rgba(180, 180, 190, 0.95);
+  font-size: 0.95rem;
+}
+
+.snippd-card {
+  max-width: 420px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 120, 120, 0.35);
+  background: rgba(20, 20, 24, 0.55);
+}
+
+.snippd-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.snippd-form input {
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 120, 120, 0.45);
+  background: rgba(10, 10, 12, 0.6);
+  color: inherit;
+}
+
+.snippd-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.snippd-section {
+  margin: 1.25rem 0;
+}
+
+.snippd-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.snippd-filter-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-right: 0.25rem;
+}
+
+.snippd-chip {
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid rgba(120, 120, 120, 0.45);
+  background: rgba(15, 15, 18, 0.65);
+  color: inherit;
+  cursor: pointer;
+}
+
+.snippd-chip.active {
+  border-color: #7c6cff;
+  box-shadow: 0 0 0 1px rgba(124, 108, 255, 0.35);
+}
+
+.snippd-chip.pinned {
+  border-color: rgba(255, 214, 120, 0.65);
+}
+
+.snippd-compare-row {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  scroll-snap-type: x mandatory;
+}
+
+.snippd-compare-card {
+  min-width: 180px;
+  scroll-snap-align: start;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(120, 120, 120, 0.45);
+  background: rgba(18, 18, 22, 0.75);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.snippd-compare-card.selected {
+  border-color: #7c6cff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.snippd-compare-title {
+  font-weight: 700;
+}
+
+.snippd-compare-price {
+  font-size: 1.35rem;
+  margin: 0.35rem 0;
+}
+
+.snippd-compare-sub {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.snippd-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.snippd-primary {
+  background: linear-gradient(135deg, #6f6cff, #9c8bff);
+  color: #0b0b10;
+  border: none;
+  font-weight: 700;
+}
+
+.snippd-primary.wide {
+  min-width: min(420px, 100%);
+}
+
+.snippd-secondary {
+  background: transparent;
+  border: 1px solid rgba(120, 120, 120, 0.55);
+}
+
+.snippd-error {
+  color: #ff8e8e;
+}
+
+.snippd-msg {
+  color: #c7ffd0;
+}
+
+.snippd-details {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.snippd-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 220px;
+}
+
+.snippd-inline input {
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+}
+
+.snippd-stack label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  max-width: 280px;
+}
+
+.snippd-hero {
+  font-size: 1.15rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px dashed rgba(160, 160, 200, 0.45);
+  background: rgba(25, 25, 32, 0.65);
+}
+
+.snippd-formula {
+  font-size: 1.2rem;
+}
+
+.snippd-tour li {
+  margin: 0.35rem 0;
+}
+
+.snippd-linkish {
+  background: none;
+  border: none;
+  color: #8fa7ff;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+}
+
+.snippd-pill {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(140, 140, 160, 0.55);
+}
+
+.snippd-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.snippd-check-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(80, 80, 90, 0.35);
+}
+
+.snippd-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 1rem;
+}
+
+.snippd-modal {
+  width: min(480px, 100%);
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: #15151a;
+  border: 1px solid rgba(120, 120, 140, 0.45);
+}
+
+.snippd-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .snippd-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.snippd-meals {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.snippd-meal-card {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(120, 120, 120, 0.45);
+  background: rgba(18, 18, 22, 0.85);
+  color: inherit;
+  cursor: pointer;
+}
+
+.snippd-meal-title {
+  font-weight: 700;
+}
+
+.snippd-meal-sub {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-top: 0.25rem;
+}
+
+.snippd-locked {
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 180, 120, 0.45);
+  background: rgba(60, 30, 10, 0.35);
+}
+
+textarea {
+  width: 100%;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgba(120, 120, 120, 0.45);
+  background: rgba(10, 10, 12, 0.6);
+  color: inherit;
+  box-sizing: border-box;
+}

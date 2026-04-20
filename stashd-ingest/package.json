@@ -1,0 +1,12 @@
+{
+  "name": "stashd-ingest",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest:coupons": "node --env-file=.env ingest-coupons.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "csv-parse": "^5.5.6"
+  }
+}
