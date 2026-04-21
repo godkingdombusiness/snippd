@@ -1,15 +1,129 @@
-"""Supabase helpers: stack_candidates grounding + store/policy audit & curation."""
+"""Supabase helpers: stack_candidates grounding + store/policy audit & curation.
+
+Security posture (DNA §Auditor):
+- All rows returned to the LLM context are passed through a **column whitelist**
+  and a **PII denylist**, so accidental `select("*")` against a schema that later
+  grows a PII column cannot leak user data into prompts / Sentry / logs.
+- Write RPCs (`upsert_retailer_policy`) **fail loud** when the service-role key
+  is missing instead of silently 401'ing through RLS.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
 import os
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from tools.sentry_hook import sentry_traced_tool
 
 logger = logging.getLogger(__name__)
+
+# ----------------------------------------------------------------------
+# Security hardening (R1 + R2 fixes from .cursorrules audit PR #1)
+# ----------------------------------------------------------------------
+
+# LLM-SAFE column allowlist for stack_candidates. Deliberately excludes any
+# field that could contain user PII, auth identifiers, or raw source dumps.
+# Override via env `STACK_CANDIDATES_LLM_COLUMNS` (comma-separated) if the
+# schema legitimately needs to grow.
+_DEFAULT_STACK_CANDIDATES_COLUMNS: tuple[str, ...] = (
+    "id",
+    "store_id",
+    "product_name",
+    "brand",
+    "category",
+    "deal_type",
+    "base_price",
+    "sale_price",
+    "final_price",
+    "discount_pct",
+    "coupon_value",
+    "rebate_app",
+    "rebate_value",
+    "cashback_app",
+    "cashback_value",
+    "stack_notes",
+    "valid_from",
+    "valid_until",
+    "source_url",
+    "created_at",
+    "updated_at",
+)
+
+# Hard denylist — stripped from every outbound row even if they slip into
+# the whitelist via env override. Any future PII column added to Supabase
+# will be blocked at this layer until an explicit allowlist exception is
+# added and audited.
+_PII_DENYLIST: frozenset[str] = frozenset(
+    {
+        "user_id",
+        "auth_user_id",
+        "owner_id",
+        "created_by",
+        "submitted_by",
+        "submitted_by_email",
+        "curator_email",
+        "email",
+        "phone",
+        "phone_number",
+        "full_name",
+        "first_name",
+        "last_name",
+        "address",
+        "street",
+        "zip",
+        "postal_code",
+        "ip",
+        "ip_address",
+        "device_id",
+        "session_id",
+        "stripe_customer_id",
+        "stripe_subscription_id",
+    }
+)
+
+
+def _stack_candidates_columns() -> str:
+    """Return the comma-separated column projection for LLM-grounded queries."""
+    override = os.environ.get("STACK_CANDIDATES_LLM_COLUMNS")
+    cols: Iterable[str]
+    if override:
+        cols = [c.strip() for c in override.split(",") if c.strip()]
+    else:
+        cols = _DEFAULT_STACK_CANDIDATES_COLUMNS
+    safe = [c for c in cols if c not in _PII_DENYLIST]
+    if not safe:
+        # Defensive: never fall back to "*"; prefer a minimal projection.
+        safe = ["id", "store_id"]
+    return ",".join(safe)
+
+
+def _redact_pii(rows: Any) -> Any:
+    """Strip PII-denylisted keys from every dict row. Defense in depth."""
+    if not isinstance(rows, list):
+        return rows
+    cleaned: list[Any] = []
+    for row in rows:
+        if isinstance(row, dict):
+            cleaned.append({k: v for k, v in row.items() if k not in _PII_DENYLIST})
+        else:
+            cleaned.append(row)
+    return cleaned
+
+
+def _require_service_role(op: str) -> None:
+    """Fail loud if a write op is attempted without the service-role key.
+
+    Prevents the silent-failure class where an agent "successfully" calls a
+    write RPC under the anon key and RLS drops the row with no error surface.
+    """
+    if not os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+        raise RuntimeError(
+            f"[governance] {op} requires SUPABASE_SERVICE_ROLE_KEY. "
+            "Refusing to attempt write with anon/JWT key — "
+            "writes would be silently dropped by RLS."
+        )
 
 
 class SupabaseTool:
@@ -46,15 +160,21 @@ class SupabaseTool:
     def fetch_stack_candidates(self, limit: int = 200) -> str:
         try:
             client = self._ensure_client()
+            projection = _stack_candidates_columns()
             res = (
                 client.table("stack_candidates")
-                .select("*")
+                .select(projection)
                 .limit(min(max(limit, 1), 500))
                 .execute()
             )
-            rows = getattr(res, "data", None) or []
+            rows = _redact_pii(getattr(res, "data", None) or [])
             return json.dumps(
-                {"ok": True, "row_count": len(rows), "rows": rows},
+                {
+                    "ok": True,
+                    "row_count": len(rows),
+                    "columns": projection.split(","),
+                    "rows": rows,
+                },
                 default=str,
             )
         except Exception as exc:  # noqa: BLE001
@@ -120,7 +240,7 @@ class SupabaseTool:
             if policy_type:
                 q = q.eq("policy_type", policy_type)
             res = q.limit(min(max(limit, 1), 2000)).execute()
-            rows = getattr(res, "data", None) or []
+            rows = _redact_pii(getattr(res, "data", None) or [])
             return json.dumps(
                 {"ok": True, "row_count": len(rows), "rows": rows},
                 default=str,
@@ -158,6 +278,7 @@ class SupabaseTool:
         confidence: Optional[float] = None,
     ) -> str:
         try:
+            _require_service_role("upsert_retailer_policy")
             client = self._ensure_client()
             payload = {
                 "p_store_id": store_id,
