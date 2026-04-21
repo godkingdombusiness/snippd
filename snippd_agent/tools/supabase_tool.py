@@ -7,6 +7,8 @@ import logging
 import os
 from typing import Any, Optional
 
+from tools.sentry_hook import sentry_traced_tool
+
 logger = logging.getLogger(__name__)
 
 
@@ -194,6 +196,7 @@ def _supabase() -> SupabaseTool:
 # (ADK auto-wraps these as FunctionTool when passed to Agent(tools=[...])).
 # ----------------------------------------------------------------------
 
+@sentry_traced_tool
 def query_stack_candidates(limit: int = 200) -> str:
     """Query Supabase `stack_candidates` for current live deal candidates.
 
@@ -205,6 +208,7 @@ def query_stack_candidates(limit: int = 200) -> str:
     return _supabase().fetch_stack_candidates(limit)
 
 
+@sentry_traced_tool
 def audit_store_coverage() -> str:
     """Return per-store row counts from `v_snippd_store_audit`.
 
@@ -214,6 +218,7 @@ def audit_store_coverage() -> str:
     return _supabase().store_coverage()
 
 
+@sentry_traced_tool
 def audit_mismatched_store_ids() -> str:
     """List `stack_candidates.store_id` values NOT matching any canonical slug.
 
@@ -223,6 +228,7 @@ def audit_mismatched_store_ids() -> str:
     return _supabase().mismatched_store_ids()
 
 
+@sentry_traced_tool
 def audit_stack_candidates_schema() -> str:
     """Return `information_schema.columns` for `stack_candidates`.
 
@@ -231,6 +237,7 @@ def audit_stack_candidates_schema() -> str:
     return _supabase().stack_candidates_columns()
 
 
+@sentry_traced_tool
 def fetch_retailer_policies(
     store_id: Optional[str] = None,
     policy_type: Optional[str] = None,
@@ -246,6 +253,7 @@ def fetch_retailer_policies(
     return _supabase().fetch_retailer_policies(store_id, policy_type, limit)
 
 
+@sentry_traced_tool
 def list_stale_retailer_policies(days: int = 30) -> str:
     """Return retailer policies older than `days` since last verification.
 
@@ -254,6 +262,7 @@ def list_stale_retailer_policies(days: int = 30) -> str:
     return _supabase().stale_retailer_policies(days)
 
 
+@sentry_traced_tool
 def upsert_retailer_policy(
     store_id: str,
     policy_type: str,

@@ -8,6 +8,7 @@ google-cloud-aiplatform[adk,agent_engines]>=1.112.0,<2.0.0
 google-adk==1.30.0
 supabase>=2.3.0,<3.0.0
 python-dotenv>=1.0.0,<2.0.0
+sentry-sdk>=2.14.0,<3.0.0
 
 # Optional: tighten if Cloud Build still fails — uncomment one line at a time:
 # protobuf>=4.25.3,<6.0.0

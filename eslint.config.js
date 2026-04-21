@@ -26,4 +26,11 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  // Node-side build / tooling files run in Node, not the browser.
+  {
+    files: ['vite.config.{js,ts}', 'eslint.config.{js,ts}'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
 ])
