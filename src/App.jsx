@@ -7,6 +7,7 @@ import {
   Outlet,
   Link,
 } from "react-router-dom";
+import * as Sentry from "@sentry/react";
 import { supabase } from "@/lib/supabase";
 import { MissionProvider } from "@/context/MissionProvider";
 import SignInScreen from "@/SignInScreen";
@@ -17,7 +18,25 @@ import ReceiptVerifiedScreen from "@/ReceiptVerifiedScreen";
 import ChefStashScreen from "@/ChefStashScreen";
 import ChefMealScreen from "@/ChefMealScreen";
 import StudioScreen from "@/StudioScreen";
+import DebugScreen from "@/DebugScreen";
 import "./App.css";
+
+// React Router v7 + Sentry: wrap the plain Routes component so route spans
+// and transaction names track the app's navigation automatically.
+const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
+
+function SentryErrorFallback() {
+  return (
+    <div className="snippd-screen" style={{ padding: "2rem" }}>
+      <h2>Something broke.</h2>
+      <p>
+        The issue has been reported to our on-call team. Try refreshing the
+        page or tap Back. If it keeps happening, check{" "}
+        <Link to="/debug">/debug</Link> to confirm the pipeline is healthy.
+      </p>
+    </div>
+  );
+}
 
 function AuthGate() {
   const [session, setSession] = useState(undefined);
@@ -53,6 +72,9 @@ function Shell() {
         <Link to="/verify">Verify</Link>
         <Link to="/chef">Chef</Link>
         <Link to="/studio">Studio</Link>
+        <Link to="/debug" style={{ marginLeft: "auto", opacity: 0.6 }}>
+          Debug
+        </Link>
       </nav>
       <main className="snippd-main">
         <Outlet />
@@ -63,25 +85,30 @@ function Shell() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <MissionProvider>
-        <Routes>
-          <Route path="/login" element={<SignInScreen />} />
-          <Route element={<AuthGate />}>
-            <Route element={<Shell />}>
-              <Route path="/plan" element={<WeeklyPlanScreen />} />
-              <Route path="/list" element={<MyListScreen />} />
-              <Route path="/checkout" element={<CheckoutScreen />} />
-              <Route path="/verify" element={<ReceiptVerifiedScreen />} />
-              <Route path="/chef/:slot" element={<ChefMealScreen />} />
-              <Route path="/chef" element={<ChefStashScreen />} />
-              <Route path="/studio" element={<StudioScreen />} />
+    <Sentry.ErrorBoundary fallback={<SentryErrorFallback />} showDialog={false}>
+      <BrowserRouter>
+        <MissionProvider>
+          <SentryRoutes>
+            <Route path="/login" element={<SignInScreen />} />
+            {/* Debug console is intentionally unauthenticated so the
+                founder can verify the Sentry→Slack bridge from any device. */}
+            <Route path="/debug" element={<DebugScreen />} />
+            <Route element={<AuthGate />}>
+              <Route element={<Shell />}>
+                <Route path="/plan" element={<WeeklyPlanScreen />} />
+                <Route path="/list" element={<MyListScreen />} />
+                <Route path="/checkout" element={<CheckoutScreen />} />
+                <Route path="/verify" element={<ReceiptVerifiedScreen />} />
+                <Route path="/chef/:slot" element={<ChefMealScreen />} />
+                <Route path="/chef" element={<ChefStashScreen />} />
+                <Route path="/studio" element={<StudioScreen />} />
+              </Route>
+              <Route path="/" element={<Navigate to="/plan" replace />} />
             </Route>
-            <Route path="/" element={<Navigate to="/plan" replace />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/plan" replace />} />
-        </Routes>
-      </MissionProvider>
-    </BrowserRouter>
+            <Route path="*" element={<Navigate to="/plan" replace />} />
+          </SentryRoutes>
+        </MissionProvider>
+      </BrowserRouter>
+    </Sentry.ErrorBoundary>
   );
 }
