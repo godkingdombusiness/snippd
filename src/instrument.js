@@ -22,7 +22,7 @@ import {
 const DSN =
   import.meta.env.VITE_SENTRY_DSN ||
   // Fallback DSN provided by the founder on 2026-04-21. Safe to ship (public key).
-  "https://b234427f0980f25b65b10aa986e617cd@o4511256923537408.ingest.us.sentry.io/4511257095045120";
+  "https://e9f81fd15fb17437842ebf168b502112@o4511256923537408.ingest.us.sentry.io/4511257099042816";
 
 const ENV = import.meta.env.MODE || "development";
 const RELEASE =
