@@ -2,7 +2,12 @@
 /**
  * Snippd #founder-actions synchronizer.
  *
- * Renders the current founder-action queue to Slack. Source of truth is:
+ * Renders the current founder-action queue to Slack with **stable 1-based
+ * indices** so the founder can approve items by replying with the
+ * corresponding numbers (parsed by scripts/process_approvals.mjs via the
+ * `Founder approval inbox` GitHub Action).
+ *
+ * Source of truth is:
  *   - .snippd/founder-actions.json  (static backlog, commit-editable by any agent)
  *   - gh pr list                    (live open PRs awaiting review)
  *
@@ -21,44 +26,30 @@
  *   2 — config / input error (bad JSON, missing file, etc.)
  *
  * Design notes:
- *   This intentionally posts a fresh top-level message on each sync rather than
- *   threading replies to a pinned parent. Incoming webhooks don't return the
- *   message ts, so true threading would require a Slack bot token + Web API —
- *   a heavier auth story than this deserves. The channel itself is the log;
- *   pin the most recent snapshot and history scrolls above.
+ *   This posts a fresh top-level message on each sync rather than threading
+ *   replies to a pinned parent. Incoming webhooks don't return the message
+ *   ts, so true threading would require a Slack bot token + Web API. The
+ *   channel itself is the log; pin the most recent snapshot and history
+ *   scrolls above.
+ *
+ *   Items are numbered using the deterministic `indexedItems()` contract in
+ *   _founder_actions_shared.mjs. That contract is ALSO used by the approval
+ *   processor — if you change the sort, change it there, not here.
  */
 
-import { readFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import {
+  CATEGORY_META,
+  CATEGORY_ORDER,
+  PRIORITY_EMOJI,
+  PRIORITY_ORDER,
+  indexedItems,
+  loadBacklog,
+} from "./_founder_actions_shared.mjs";
 
 const execFileP = promisify(execFile);
-
-const REPO_ROOT = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  ".."
-);
-const BACKLOG_PATH = path.join(REPO_ROOT, ".snippd", "founder-actions.json");
 const DEFAULT_REPO = "godkingdombusiness/snippd";
-
-const PRIORITY_EMOJI = {
-  critical: ":fire:",
-  high: ":rocket:",
-  medium: ":white_check_mark:",
-  low: ":broom:",
-};
-
-const CATEGORY_META = {
-  security: { emoji: ":lock:", label: "Security" },
-  ship: { emoji: ":ship:", label: "Ship" },
-  verify: { emoji: ":mag:", label: "Verify" },
-  polish: { emoji: ":sparkles:", label: "Polish" },
-};
-
-const PRIORITY_ORDER = ["critical", "high", "medium", "low"];
-const CATEGORY_ORDER = ["security", "ship", "verify", "polish"];
 
 function parseArgs(argv) {
   const out = {};
@@ -68,17 +59,6 @@ function parseArgs(argv) {
     else if (a === "--no-gh") out.noGh = true;
   }
   return out;
-}
-
-async function loadBacklog() {
-  const raw = await readFile(BACKLOG_PATH, "utf8");
-  const parsed = JSON.parse(raw);
-  if (!parsed || !Array.isArray(parsed.items)) {
-    throw new Error(
-      `${BACKLOG_PATH} is missing "items" array (version=${parsed?.version})`
-    );
-  }
-  return parsed;
 }
 
 /**
@@ -116,18 +96,6 @@ async function loadOpenPRs(repo) {
   }
 }
 
-function sortItems(items) {
-  return [...items].sort((a, b) => {
-    const ca = CATEGORY_ORDER.indexOf(a.category || "polish");
-    const cb = CATEGORY_ORDER.indexOf(b.category || "polish");
-    if (ca !== cb) return ca - cb;
-    const pa = PRIORITY_ORDER.indexOf(a.priority || "low");
-    const pb = PRIORITY_ORDER.indexOf(b.priority || "low");
-    if (pa !== pb) return pa - pb;
-    return (a.addedAt || "").localeCompare(b.addedAt || "");
-  });
-}
-
 function groupByCategory(items) {
   const buckets = new Map();
   for (const item of items) {
@@ -139,9 +107,9 @@ function groupByCategory(items) {
 }
 
 /**
- * Build an mrkdwn bullet line for a single action item.
- * Truncates long "why" text so a 50-item list doesn't blow through Slack's
- * 3000-char-per-block limit.
+ * Build an mrkdwn bullet line for a single action item. The leading
+ * `[N]` is the founder-facing approval number — scripts/process_approvals.mjs
+ * resolves the same N back to this item via `indexedItems()`.
  */
 function renderItemLine(item) {
   const pri = PRIORITY_EMOJI[item.priority] || PRIORITY_EMOJI.low;
@@ -156,20 +124,20 @@ function renderItemLine(item) {
       ? ` :hourglass: _blocked by: ${item.blockedBy.join(", ")}_`
       : "";
   const addedBy = item.addedBy ? ` — added by ${item.addedBy}` : "";
-  return `${pri} *${item.title}*${whereLine}\n   ${why}${blockedSuffix}${addedBy}`;
+  return `*[${item.index}]* ${pri} *${item.title}*${whereLine}\n   ${why}${blockedSuffix}${addedBy}`;
 }
 
 function buildBlocks({ backlog, prs, repo }) {
-  const sorted = sortItems(backlog.items);
-  const grouped = groupByCategory(sorted);
+  const indexed = indexedItems(backlog.items);
+  const grouped = groupByCategory(indexed);
 
   const totalsByPriority = PRIORITY_ORDER.reduce((acc, p) => {
-    acc[p] = sorted.filter((i) => i.priority === p).length;
+    acc[p] = indexed.filter((i) => i.priority === p).length;
     return acc;
   }, {});
 
   const headerLine =
-    `*Founder Action Queue* — ${sorted.length} open · ` +
+    `*Founder Action Queue* — ${indexed.length} open · ` +
     PRIORITY_ORDER.filter((p) => totalsByPriority[p] > 0)
       .map((p) => `${PRIORITY_EMOJI[p]} ${totalsByPriority[p]}`)
       .join("  ");
@@ -246,7 +214,27 @@ function buildBlocks({ backlog, prs, repo }) {
     blocks.push(...prChunks);
   }
 
+  // Founder approval instructions — always visible at the bottom so the reply
+  // syntax stays discoverable even in a long list.
   blocks.push({ type: "divider" });
+  blocks.push({
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text:
+        ":ballot_box_with_check: *How to approve*\n" +
+        "Open the *Founder approval inbox* workflow in GitHub Actions " +
+        `(<https://github.com/${repo}/actions/workflows/process-approvals.yml|here>), ` +
+        "click *Run workflow*, and paste your approval spec:\n" +
+        "• `all` → approve every item above\n" +
+        "• `1-3` → approve items 1 through 3\n" +
+        "• `1,9,4,3` → approve those specific items\n" +
+        "• `1-3,7,9-11` → any mix of ranges and singles\n" +
+        "Approved items that have an automated action (merging a PR, dispatching a workflow) run immediately. " +
+        "Manual items (rotate a key, verify a webhook) get acknowledged and drop out of the queue.",
+    },
+  });
+
   blocks.push({
     type: "context",
     elements: [
@@ -255,7 +243,8 @@ function buildBlocks({ backlog, prs, repo }) {
         text:
           `_Synced ${new Date().toUTCString()} · ` +
           `source: \`.snippd/founder-actions.json\` on ${repo} · ` +
-          `edit the JSON in a PR to add/remove items._`,
+          `numbers above are stable for this post · ` +
+          `edit the JSON in a PR to add new items._`,
       },
     ],
   });
@@ -263,12 +252,12 @@ function buildBlocks({ backlog, prs, repo }) {
   return blocks;
 }
 
-function buildFallbackText(sorted) {
+function buildFallbackText(indexed) {
   return (
-    `Founder action queue: ${sorted.length} open. ` +
-    sorted
+    `Founder action queue: ${indexed.length} open. ` +
+    indexed
       .slice(0, 3)
-      .map((i) => `[${i.priority}] ${i.title}`)
+      .map((i) => `[${i.index}] ${i.title}`)
       .join(" · ")
   ).slice(0, 300);
 }
@@ -299,7 +288,8 @@ async function main() {
 
   const prs = args.noGh ? [] : await loadOpenPRs(repo);
   const blocks = buildBlocks({ backlog, prs, repo });
-  const fallback = buildFallbackText(sortItems(backlog.items));
+  const indexed = indexedItems(backlog.items);
+  const fallback = buildFallbackText(indexed);
 
   const payload = { text: fallback, blocks };
 
