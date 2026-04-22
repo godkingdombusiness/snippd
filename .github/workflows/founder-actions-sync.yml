@@ -55,6 +55,7 @@ jobs:
         env:
           CHANNEL_WEBHOOK: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL }}
           HUB_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          WINS_WEBHOOK: ${{ secrets.SLACK_WINS_WEBHOOK_URL }}
         run: |
           if [ -n "$CHANNEL_WEBHOOK" ]; then
             echo "have_webhook=true" >> "$GITHUB_OUTPUT"
@@ -62,15 +63,18 @@ jobs:
           elif [ -n "$HUB_WEBHOOK" ]; then
             echo "have_webhook=true" >> "$GITHUB_OUTPUT"
             echo "::notice::using SLACK_WEBHOOK_URL (shared hub)"
+          elif [ -n "$WINS_WEBHOOK" ]; then
+            echo "have_webhook=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::falling back to SLACK_WINS_WEBHOOK_URL (only webhook available)"
           else
             echo "have_webhook=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::neither SLACK_ACTIONS_WEBHOOK_URL nor SLACK_WEBHOOK_URL is set — skipping."
+            echo "::notice::no Slack webhook configured — skipping."
           fi
 
       - name: Sync queue to Slack
         if: steps.check.outputs.have_webhook == 'true'
         env:
-          SLACK_ACTIONS_WEBHOOK_URL: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+          SLACK_ACTIONS_WEBHOOK_URL: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL || secrets.SLACK_WINS_WEBHOOK_URL }}
           SLACK_TOPIC_PREFIX: "[action-needed]"
           GITHUB_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}

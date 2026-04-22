@@ -55,7 +55,7 @@ jobs:
       NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
       NEO4J_DATABASE: ${{ secrets.NEO4J_DATABASE || 'neo4j' }}
       ALLOWED_ORIGINS: ${{ secrets.SNIPPD_ALLOWED_ORIGINS || 'https://snippd.app,http://localhost:5173,http://localhost:5174' }}
-      SLACK_WEBHOOK: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL || secrets.SLACK_WINS_WEBHOOK_URL }}
 
     steps:
       - name: Guard — required secrets are set

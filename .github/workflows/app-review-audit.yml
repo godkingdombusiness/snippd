@@ -45,7 +45,7 @@ jobs:
       - name: Post App Review audit to Slack
         if: ${{ github.event_name != 'pull_request' }}
         env:
-          SLACK_APP_REVIEW_WEBHOOK_URL: ${{ secrets.SLACK_APP_REVIEW_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+          SLACK_APP_REVIEW_WEBHOOK_URL: ${{ secrets.SLACK_APP_REVIEW_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL || secrets.SLACK_WINS_WEBHOOK_URL }}
           SLACK_TOPIC_PREFIX: "[app-review]"
         run: |
           if [ -z "${SLACK_APP_REVIEW_WEBHOOK_URL}" ]; then
