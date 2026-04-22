@@ -1,0 +1,97 @@
+name: slack-diagnose
+
+# Deep diagnostic for "I can't see anything in Slack" problems.
+# Unlike slack-smoketest (which only confirms HTTP 200), this workflow
+# captures and echoes the FULL Slack response — including any hints
+# about the target channel, team, or app configuration.
+#
+# Also posts a payload with an explicit channel override. Legacy
+# incoming webhooks honor the override; scoped "incoming-webhook" OAuth
+# apps silently ignore it. That signal alone tells us which flavor of
+# webhook we have.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      WINS: ${{ secrets.SLACK_WINS_WEBHOOK_URL }}
+      HUB: ${{ secrets.SLACK_WEBHOOK_URL }}
+      RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Probe webhook with verbose output
+        run: |
+          AT=$(date -u +%H:%M:%SZ)
+          echo "=============================================="
+          echo " SLACK DIAGNOSTIC — timestamp: $AT"
+          echo "=============================================="
+          echo ""
+
+          if [ -z "$WINS$HUB" ]; then
+            echo "::error::no Slack webhook secrets set"
+            exit 1
+          fi
+
+          URL="${HUB:-$WINS}"
+          LABEL="${HUB:+SLACK_WEBHOOK_URL}"
+          LABEL="${LABEL:-SLACK_WINS_WEBHOOK_URL}"
+
+          echo "--- webhook URL shape ---"
+          echo "$URL" | sed -E 's#(https://hooks.slack.com/services/T[A-Z0-9]+)/(B[A-Z0-9]+)/.*#prefix=\1 team=\2#' || true
+          echo ""
+
+          echo "--- TEST 1: plain text probe ---"
+          curl -sS -D /tmp/headers1.txt -o /tmp/body1.txt -w "HTTP %{http_code}\n" \
+            -X POST "$URL" \
+            -H 'Content-Type: application/json' \
+            --data "{\"text\":\":loudspeaker: DIAGNOSTIC PROBE 1 at $AT — if you can see this in ANY Slack channel, reply in chat with the channel name. Run: $RUN_URL\"}"
+          echo "--- response headers ---"
+          cat /tmp/headers1.txt
+          echo "--- response body ---"
+          cat /tmp/body1.txt
+          echo ""
+          echo ""
+
+          echo "--- TEST 2: explicit channel override to #general ---"
+          curl -sS -D /tmp/headers2.txt -o /tmp/body2.txt -w "HTTP %{http_code}\n" \
+            -X POST "$URL" \
+            -H 'Content-Type: application/json' \
+            --data "{\"channel\":\"#general\",\"text\":\":loudspeaker: DIAGNOSTIC PROBE 2 at $AT — if you see this in #general the webhook is legacy and I can redirect it. Run: $RUN_URL\"}"
+          echo "--- response headers ---"
+          cat /tmp/headers2.txt
+          echo "--- response body ---"
+          cat /tmp/body2.txt
+          echo ""
+          echo ""
+
+          echo "--- TEST 3: block kit + @channel mention for visibility ---"
+          curl -sS -D /tmp/headers3.txt -o /tmp/body3.txt -w "HTTP %{http_code}\n" \
+            -X POST "$URL" \
+            -H 'Content-Type: application/json' \
+            --data '{
+              "blocks": [
+                { "type": "header", "text": { "type": "plain_text", "text": "Snippd ops — visibility probe" } },
+                { "type": "section", "text": { "type": "mrkdwn", "text": "<!channel> if you see *this* message, reply with the channel name so I can rewire the other webhooks to match." } }
+              ]
+            }'
+          echo "--- response headers ---"
+          cat /tmp/headers3.txt
+          echo "--- response body ---"
+          cat /tmp/body3.txt
+          echo ""
+
+          echo ""
+          echo "=============================================="
+          echo " INTERPRETATION GUIDE"
+          echo "=============================================="
+          echo " - body 'ok' + 200        => webhook works, channel set server-side"
+          echo " - body 'channel_not_found' on TEST 2 => modern scoped webhook, channel fixed"
+          echo " - body 'invalid_payload' => formatting issue (unlikely for these probes)"
+          echo " - body 'no_service' or 404 => webhook revoked/deleted"
+          echo " - any HTTP != 200        => see error in body"
