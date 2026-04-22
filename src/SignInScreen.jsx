@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { emitUserSignedIn } from "@/lib/behavior";
+import LegalFooter from "@/components/LegalFooter";
 
 /**
  * Email/password sign-in. After Supabase establishes a session, `MissionProvider`
@@ -74,6 +75,12 @@ export default function SignInScreen() {
         </div>
       </form>
       {msg ? <p className="snippd-msg">{msg}</p> : null}
+      <p className="snippd-muted" style={{ fontSize: "0.82rem", marginTop: "1.25rem" }}>
+        By creating an account you agree to our{" "}
+        <Link to="/terms">Terms</Link> and{" "}
+        <Link to="/privacy">Privacy Policy</Link>.
+      </p>
+      <LegalFooter />
     </div>
   );
 }
