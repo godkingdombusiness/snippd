@@ -144,9 +144,9 @@ export default function SettingsScreen() {
           </p>
         ) : (
           <p className="snippd-muted" style={{ margin: 0 }}>
-            Self-serve subscription management is coming soon. Email{" "}
-            <a href="mailto:hello@getsnippd.com">hello@getsnippd.com</a> to
-            cancel, change, or refund.
+            To cancel, change, or request a refund, email{" "}
+            <a href="mailto:hello@getsnippd.com">hello@getsnippd.com</a>. We
+            reply within one business day.
           </p>
         )}
       </section>
