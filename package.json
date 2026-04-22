@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "report": "node scripts/generate_report.mjs",
+    "report:dry": "node scripts/generate_report.mjs --dry-run"
   },
   "dependencies": {
     "@sentry/react": "^10.49.0",

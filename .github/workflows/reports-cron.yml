@@ -1,0 +1,79 @@
+name: reports-cron
+
+# @Reporter heartbeat: posts a live snapshot of app health to #reports
+# on a 6-times-a-day cadence.
+#
+# Schedule (US Eastern, currently EDT / UTC-4 in April 2026):
+#   1:00 AM ET  → 05:00 UTC
+#   5:00 AM ET  → 09:00 UTC
+#   9:00 AM ET  → 13:00 UTC
+#  11:00 AM ET  → 15:00 UTC
+#   3:00 PM ET  → 19:00 UTC
+#   8:00 PM ET  → 00:00 UTC (next day)
+#
+# DST caveat: GitHub cron runs in UTC and ignores local DST. From November
+# through March, Eastern time is EST (UTC-5) and each post drifts one hour
+# later (2am, 6am, etc.). If that matters, the founder can bump each cron
+# by one line at the switch — but the cadence is more important than the
+# exact hour, so we leave it.
+#
+# Triggers:
+#   - cron (x6 daily)
+#   - workflow_dispatch — manual "send me a report now"
+#
+# Required secret: SLACK_REPORTS_WEBHOOK_URL (graceful skip if unset).
+
+on:
+  schedule:
+    - cron: "0 5 * * *"   # 1 AM ET
+    - cron: "0 9 * * *"   # 5 AM ET
+    - cron: "0 13 * * *"  # 9 AM ET
+    - cron: "0 15 * * *"  # 11 AM ET
+    - cron: "0 19 * * *"  # 3 PM ET
+    - cron: "0 0 * * *"   # 8 PM ET (runs at 00:00 UTC, which is 8 PM the day before in Eastern)
+  workflow_dispatch:
+    inputs:
+      since_hours:
+        description: "How far back to look for merges (hours)"
+        required: false
+        default: "6"
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: reports-cron
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout (full history for git log --since)
+        uses: actions/checkout@v4
+        with:
+          # Heartbeat's "merges in last 6h" signal requires enough commit
+          # history that a 6-hour git log --since is accurate. Fetch-depth:0
+          # is overkill but cheap — the repo is small.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install (for npm audit inside the report)
+        run: npm ci
+
+      - name: Generate and post heartbeat
+        env:
+          SLACK_REPORTS_WEBHOOK_URL: ${{ secrets.SLACK_REPORTS_WEBHOOK_URL }}
+          GITHUB_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          HOURS="${{ inputs.since_hours || '6' }}"
+          node scripts/generate_report.mjs --since-hours "$HOURS"
