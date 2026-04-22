@@ -30,3 +30,4 @@ __pycache__/
 venv/
 snippd_agent/.env
 .env
+.env.local
