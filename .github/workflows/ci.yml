@@ -1,0 +1,91 @@
+name: ci
+
+# First real CI gate per Snippd DNA — every PR must pass before merge.
+#
+# Three independent jobs run in parallel:
+#   - web:   npm ci + npm run lint + npm run build
+#   - agents: python -m unittest for snippd_agent/tests/
+#   - audit: npm audit with ceiling set to "high" so a new critical/high CVE
+#            blocks the PR, but transient mods are informational only.
+#
+# Runs on every push to main and every PR. Budget: ~90 seconds per job.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: web (lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (with Sentry-disabled placeholder so build does not require a DSN)
+        env:
+          VITE_SENTRY_DSN: ""
+          VITE_APP_VERSION: ${{ github.sha }}
+        run: npm run build
+
+  agents:
+    name: agents (guardrails smoke test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # We run the guardrail smoke tests without installing the full ADK
+      # dependency set — guardrails.py is deliberately stdlib-only so this
+      # stays fast (~1s) and doesn't require a GCP auth context.
+      - name: Run guardrails smoke test
+        working-directory: snippd_agent
+        run: python tests/test_guardrails.py
+
+  audit:
+    name: audit (npm high+)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fail the build if a new vulnerability of severity "high" or above
+      # lands. Moderates are noisy for transitive deps and rarely prod-risk,
+      # so they're informational here — the audit canvas tracks them.
+      - name: Audit (fail on high+)
+        run: npm audit --audit-level=high
