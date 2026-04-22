@@ -1,7 +1,30 @@
 # `.snippd/` — autonomous-team scratch space
 
-This directory holds structured data the Snippd Executive Agent Team owns
-collectively. Today it's one file.
+This directory holds structured data the Snippd autonomous team owns
+collectively.
+
+## `team-directory.json`
+
+Canonical roster for every agent on the team. Eight departments, 30 agents.
+Every `addedBy` field in `founder-actions.json`, every Slack topic prefix,
+every canvas reference must resolve to a handle in this file.
+
+- **Source of truth.** If an agent isn't in here, they don't exist.
+- **Slack prefix per department.** Agents sign every Slack post with their
+  department's `slackPrefix` (e.g. `[cx]`, `[product]`, `[data]`). The
+  `founder-actions-sync` and `reports-cron` workflows use the prefix to
+  route into per-channel webhooks if configured, otherwise fall back to
+  `SLACK_WINS_WEBHOOK_URL`.
+- **Status legend.** `critical-now` blocks launch; `launch` ships day 0;
+  `queued` adds at day 30; `deferred` adds at day 60–90; `retainer` is
+  external counsel / milestones only.
+- **Reporting lines.** Every department has a single `reportsTo`. Chief-of-
+  Staff owns 5 departments, Lead-Architect owns Data, Growth-Agent owns
+  Partnerships. Auditor is cross-cutting with no direct reports.
+
+See `canvases/snippd-full-team-org.canvas.tsx` for the full build-out
+narrative and `canvases/snippd-marketing-org.canvas.tsx` for the marketing
+department deep-dive.
 
 ## `founder-actions.json`
 
