@@ -42,13 +42,14 @@ jobs:
       - name: Run App Review audit (summary to log)
         run: node scripts/audit_app_review.mjs --summary
 
-      - name: Post to #app-review in Slack
+      - name: Post App Review audit to Slack
         if: ${{ github.event_name != 'pull_request' }}
         env:
-          SLACK_APP_REVIEW_WEBHOOK_URL: ${{ secrets.SLACK_APP_REVIEW_WEBHOOK_URL }}
+          SLACK_APP_REVIEW_WEBHOOK_URL: ${{ secrets.SLACK_APP_REVIEW_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+          SLACK_TOPIC_PREFIX: "[app-review]"
         run: |
           if [ -z "${SLACK_APP_REVIEW_WEBHOOK_URL}" ]; then
-            echo "::notice::SLACK_APP_REVIEW_WEBHOOK_URL not set — skipping Slack post."
+            echo "::notice::No Slack webhook (SLACK_APP_REVIEW_WEBHOOK_URL or SLACK_WEBHOOK_URL) set — skipping."
             exit 0
           fi
           node scripts/audit_app_review.mjs

@@ -21,7 +21,8 @@ name: reports-cron
 #   - cron (x6 daily)
 #   - workflow_dispatch — manual "send me a report now"
 #
-# Required secret: SLACK_REPORTS_WEBHOOK_URL (graceful skip if unset).
+# Webhook resolution: SLACK_REPORTS_WEBHOOK_URL takes priority, else falls
+# back to the shared SLACK_WEBHOOK_URL hub. Graceful skip if neither is set.
 
 on:
   schedule:
@@ -71,7 +72,8 @@ jobs:
 
       - name: Generate and post heartbeat
         env:
-          SLACK_REPORTS_WEBHOOK_URL: ${{ secrets.SLACK_REPORTS_WEBHOOK_URL }}
+          SLACK_REPORTS_WEBHOOK_URL: ${{ secrets.SLACK_REPORTS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+          SLACK_TOPIC_PREFIX: "[report]"
           GITHUB_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
