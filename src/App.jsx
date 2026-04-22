@@ -20,6 +20,9 @@ import ChefMealScreen from "@/ChefMealScreen";
 import StudioScreen from "@/StudioScreen";
 import DebugScreen from "@/DebugScreen";
 import SnippdProScreen from "@/SnippdProScreen";
+import PrivacyPolicyScreen from "@/PrivacyPolicy";
+import TermsOfServiceScreen from "@/TermsOfService";
+import LegalFooter from "@/components/LegalFooter";
 import "./App.css";
 
 // React Router v7 + Sentry: wrap the plain Routes component so route spans
@@ -92,6 +95,7 @@ function Shell() {
       <main className="snippd-main">
         <Outlet />
       </main>
+      <LegalFooter />
     </div>
   );
 }
@@ -110,6 +114,10 @@ export default function App() {
                 from social and unauthenticated referrals. Checkout still
                 requires an email (captured on the page). */}
             <Route path="/pro" element={<SnippdProScreen />} />
+            {/* Legal pages are public so App Store Connect can link them and
+                so unauthenticated visitors can read them before signing up. */}
+            <Route path="/privacy" element={<PrivacyPolicyScreen />} />
+            <Route path="/terms" element={<TermsOfServiceScreen />} />
             <Route element={<AuthGate />}>
               <Route element={<Shell />}>
                 <Route path="/plan" element={<WeeklyPlanScreen />} />

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import * as Sentry from "@sentry/react";
 import { supabase } from "@/lib/supabase";
 import { startSnippdProCheckout, stripeConfig } from "@/lib/stripe";
+import LegalFooter from "@/components/LegalFooter";
 
 const PRICE_LABEL = "$4.99 / month";
 const TRIAL_LABEL = "7-day free trial, cancel anytime";
@@ -213,9 +214,12 @@ export default function SnippdProScreen() {
       <footer style={{ marginTop: "2.5rem", textAlign: "center", opacity: 0.7 }}>
         <small>
           Pricing shown in USD. Subscription auto-renews monthly; cancel anytime
-          from your account page.
+          from your account page. By subscribing you agree to our{" "}
+          <Link to="/terms">Terms</Link> and{" "}
+          <Link to="/privacy">Privacy Policy</Link>.
         </small>
       </footer>
+      <LegalFooter />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 {
-  "$comment": "Canonical backlog of action items only the founder can complete. Agents append/remove via commits to this file; scripts/sync_founder_actions.mjs renders the current state to #founder-actions in Slack. Delete an item to mark it done.",
+  "$comment": "Canonical backlog of action items only the founder can complete. Agents append/remove via commits to this file; scripts/sync_founder_actions.mjs renders the current state to Slack. Delete an item to mark it done.",
   "version": 1,
-  "channel": "#founder-actions",
+  "channel": "#founder-actions (or SLACK_WEBHOOK_URL hub)",
   "items": [
     {
       "id": "rotate-stripe-secret",
@@ -24,37 +24,24 @@
       "addedBy": "@Auditor"
     },
     {
-      "id": "merge-pr-7",
-      "title": "Review + merge PR #7 — kill critical CVE + Sentry DSN hygiene",
-      "category": "ship",
-      "priority": "high",
-      "why": "Removes the last unused Firebase dep (protobufjs RCE GHSA-h755-8qp9-cq85) and drops the hardcoded Sentry DSN fallback. npm audit goes from 9 vulns → 0.",
-      "where": "https://github.com/godkingdombusiness/snippd/pull/7",
+      "id": "slack-webhook-hub",
+      "title": "Paste SLACK_WEBHOOK_URL as a repo secret so everything reaches Slack",
+      "category": "ops",
+      "priority": "critical",
+      "why": "Only SLACK_WINS_WEBHOOK_URL is currently set, so founder-action nudges, reports, app-review audits, and Neo4j provision posts all silently no-op. One webhook at SLACK_WEBHOOK_URL fixes every channel via fallback; topic prefixes distinguish them.",
+      "where": "Slack → Apps → Incoming Webhooks → pick hub channel → copy URL → https://github.com/godkingdombusiness/snippd/settings/secrets/actions → New secret → name SLACK_WEBHOOK_URL → then Actions → slack-smoketest → Run workflow to verify.",
       "addedAt": "2026-04-22",
-      "addedBy": "@SRE-Warden",
-      "approval": { "action": "merge-pr", "pr": 7, "strategy": "squash", "deleteBranch": true }
+      "addedBy": "@Chief-of-Staff"
     },
     {
-      "id": "merge-pr-8",
-      "title": "Review + merge PR #8 — first real CI gate",
-      "category": "ship",
+      "id": "supabase-mgmt-token-for-provision",
+      "title": "Add SUPABASE_ACCESS_TOKEN + SUPABASE_PROJECT_REF as repo secrets",
+      "category": "ops",
       "priority": "high",
-      "why": "Adds lint+build, Python guardrails smoke test, and npm audit fail-on-high across every PR and push. Main stops being on the honor system.",
-      "where": "https://github.com/godkingdombusiness/snippd/pull/8",
+      "why": "Without these, provision-neo4j.yml can't push the existing NEO4J_* values into the Edge Function runtime — the ingest-behavior function stays in 'accept + drop' (202 degraded) mode and no behavioral events actually land in Aura. Zero user-facing impact today, but blocks every personalization feature that relies on the graph.",
+      "where": "Supabase dashboard → Account → Access Tokens → Generate (name: 'github actions provision') → copy. Project ref lives in Project Settings → General → Reference ID. Then https://github.com/godkingdombusiness/snippd/settings/secrets/actions → add both as repo secrets.",
       "addedAt": "2026-04-22",
-      "addedBy": "@Lead-Architect",
-      "approval": { "action": "merge-pr", "pr": 8, "strategy": "squash", "deleteBranch": true }
-    },
-    {
-      "id": "merge-pr-9",
-      "title": "Review + merge PR #9 — delete 9 dead .js re-export shims",
-      "category": "ship",
-      "priority": "medium",
-      "why": "Cosmetic close-out. Build/lint green, bundle unchanged (already tree-shaken), repo easier to reason about.",
-      "where": "https://github.com/godkingdombusiness/snippd/pull/9",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Architect",
-      "approval": { "action": "merge-pr", "pr": 9, "strategy": "squash", "deleteBranch": true }
+      "addedBy": "@Lead-Architect"
     },
     {
       "id": "stripe-price-id",
@@ -78,77 +65,14 @@
       "blockedBy": ["stripe-price-id", "rotate-stripe-secret"]
     },
     {
-      "id": "sentry-slack-alert",
-      "title": "Confirm Sentry → Slack alert rule is active",
-      "category": "verify",
-      "priority": "medium",
-      "why": "You confirmed earlier that the rule fired on a test issue; this is just a periodic re-check. If it stops firing the entire self-healing loop goes dark.",
-      "where": "Sentry → Alerts → Rules → 'Slack #engineering-alerts on new Issue'",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Auditor"
-    },
-    {
-      "id": "repo-secret-wins-webhook",
-      "title": "Verify SLACK_WINS_WEBHOOK_URL is set as repo secret",
-      "category": "verify",
-      "priority": "medium",
-      "why": "The .github/workflows/wins.yml action will silently skip if this secret is missing, so celebration posts would stop and nobody would notice.",
-      "where": "https://github.com/godkingdombusiness/snippd/settings/secrets/actions",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Reporter"
-    },
-    {
-      "id": "repo-secret-actions-webhook",
-      "title": "Create #founder-actions channel + add SLACK_ACTIONS_WEBHOOK_URL as repo secret",
-      "category": "verify",
-      "priority": "high",
-      "why": "This backlog can only post to Slack once the webhook exists. Also needed as a GitHub secret so the auto-sync workflow can run on PR events.",
-      "where": "Slack → Create channel #founder-actions → Apps → Incoming Webhooks → Add → copy URL → paste into .env.local AND https://github.com/godkingdombusiness/snippd/settings/secrets/actions as SLACK_ACTIONS_WEBHOOK_URL",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Chief-of-Staff"
-    },
-    {
-      "id": "repo-secret-reports-webhook",
-      "title": "Create #reports channel + add SLACK_REPORTS_WEBHOOK_URL as repo secret",
-      "category": "verify",
-      "priority": "high",
-      "why": "The 6x-daily @Reporter heartbeat (.github/workflows/reports-cron.yml from PR #12) silently skips when the webhook is missing. You won't get any 1am/5am/9am/11am/3pm/8pm ET posts until the secret is set.",
-      "where": "Slack → Create channel #reports → Apps → Incoming Webhooks → Add → copy URL → paste into .env.local AND https://github.com/godkingdombusiness/snippd/settings/secrets/actions as SLACK_REPORTS_WEBHOOK_URL",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Reporter"
-    },
-    {
-      "id": "merge-pr-11-wins-fix",
-      "title": "Review + merge PR #11 — stop wins.yml failure-email spam",
+      "id": "iap-strategy-decision",
+      "title": "Decide IAP strategy for iOS: StoreKit vs External Link entitlement",
       "category": "ship",
       "priority": "high",
-      "why": "wins.yml has a broken job-level if: expression that makes every branch push report 'workflow file issue' — 5 failed-run emails since yesterday. PR #11 removes the gate; the script's own graceful-skip handles the missing-webhook case.",
-      "where": "https://github.com/godkingdombusiness/snippd/pull/11",
+      "why": "Apple guideline 3.1.1: Stripe subscription for digital features = iOS reject. Before the iOS wrapper ships, pick: (a) Apple IAP via StoreKit with platform-gated payment UI (recommended — keep Stripe on web), or (b) apply for External Link Account Entitlement (uncertain, slow). Affects architecture of the /pro flow.",
+      "where": "Strategic decision — then implementation on a wrapper branch (Capacitor or React Native).",
       "addedAt": "2026-04-22",
-      "addedBy": "@SRE-Warden",
-      "approval": { "action": "merge-pr", "pr": 11, "strategy": "squash", "deleteBranch": true }
-    },
-    {
-      "id": "merge-pr-12-reports",
-      "title": "Review + merge PR #12 — #reports heartbeat cron",
-      "category": "ship",
-      "priority": "medium",
-      "why": "Ships the generator + 6x-daily cron. Blocked on nothing; posts will start flowing as soon as the #reports channel + SLACK_REPORTS_WEBHOOK_URL secret exist (tracked as repo-secret-reports-webhook above).",
-      "where": "https://github.com/godkingdombusiness/snippd/pull/12",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Reporter",
-      "approval": { "action": "merge-pr", "pr": 12, "strategy": "squash", "deleteBranch": true }
-    },
-    {
-      "id": "merge-pr-13-apple-audit",
-      "title": "Review + merge PR #13 — Apple-Reviewer audit pipeline",
-      "category": "ship",
-      "priority": "high",
-      "why": "Ships the weekly App Store review audit (17 guideline checks + Slack heartbeat). Current verdict on main: REJECT, 4 blockers. The pipeline catches the specific blockers below before they get caught by a real reviewer.",
-      "where": "https://github.com/godkingdombusiness/snippd/pull/13",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Apple-Reviewer",
-      "approval": { "action": "merge-pr", "pr": 13, "strategy": "squash", "deleteBranch": true }
+      "addedBy": "@Apple-Reviewer"
     },
     {
       "id": "pro-e2e-smoke",
@@ -161,48 +85,18 @@
       "addedBy": "@QA"
     },
     {
-      "id": "index-html-title",
-      "title": "Update index.html <title> from 'snippd-beta-demo' to 'Snippd'",
-      "category": "polish",
-      "priority": "high",
-      "why": "Browser tab still says the scaffold name. Fixes Apple review guidelines 2.1 + 2.3.1 in one line change. Escalated to high because it blocks App Store submission.",
-      "where": "c:/Users/godki/snippd-beta-demo/index.html",
+      "id": "sentry-slack-alert",
+      "title": "Confirm Sentry → Slack alert rule is active",
+      "category": "verify",
+      "priority": "low",
+      "why": "You confirmed earlier that the rule fired on a test issue; this is just a periodic re-check. If it stops firing the entire self-healing loop goes dark.",
+      "where": "Sentry → Alerts → Rules → 'Slack #engineering-alerts on new Issue'",
       "addedAt": "2026-04-22",
-      "addedBy": "@Apple-Reviewer"
-    },
-    {
-      "id": "account-deletion-flow",
-      "title": "Build in-app account deletion flow",
-      "category": "ship",
-      "priority": "high",
-      "why": "Apple guideline 5.1.1(v): required since June 2022. No in-app delete path exists today; email-only deletion gets rejected. Needs a Settings route + destructive confirm + Edge Function calling auth.admin.deleteUser with cascade.",
-      "where": "Settings screen + Supabase Edge Function + cascade-delete SQL triggers",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Apple-Reviewer"
-    },
-    {
-      "id": "privacy-policy-page",
-      "title": "Add /privacy and /terms routes + footer links",
-      "category": "ship",
-      "priority": "high",
-      "why": "Apple guidelines 5.1.1(i) + 5.6 and App Store Connect both require a reachable privacy policy + terms. Closes two review blockers at once. Must disclose Sentry error collection + session replay.",
-      "where": "New src/PrivacyPolicy.jsx + src/TermsOfService.jsx routes; same URL in App Store Connect privacy field.",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Apple-Reviewer"
-    },
-    {
-      "id": "iap-strategy-decision",
-      "title": "Decide IAP strategy for iOS: StoreKit vs External Link entitlement",
-      "category": "ship",
-      "priority": "high",
-      "why": "Apple guideline 3.1.1: Stripe subscription for digital features = iOS reject. Before the iOS wrapper ships, pick: (a) Apple IAP via StoreKit with platform-gated payment UI (recommended — keep Stripe on web), or (b) apply for External Link Account Entitlement (uncertain, slow). Affects architecture of the /pro flow.",
-      "where": "Strategic decision — then implementation on a wrapper branch (Capacitor or React Native).",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Apple-Reviewer"
+      "addedBy": "@Auditor"
     },
     {
       "id": "bundle-size-strategy",
-      "title": "Decide bundle-size strategy (738 kB / 228 kB gz triggers Vite warning)",
+      "title": "Decide bundle-size strategy (753 kB / 234 kB gz triggers Vite warning)",
       "category": "polish",
       "priority": "low",
       "why": "Not urgent — mobile 4G load is still <2s gz — but the audit flagged it. Options: route-level code-split (easy), lazy-load Sentry replay (medium), or just bump chunkSizeWarningLimit and move on.",
