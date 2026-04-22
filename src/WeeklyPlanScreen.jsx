@@ -7,6 +7,7 @@ import {
   orderedStores,
   STORE_DEFS,
 } from "@/lib/strategyEngine";
+import { emitBundleLocked } from "@/lib/behavior";
 
 const STRATEGY_ORDER = [
   { key: "budget", title: "Budget" },
@@ -21,7 +22,7 @@ function formatMoney(cents) {
 
 export default function WeeklyPlanScreen() {
   const nav = useNavigate();
-  const { mission, patchMission, lockBundleToMission } = useMission();
+  const { mission, userId, patchMission, lockBundleToMission } = useMission();
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -179,6 +180,33 @@ export default function WeeklyPlanScreen() {
               selectedStrategy,
               mission.strategiesByStore
             );
+            if (userId) {
+              const storeMeta = STORE_DEFS.find((s) => s.id === selectedStore);
+              const picked =
+                mission.strategiesByStore?.[selectedStore]?.[selectedStrategy];
+              const bundle = picked?.bundle;
+              if (bundle && storeMeta) {
+                const today = new Date().toISOString().slice(0, 10);
+                const bundleId = `${userId}:${storeMeta.id}:${selectedStrategy}:${today}`;
+                const dinners = (bundle.dinners ?? []).flatMap((d) =>
+                  (d.items ?? []).map((it) => ({
+                    name: it.headline,
+                    role: "dinner",
+                  }))
+                );
+                const essentials = (
+                  bundle.household_essentials?.items ?? []
+                ).map((it) => ({ name: it.headline, role: "essential" }));
+                emitBundleLocked({
+                  userId,
+                  bundleId,
+                  strategy: selectedStrategy,
+                  storeSlug: storeMeta.id,
+                  budgetCents,
+                  products: [...dinners, ...essentials],
+                });
+              }
+            }
             nav("/list");
           }}
         >

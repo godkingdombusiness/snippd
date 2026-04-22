@@ -14,7 +14,8 @@
     "sync:actions:dry": "node scripts/sync_founder_actions.mjs --dry-run",
     "audit:app-review": "node scripts/audit_app_review.mjs",
     "audit:app-review:dry": "node scripts/audit_app_review.mjs --dry-run",
-    "audit:app-review:summary": "node scripts/audit_app_review.mjs --summary"
+    "audit:app-review:summary": "node scripts/audit_app_review.mjs --summary",
+    "neo4j:smoke": "node scripts/neo4j_smoke.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.49.0",
@@ -33,6 +34,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.22",
     "globals": "^16.4.0",
+    "neo4j-driver": "^5.28.3",
     "vite": "^7.1.7"
   }
 }

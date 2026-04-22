@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { emitUserSignedIn } from "@/lib/behavior";
 
 /**
  * Email/password sign-in. After Supabase establishes a session, `MissionProvider`
@@ -15,10 +16,13 @@ export default function SignInScreen() {
   async function onSignIn(e) {
     e.preventDefault();
     setMsg("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setMsg(error.message);
       return;
+    }
+    if (data?.user?.id) {
+      emitUserSignedIn({ userId: data.user.id });
     }
     nav("/plan", { replace: true });
   }
