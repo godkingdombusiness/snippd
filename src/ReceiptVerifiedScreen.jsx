@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMission } from "@/hooks/useMission";
-import { writeUnplannedPreferenceToNeo4j } from "@/lib/neo4jPreference";
+import { emitPreferenceRecorded, emitTripCompleted } from "@/lib/behavior";
 import { countUserReceipts } from "@/lib/receiptStats";
 import { supabase } from "@/lib/supabase";
 
@@ -32,17 +32,19 @@ export default function ReceiptVerifiedScreen() {
 
   async function savePreference() {
     setStatus("");
-    try {
-      await writeUnplannedPreferenceToNeo4j({
-        userId,
-        saveForNextWeek: /yes|save|y/i.test(answer),
-        unplannedItemLabels: unplanned.map((u) => u.label),
-        aiPromptResponse: answer,
-      });
-      setStatus("Preference recorded (Neo4j ingest when configured).");
-    } catch (e) {
-      setStatus(e?.message ?? String(e));
+    if (!userId) {
+      setStatus("Sign in first.");
+      return;
     }
+    const positive = /yes|save|keep|y\b/i.test(answer);
+    await emitPreferenceRecorded({
+      userId,
+      storeSlug: mission?.activeBundle?.storeId ?? "unknown",
+      sentiment: positive ? "save" : "drop",
+      text: answer,
+      subjectProductNames: unplanned.map((u) => u.label),
+    });
+    setStatus("Preference recorded — Snippd will tune next week for you.");
   }
 
   function addActualLine() {
@@ -78,6 +80,22 @@ export default function ReceiptVerifiedScreen() {
     }
     const nextCount = await countUserReceipts(userId);
     patchMission({ receiptCount: nextCount });
+
+    const today = new Date().toISOString().slice(0, 10);
+    const storeSlug = mission?.activeBundle?.storeId ?? "unknown";
+    const strategyKey = mission?.activeBundle?.strategyKey ?? "unknown";
+    const bundleId = `${userId}:${storeSlug}:${strategyKey}:${today}`;
+    await emitTripCompleted({
+      userId,
+      bundleId,
+      tripId: `${userId}:${mission.weekOf}:${today}`,
+      storeSlug,
+      retailCents: mission.checkout?.retailCents ?? 0,
+      ibottaCents: mission.checkout?.ibottaFetchCents ?? 0,
+      fetchCents: 0,
+      loyaltyCents: mission.checkout?.loyaltyCents ?? 0,
+      unplannedItems: unplanned.map((u) => u.label),
+    });
     setStatus(`Receipt logged. Count is now ${nextCount}.`);
   }
 
@@ -128,9 +146,9 @@ export default function ReceiptVerifiedScreen() {
             ))}
           </ul>
           <p className="snippd-muted">
-            Save this preference for next week? Tell the AI below (yes/no) — we write
-            the structured response to Neo4j when{" "}
-            <code>VITE_NEO4J_PREFERENCE_URL</code> is configured.
+            Save this preference for next week? Tell us below (yes/no) — Snippd
+            uses this to tune which unplanned items show up in next week&rsquo;s
+            Chef suggestions.
           </p>
           <textarea
             rows={3}

@@ -5,10 +5,11 @@ import { fetchActiveOffers } from "@/lib/fetchOffers";
 import { findBudgetSafeReplacement } from "@/lib/missionShoppingList";
 import { estimateLineCents } from "@/lib/generateMealStack";
 import { STORE_DEFS } from "@/lib/strategyEngine";
+import { emitItemUnavailable } from "@/lib/behavior";
 
 export default function MyListScreen() {
   const nav = useNavigate();
-  const { mission, patchMission } = useMission();
+  const { mission, userId, patchMission } = useMission();
   const [missing, setMissing] = useState(null);
   const [replacement, setReplacement] = useState(null);
 
@@ -36,6 +37,14 @@ export default function MyListScreen() {
   async function openNotFound(item) {
     setMissing(item);
     setReplacement(null);
+    if (userId && item?.label && item?.storeId) {
+      emitItemUnavailable({
+        userId,
+        bundleId: mission?.activeBundle?.bundleId ?? null,
+        storeSlug: item.storeId,
+        productName: item.label,
+      });
+    }
     try {
       const offers = await fetchActiveOffers();
       const rep = findBudgetSafeReplacement(offers, item);
@@ -47,6 +56,15 @@ export default function MyListScreen() {
 
   function applyReplacement() {
     if (!missing || !replacement) return;
+    if (userId && missing.label && missing.storeId) {
+      emitItemUnavailable({
+        userId,
+        bundleId: mission?.activeBundle?.bundleId ?? null,
+        storeSlug: missing.storeId,
+        productName: missing.label,
+        replacementName: replacement.headline,
+      });
+    }
     const next = list.map((i) =>
       i.id === missing.id
         ? {
