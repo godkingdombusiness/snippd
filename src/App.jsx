@@ -22,6 +22,7 @@ import DebugScreen from "@/DebugScreen";
 import SnippdProScreen from "@/SnippdProScreen";
 import PrivacyPolicyScreen from "@/PrivacyPolicy";
 import TermsOfServiceScreen from "@/TermsOfService";
+import SettingsScreen from "@/SettingsScreen";
 import LegalFooter from "@/components/LegalFooter";
 import "./App.css";
 
@@ -88,6 +89,9 @@ function Shell() {
         >
           Pro · $4.99
         </Link>
+        <Link to="/settings" style={{ opacity: 0.75 }}>
+          Settings
+        </Link>
         <Link to="/debug" style={{ opacity: 0.6 }}>
           Debug
         </Link>
@@ -127,6 +131,7 @@ export default function App() {
                 <Route path="/chef/:slot" element={<ChefMealScreen />} />
                 <Route path="/chef" element={<ChefStashScreen />} />
                 <Route path="/studio" element={<StudioScreen />} />
+                <Route path="/settings" element={<SettingsScreen />} />
               </Route>
               <Route path="/" element={<Navigate to="/plan" replace />} />
             </Route>
