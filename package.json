@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "report": "node scripts/generate_report.mjs",
-    "report:dry": "node scripts/generate_report.mjs --dry-run"
+    "report:dry": "node scripts/generate_report.mjs --dry-run",
+    "sync:actions": "node scripts/sync_founder_actions.mjs",
+    "sync:actions:dry": "node scripts/sync_founder_actions.mjs --dry-run"
   },
   "dependencies": {
     "@sentry/react": "^10.49.0",
