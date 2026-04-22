@@ -1,0 +1,81 @@
+name: Founder approval inbox
+
+# Reply-to-Slack surrogate for approving #founder-actions items.
+#
+# Flow:
+#   1. @Chief-of-Staff posts the current queue to #founder-actions with each
+#      item prefixed [1], [2], [3], ...
+#   2. Founder reviews, goes to GitHub → Actions → "Founder approval inbox"
+#      → "Run workflow", pastes a spec like `1-3`, `1,9,4,3`, or `all`.
+#   3. This workflow runs scripts/process_approvals.mjs:
+#        - Parses the spec.
+#        - For each approved item, runs the defined automation
+#          (merge-pr, workflow-dispatch, or ack-only).
+#        - Removes approved items from .snippd/founder-actions.json.
+#        - Commits the updated JSON back to main.
+#        - Posts a result summary to #founder-actions.
+#
+# The default run is PREVIEW (no side effects). Flip `execute` to true to
+# actually apply.
+#
+# Security note:
+#   Because this workflow merges PRs and writes to main, only repo admins
+#   should have workflow_dispatch rights. GitHub enforces that by default on
+#   the default branch — don't override it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      approval_spec:
+        description: 'Approval spec: "all" or indexes like "1-3" / "1,9,4,3" / "1-3,7,9-11"'
+        required: true
+        type: string
+      execute:
+        description: "Actually apply (merge PRs, update queue). Leave false for a preview."
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Process approvals
+        env:
+          APPROVAL_SPEC: ${{ inputs.approval_spec }}
+          SLACK_ACTIONS_WEBHOOK_URL: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          EXEC_FLAG=""
+          if [ "${{ inputs.execute }}" = "true" ]; then
+            EXEC_FLAG="--execute"
+          fi
+          node scripts/process_approvals.mjs --from-env $EXEC_FLAG
+
+      - name: Commit queue updates (only when executed)
+        if: ${{ inputs.execute == true }}
+        run: |
+          if ! git diff --quiet -- .snippd/founder-actions.json; then
+            git config user.name "snippd-approvals-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add .snippd/founder-actions.json
+            git commit -m "chore(queue): remove approved items (spec: ${{ inputs.approval_spec }})"
+            git push origin HEAD:main
+            echo "::notice::Queue updated — approved items removed from .snippd/founder-actions.json."
+          else
+            echo "::notice::No queue changes to commit."
+          fi
