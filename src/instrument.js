@@ -19,10 +19,18 @@ import {
   useNavigationType,
 } from "react-router-dom";
 
-const DSN =
-  import.meta.env.VITE_SENTRY_DSN ||
-  // Fallback DSN provided by the founder on 2026-04-21. Safe to ship (public key).
-  "https://e9f81fd15fb17437842ebf168b502112@o4511256923537408.ingest.us.sentry.io/4511257099042816";
+// DSN comes from env only. Hardcoded fallbacks rotted once already (April 2026 —
+// the hardcoded key pointed at a revoked project while events quietly 403'd).
+// Never again: env var or nothing. Sentry.init() is a no-op when DSN is unset,
+// which is strictly safer than silently shipping broken telemetry.
+const DSN = import.meta.env.VITE_SENTRY_DSN;
+
+if (!DSN && import.meta.env.DEV) {
+  console.warn(
+    "[sentry] VITE_SENTRY_DSN is not set. Error reporting is disabled. " +
+      "Copy the DSN from Sentry project settings into .env.local."
+  );
+}
 
 const ENV = import.meta.env.MODE || "development";
 const RELEASE =
