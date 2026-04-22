@@ -53,10 +53,20 @@ Whichever is set wins; the hub URL is the fallback.
 | `SLACK_REPORTS_WEBHOOK_URL` | `[report]` posts | `reports-cron.yml` |
 | `SLACK_APP_REVIEW_WEBHOOK_URL` | `[app-review]` posts | `app-review-audit.yml` |
 
-Today `SLACK_WINS_WEBHOOK_URL` is already set — which is why wins *would*
-reach Slack once a merge happens. The other three are unset, which is
-why founder-action nudges, reports, and app-review audits have been silent.
-Setting `SLACK_WEBHOOK_URL` fixes all three at once.
+Today `SLACK_WINS_WEBHOOK_URL` is the only webhook configured. Every
+workflow now has a **three-level fallback chain**:
+
+1. Its channel-specific webhook (e.g. `SLACK_APP_REVIEW_WEBHOOK_URL`)
+2. The shared hub `SLACK_WEBHOOK_URL`
+3. `SLACK_WINS_WEBHOOK_URL` as a last resort
+
+So every `[app-review]`, `[report]`, `[action-needed]`, `[provision]`,
+and `[approval]` post currently lands in whatever channel
+`SLACK_WINS_WEBHOOK_URL` targets — sorted by topic prefix. This is
+intentional: better to flood one channel with everything than to silently
+drop messages the founder needs to see. When you set `SLACK_WEBHOOK_URL`
+(or per-topic overrides), those take priority automatically and the
+wins-channel stops carrying unrelated topics.
 
 ## Debugging "nothing is showing up"
 

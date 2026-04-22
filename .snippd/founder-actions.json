@@ -24,12 +24,12 @@
       "addedBy": "@Auditor"
     },
     {
-      "id": "slack-webhook-hub",
-      "title": "Paste SLACK_WEBHOOK_URL as a repo secret so everything reaches Slack",
+      "id": "slack-webhook-hub-split",
+      "title": "Optional: split Slack channels by topic (currently everything lands in the #wins channel)",
       "category": "ops",
-      "priority": "critical",
-      "why": "Only SLACK_WINS_WEBHOOK_URL is currently set, so founder-action nudges, reports, app-review audits, and Neo4j provision posts all silently no-op. One webhook at SLACK_WEBHOOK_URL fixes every channel via fallback; topic prefixes distinguish them.",
-      "where": "Slack → Apps → Incoming Webhooks → pick hub channel → copy URL → https://github.com/godkingdombusiness/snippd/settings/secrets/actions → New secret → name SLACK_WEBHOOK_URL → then Actions → slack-smoketest → Run workflow to verify.",
+      "priority": "low",
+      "why": "All workflows now fall back to SLACK_WINS_WEBHOOK_URL as a last resort, so [app-review], [report], [action-needed], [provision], [approval] all post there with topic prefixes. Functional but noisy. Paste a dedicated SLACK_WEBHOOK_URL (any channel) and the wins channel stops carrying unrelated topics. Paste per-topic overrides (SLACK_APP_REVIEW_WEBHOOK_URL etc.) for full fan-out.",
+      "where": "Slack → Apps → Incoming Webhooks → pick hub channel → copy URL → https://github.com/godkingdombusiness/snippd/settings/secrets/actions → New secret → name SLACK_WEBHOOK_URL → paste URL in chat and I'll set it.",
       "addedAt": "2026-04-22",
       "addedBy": "@Chief-of-Staff"
     },

@@ -48,7 +48,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-      SLACK_WEBHOOK: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL || secrets.SLACK_WINS_WEBHOOK_URL }}
 
     steps:
       - name: Guard — required secrets are set

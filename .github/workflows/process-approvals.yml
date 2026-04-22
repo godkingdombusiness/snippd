@@ -56,7 +56,7 @@ jobs:
       - name: Process approvals
         env:
           APPROVAL_SPEC: ${{ inputs.approval_spec }}
-          SLACK_ACTIONS_WEBHOOK_URL: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+          SLACK_ACTIONS_WEBHOOK_URL: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL || secrets.SLACK_WINS_WEBHOOK_URL }}
           SLACK_TOPIC_PREFIX: "[approval]"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO: ${{ github.repository }}

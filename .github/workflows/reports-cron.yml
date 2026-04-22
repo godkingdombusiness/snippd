@@ -72,7 +72,7 @@ jobs:
 
       - name: Generate and post heartbeat
         env:
-          SLACK_REPORTS_WEBHOOK_URL: ${{ secrets.SLACK_REPORTS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+          SLACK_REPORTS_WEBHOOK_URL: ${{ secrets.SLACK_REPORTS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL || secrets.SLACK_WINS_WEBHOOK_URL }}
           SLACK_TOPIC_PREFIX: "[report]"
           GITHUB_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
