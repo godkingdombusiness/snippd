@@ -5,7 +5,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { reactErrorHandler } from "@sentry/react";
 import "./index.css";
-import App from "./App.js";
+import App from "./App.jsx";
 
 createRoot(document.getElementById("root"), {
   // React 19 error channels — wire all three so Sentry captures uncaught,
