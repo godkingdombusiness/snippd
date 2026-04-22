@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-22",
+  "notes": "Canonical roster for the Snippd autonomous team. Every agent in founder-actions.json, Slack posts, canvases, and scripts must resolve to a handle in this file. The `prefix` field is the Slack topic prefix each agent signs posts with — e.g. @Support-Lead posts with [cx].",
+  "departments": [
+    {
+      "id": "executive",
+      "name": "Executive",
+      "reportsTo": null,
+      "slackPrefix": "[exec]",
+      "agents": [
+        { "handle": "@Chief-of-Staff",  "role": "Weekly scorecard, founder-action triage, cross-department mediation", "status": "active" },
+        { "handle": "@Auditor",         "role": "Security, Apple Review audit, Slack hub operation, secret rotation hygiene", "status": "active" },
+        { "handle": "@Lead-Architect",  "role": "Engineering oversight, edge-fn deploys, Neo4j schema stewardship", "status": "active" },
+        { "handle": "@Growth-Agent",    "role": "Growth experiments, Pro-conversion funnel, partnerships oversight", "status": "active" },
+        { "handle": "@Apple-Reviewer",  "role": "App Store submission readiness, guideline audit, reviewer simulation", "status": "active" },
+        { "handle": "@QA",              "role": "Pre-release smoke, regression tracking, release gate", "status": "active" }
+      ]
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing",
+      "reportsTo": "@Chief-of-Staff",
+      "slackPrefix": "[marketing]",
+      "canvas": "canvases/snippd-marketing-org.canvas.tsx",
+      "agents": [
+        { "handle": "@Brand-Strategist",    "role": "Brand voice, positioning, launch narrative", "status": "launch",  "activatesAt": "day 0"  },
+        { "handle": "@Content-Lead",        "role": "Blog, SEO pillars, newsletter, help center", "status": "launch",  "activatesAt": "day 0"  },
+        { "handle": "@Social-Producer",     "role": "IG/TikTok/Pinterest/X cadence, community replies", "status": "launch",  "activatesAt": "day 0"  },
+        { "handle": "@Creative-Director",   "role": "Brand system, reel/ad templates, landing art", "status": "launch",  "activatesAt": "day 0"  },
+        { "handle": "@SEO-Engineer",        "role": "On-page SEO, schema.org, Core Web Vitals, programmatic pages", "status": "launch",  "activatesAt": "day 0"  },
+        { "handle": "@Lifecycle-Marketer",  "role": "Welcome/activation/Pro/win-back email sequences", "status": "queued",  "activatesAt": "day 30" },
+        { "handle": "@Community-Lead",      "role": "Product Hunt, Reddit AMAs, Discord, creator outreach", "status": "queued",  "activatesAt": "day 30" },
+        { "handle": "@Marketing-Analyst",   "role": "Channel attribution, cohort analysis, LTV/CAC, weekly scorecard", "status": "queued",  "activatesAt": "day 30" },
+        { "handle": "@Paid-Acquisition",    "role": "Meta/Google/TikTok ads, retargeting, budget allocation", "status": "deferred", "activatesAt": "day 60-90" }
+      ]
+    },
+    {
+      "id": "cx",
+      "name": "Customer Experience",
+      "reportsTo": "@Chief-of-Staff",
+      "slackPrefix": "[cx]",
+      "canvas": "canvases/snippd-full-team-org.canvas.tsx",
+      "agents": [
+        { "handle": "@Support-Lead",          "role": "Frontline tickets, SLA, weekly top-10 issues to Slack", "status": "critical-now", "activatesAt": "now" },
+        { "handle": "@App-Store-Responder",   "role": "Apple/Play review replies < 24h, bug tagging to GitHub", "status": "critical-now", "activatesAt": "now" },
+        { "handle": "@User-Researcher",       "role": "Bi-weekly interviews, Notion synthesis, top-3 insights", "status": "queued",       "activatesAt": "day 30" },
+        { "handle": "@Trust-Safety",          "role": "UGC moderation, abuse reports, nutrition-claim disclaimers", "status": "deferred",    "activatesAt": "day 60" }
+      ]
+    },
+    {
+      "id": "product",
+      "name": "Product & Design",
+      "reportsTo": "@Chief-of-Staff",
+      "slackPrefix": "[product]",
+      "canvas": "canvases/snippd-full-team-org.canvas.tsx",
+      "agents": [
+        { "handle": "@Product-Manager",        "role": "RICE-scored roadmap, specs, release notes, backlog owner", "status": "critical-now", "activatesAt": "now" },
+        { "handle": "@UX-Designer",            "role": "IA, end-to-end flows, design system maintainer", "status": "queued",       "activatesAt": "day 30" },
+        { "handle": "@Onboarding-Specialist",  "role": "First-run flow, activation funnel owner with Lifecycle", "status": "queued",       "activatesAt": "day 30" }
+      ]
+    },
+    {
+      "id": "data",
+      "name": "Data & Intelligence",
+      "reportsTo": "@Lead-Architect",
+      "slackPrefix": "[data]",
+      "canvas": "canvases/snippd-full-team-org.canvas.tsx",
+      "agents": [
+        { "handle": "@Data-Engineer",       "role": "Neo4j schema evolution, Supabase→Neo4j ETL, pipeline health", "status": "deferred", "activatesAt": "day 60" },
+        { "handle": "@ML-Engineer",         "role": "Recipe recommender, Pro-propensity, churn score on the graph", "status": "deferred", "activatesAt": "day 60" },
+        { "handle": "@Analytics-Engineer",  "role": "Modeled SQL views, scorecard SQL, dashboard freshness",      "status": "queued",   "activatesAt": "day 30" }
+      ]
+    },
+    {
+      "id": "revops",
+      "name": "Revenue Operations",
+      "reportsTo": "@Chief-of-Staff",
+      "slackPrefix": "[revops]",
+      "canvas": "canvases/snippd-full-team-org.canvas.tsx",
+      "agents": [
+        { "handle": "@FinOps-Lead",       "role": "Unit economics, pricing experiments, burn forecast, tax", "status": "queued",       "activatesAt": "day 30" },
+        { "handle": "@Billing-Operator",  "role": "Stripe webhooks, dunning, refunds, disputes, RevenueCat if StoreKit", "status": "critical-now", "activatesAt": "now" }
+      ]
+    },
+    {
+      "id": "legal",
+      "name": "Legal & Compliance",
+      "reportsTo": "@Chief-of-Staff",
+      "slackPrefix": "[legal]",
+      "canvas": "canvases/snippd-full-team-org.canvas.tsx",
+      "notes": "Legal posts only via DM on the Slack hub — never public channels.",
+      "agents": [
+        { "handle": "@Legal-Counsel",          "role": "ToS/Privacy updates, COPPA, GDPR/CCPA, DMCA, App Review legal responses", "status": "retainer",     "activatesAt": "milestones only" },
+        { "handle": "@Compliance-Operator",   "role": "DSAR queue, /delete-account monitoring, privacy labels, compliance checklist", "status": "critical-now", "activatesAt": "now" }
+      ]
+    },
+    {
+      "id": "partnerships",
+      "name": "Partnerships & Platform",
+      "reportsTo": "@Growth-Agent",
+      "slackPrefix": "[partnerships]",
+      "canvas": "canvases/snippd-full-team-org.canvas.tsx",
+      "agents": [
+        { "handle": "@Partnerships-Lead",      "role": "Grocers, CPG sponsored recipes, affiliate networks, brand deals", "status": "deferred", "activatesAt": "day 90" },
+        { "handle": "@Integrations-Engineer",  "role": "Instacart/Kroger/Amazon Fresh APIs, webhooks, attribution", "status": "deferred", "activatesAt": "day 90" }
+      ]
+    }
+  ],
+  "statusLegend": {
+    "active":        "Currently doing the work",
+    "critical-now":  "Should be stood up immediately — blocks launch or a live surface",
+    "launch":        "Stand up with launch (day 0)",
+    "queued":        "Add at day 30 once data/users justify",
+    "deferred":      "Add at day 60-90 when prerequisites are met",
+    "retainer":      "On-retainer or external; not full-time, milestones only"
+  }
+}
