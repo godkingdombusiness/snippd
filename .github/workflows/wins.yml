@@ -44,9 +44,13 @@ jobs:
   post-win:
     runs-on: ubuntu-latest
     timeout-minutes: 3
-    if: ${{ env.HAS_WEBHOOK == 'true' || vars.ALWAYS_DRY_RUN == 'true' }}
-    env:
-      HAS_WEBHOOK: ${{ secrets.SLACK_WINS_WEBHOOK_URL != '' }}
+    # No job-level `if:` here on purpose. The previous gate referenced
+    # `env.HAS_WEBHOOK`, but GitHub Actions evaluates job-level expressions
+    # BEFORE the job-level `env:` block materializes — so the expression
+    # failed to resolve and every run reported "workflow file issue" on
+    # every branch push, regardless of the branch filter. scripts/post_win.mjs
+    # already skips gracefully when SLACK_WINS_WEBHOOK_URL is unset, so the
+    # gate was redundant anyway.
     steps:
       - uses: actions/checkout@v4
 
@@ -99,18 +103,11 @@ jobs:
             echo "SNIPPD_WIN_SOURCE=GitHub · manual (@${{ github.actor }})"
           } >> "$GITHUB_ENV"
 
-      - name: Post to #wins
-        if: env.HAS_WEBHOOK == 'true'
+      # scripts/post_win.mjs handles the missing-secret case itself: it
+      # prints "[post_win] skipped: SLACK_WINS_WEBHOOK_URL is not set" and
+      # exits 0. So we always invoke it — one step, no expression gymnastics,
+      # no "workflow file issue" surface.
+      - name: Post to #wins (no-op if webhook secret is unset)
         env:
           SLACK_WINS_WEBHOOK_URL: ${{ secrets.SLACK_WINS_WEBHOOK_URL }}
         run: node scripts/post_win.mjs --from-env
-
-      - name: Dry run (no webhook configured)
-        if: env.HAS_WEBHOOK != 'true'
-        run: |
-          echo "SLACK_WINS_WEBHOOK_URL secret is not set on the repo."
-          echo "Would have posted:"
-          echo "  title: $SNIPPD_WIN_TITLE"
-          echo "  body:  $SNIPPD_WIN_BODY"
-          echo "  kind:  $SNIPPD_WIN_KIND"
-          echo "Add the secret at Settings → Secrets and variables → Actions."
