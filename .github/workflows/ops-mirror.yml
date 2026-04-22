@@ -1,0 +1,103 @@
+name: ops-mirror
+
+# Every time any of the important notification workflows finishes, post a
+# short comment on the pinned ops control-center issue (#27). This makes
+# the GitHub Issue a reliable backup channel for Slack — the repo owner
+# automatically gets email notifications for every comment on their own
+# issue, so notifications reach you even when Slack is silent.
+#
+# The mirror is intentionally minimal: run name, conclusion, duration,
+# and a link to the full log. If a workflow needs to ship rich content
+# (Block Kit for app-review etc.), it still does its own Slack post — this
+# only adds the receipt so you have a paper trail in GitHub.
+
+on:
+  workflow_run:
+    workflows:
+      - "App Store review audit"
+      - "founder-actions-sync"
+      - "reports-cron"
+      - "process-approvals"
+      - "provision-neo4j"
+      - "deploy-delete-account"
+      - "slack-smoketest"
+      - "slack-diagnose"
+    types:
+      - completed
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Find the control-center issue
+        id: find-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NUM=$(gh issue list \
+            --repo ${{ github.repository }} \
+            --search '[ops] Snippd control center in:title' \
+            --state open \
+            --limit 1 \
+            --json number \
+            --jq '.[0].number')
+          if [ -z "$NUM" ] || [ "$NUM" = "null" ]; then
+            echo "::warning::no open [ops] Snippd control center issue found — skipping mirror"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "number=$NUM"  >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post receipt to ops issue
+        if: steps.find-issue.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NAME: ${{ github.event.workflow_run.name }}
+          STATUS: ${{ github.event.workflow_run.conclusion }}
+          URL: ${{ github.event.workflow_run.html_url }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          TITLE: ${{ github.event.workflow_run.display_title }}
+          ISSUE_NUMBER: ${{ steps.find-issue.outputs.number }}
+        run: |
+          TOPIC="[ops]"
+          case "$NAME" in
+            "App Store review audit") TOPIC="[app-review]" ;;
+            "founder-actions-sync")   TOPIC="[action-needed]" ;;
+            "reports-cron")           TOPIC="[report]" ;;
+            "process-approvals")      TOPIC="[approval]" ;;
+            "provision-neo4j")        TOPIC="[provision]" ;;
+            "deploy-delete-account")  TOPIC="[deploy]" ;;
+            "slack-smoketest")        TOPIC="[smoketest]" ;;
+            "slack-diagnose")         TOPIC="[diagnose]" ;;
+          esac
+
+          STATUS_ICON="·"
+          case "$STATUS" in
+            success)   STATUS_ICON="✓" ;;
+            failure)   STATUS_ICON="✗" ;;
+            cancelled) STATUS_ICON="–" ;;
+            skipped)   STATUS_ICON="○" ;;
+          esac
+
+          COMMENT=$(cat <<EOF
+$TOPIC $STATUS_ICON $STATUS — $NAME
+
+- **Trigger:** \`$EVENT\` on \`$BRANCH\`
+- **Title:** $TITLE
+- **Log:** $URL
+
+_Mirrored from GitHub Actions because Slack may not be visible right now. This comment is the same event you would see in Slack._
+EOF
+)
+
+          gh issue comment "$ISSUE_NUMBER" \
+            --repo ${{ github.repository }} \
+            --body "$COMMENT"
