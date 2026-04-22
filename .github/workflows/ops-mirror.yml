@@ -87,17 +87,14 @@ jobs:
             skipped)   STATUS_ICON="○" ;;
           esac
 
-          COMMENT=$(cat <<EOF
-$TOPIC $STATUS_ICON $STATUS — $NAME
-
-- **Trigger:** \`$EVENT\` on \`$BRANCH\`
-- **Title:** $TITLE
-- **Log:** $URL
-
-_Mirrored from GitHub Actions because Slack may not be visible right now. This comment is the same event you would see in Slack._
-EOF
-)
+          {
+            printf '%s %s %s — %s\n\n' "$TOPIC" "$STATUS_ICON" "$STATUS" "$NAME"
+            printf -- '- **Trigger:** `%s` on `%s`\n' "$EVENT" "$BRANCH"
+            printf -- '- **Title:** %s\n' "$TITLE"
+            printf -- '- **Log:** %s\n\n' "$URL"
+            printf '%s\n' '_Mirrored from GitHub Actions because Slack may not be visible right now. This comment is the same event you would see in Slack._'
+          } > /tmp/comment.md
 
           gh issue comment "$ISSUE_NUMBER" \
-            --repo ${{ github.repository }} \
-            --body "$COMMENT"
+            --repo "${{ github.repository }}" \
+            --body-file /tmp/comment.md
