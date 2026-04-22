@@ -1,0 +1,221 @@
+{
+  "$comment": "Apple App Store Review Guideline checklist used by scripts/audit_app_review.mjs. Each check maps to a specific section of https://developer.apple.com/app-store/review/guidelines/ as of 2026-04-22. Severity 'blocker' = historically common reject reason; 'high' = frequently cited; 'medium' = reviewer-dependent; 'low' = best-practice. Update lastReviewedGuidelinesAt when the checklist is brought in line with a newer published revision.",
+  "version": 1,
+  "lastReviewedGuidelinesAt": "2026-04-22",
+  "checks": [
+    {
+      "id": "1.5-developer-contact",
+      "guideline": "1.5 Developer Information",
+      "title": "Developer contact information is reachable from inside the app",
+      "severity": "high",
+      "automated": false,
+      "expectation": "Either the App Store Connect 'Support URL' must resolve to a live page with contact info, OR the app must expose an in-app Help/Contact screen. A mailto: with a responsive address also qualifies.",
+      "typicalRejection": "Guideline 1.5: 'We were unable to identify support information for your app.'"
+    },
+    {
+      "id": "2.1-completeness",
+      "guideline": "2.1 App Completeness",
+      "title": "No placeholder content, beta/demo banners, or broken features",
+      "severity": "blocker",
+      "automated": true,
+      "automation": {
+        "kind": "forbidden-strings",
+        "paths": ["src", "index.html"],
+        "patterns": ["Lorem ipsum", "coming soon", "under construction", "\\bbeta-demo\\b", "demo only", "not yet implemented", "work in progress"],
+        "allowInComments": true
+      },
+      "expectation": "The submitted build must not ship with stub routes, 'coming soon' sections, or visible WIP/beta copy. Features advertised in screenshots must actually work.",
+      "typicalRejection": "Guideline 2.1: 'Your app contained features or content still in progress.'"
+    },
+    {
+      "id": "2.3.1-metadata-accurate",
+      "guideline": "2.3.1 Accurate Metadata",
+      "title": "App Store Connect metadata matches shipped build",
+      "severity": "high",
+      "automated": true,
+      "automation": {
+        "kind": "html-title",
+        "forbid": ["snippd-beta-demo", "beta demo", "vite + react"]
+      },
+      "expectation": "The HTML <title>, displayed app name, screenshots, and description must match the real current UI. 'snippd-beta-demo' is a dev scaffold name and must not ship.",
+      "typicalRejection": "Guideline 2.3.1: 'The information or metadata does not reflect the content of your app.'"
+    },
+    {
+      "id": "3.1.1-in-app-purchase",
+      "guideline": "3.1.1 In-App Purchase",
+      "title": "Digital goods / subscriptions must use Apple IAP on iOS (or qualify for an exception)",
+      "severity": "blocker",
+      "automated": true,
+      "automation": {
+        "kind": "payment-processor-detection",
+        "paths": ["src", "package.json"],
+        "flaggedImports": ["@stripe/stripe-js", "stripe", "@paypal", "braintree-web", "square"],
+        "flaggedUrlRedirects": [
+          "buy\\.stripe\\.com",
+          "checkout\\.stripe\\.com",
+          "paypal\\.me",
+          "square\\.link",
+          "VITE_STRIPE_PAYMENT_LINK_URL",
+          "VITE_STRIPE_CHECKOUT_URL",
+          "VITE_STRIPE_PUBLISHABLE_KEY"
+        ]
+      },
+      "expectation": "If the app is wrapped for iOS, any subscription unlocking digital features MUST use Apple's In-App Purchase (StoreKit). External payment links, web checkout flows, or 'pay on our website' CTAs trigger a guideline 3.1.1 reject unless the app qualifies as a Reader app under 3.1.3(a), or has the External Link Account Entitlement. Grocery-savings apps do not automatically qualify — you must actively apply and be approved.",
+      "typicalRejection": "Guideline 3.1.1(a): 'Apps and their metadata may not include buttons, external links, or other calls to action that direct users to purchasing mechanisms other than in-app purchase.'",
+      "references": [
+        "https://developer.apple.com/app-store/review/guidelines/#payments",
+        "https://developer.apple.com/support/storekit/"
+      ]
+    },
+    {
+      "id": "4.2-minimum-functionality",
+      "guideline": "4.2 Minimum Functionality",
+      "title": "More than a repackaged website in a WebView",
+      "severity": "blocker",
+      "automated": false,
+      "expectation": "If the iOS wrapper is a plain WKWebView pointing at the Vite SPA, reviewers reject as 'just a website'. At minimum the build must include native entry points (share sheet, push notifications handled natively, haptics, or an offline-cached home screen).",
+      "typicalRejection": "Guideline 4.2: 'Your app does not include sufficient native iOS functionality.'"
+    },
+    {
+      "id": "4.8-sign-in-with-apple",
+      "guideline": "4.8 Sign in with Apple",
+      "title": "If you offer third-party social login, you MUST also offer Sign in with Apple",
+      "severity": "blocker",
+      "automated": true,
+      "automation": {
+        "kind": "conditional-grep",
+        "paths": ["src"],
+        "ifAnyPresent": ["signInWithGoogle", "signInWithFacebook", "signInWithTwitter", "OAuthProvider", "GoogleSignIn", "FBSDKLoginKit"],
+        "thenMustAlsoMatch": ["signInWithApple", "SignInWithApple", "AppleIDProvider", "apple.com", "provider: \"apple\""]
+      },
+      "expectation": "Email/password-only auth is exempt. Any Google, Facebook, Twitter, or similar federated login REQUIRES Sign in with Apple to be offered with equal prominence.",
+      "typicalRejection": "Guideline 4.8: 'Your app uses a third-party login service but does not offer Sign in with Apple.'"
+    },
+    {
+      "id": "5.1.1-i-privacy-policy",
+      "guideline": "5.1.1(i) Privacy - Data Collection and Storage",
+      "title": "Privacy policy must exist, be reachable in-app, and be linked in App Store Connect",
+      "severity": "blocker",
+      "automated": true,
+      "automation": {
+        "kind": "file-existence-or-grep",
+        "paths": ["src", "public"],
+        "patterns": ["privacy-policy", "privacyPolicy", "PrivacyPolicy", "/privacy"]
+      },
+      "expectation": "A privacy policy page (route, static HTML, or external URL) accessible from inside the app, AND the same URL added to App Store Connect's Privacy Policy field. Must explain what data is collected (including Sentry error capture + session replay), by whom, why, and retention.",
+      "typicalRejection": "Guideline 5.1.1(i): 'Your app does not include a privacy policy.'"
+    },
+    {
+      "id": "5.1.1-v-account-deletion",
+      "guideline": "5.1.1(v) Account Deletion",
+      "title": "In-app account deletion flow (not 'email us to delete')",
+      "severity": "blocker",
+      "automated": true,
+      "automation": {
+        "kind": "grep",
+        "paths": ["src"],
+        "patternsAny": ["delete.{0,20}account", "account.{0,20}delet", "deleteAccount", "deleteUser", "auth\\.admin\\.deleteUser"]
+      },
+      "expectation": "Required since June 30, 2022 for any app that offers account creation. Must be findable within the app (commonly in Settings) and fully remove the user's account and data — not just 'deactivate'. Email-only deletion paths are rejected.",
+      "typicalRejection": "Guideline 5.1.1(v): 'We were unable to locate an option to initiate account deletion from within the app.'"
+    },
+    {
+      "id": "5.1.1-vi-data-consent",
+      "guideline": "5.1.1(vi) Data Collection Consent",
+      "title": "User must be informed before data is collected",
+      "severity": "high",
+      "automated": true,
+      "automation": {
+        "kind": "sentry-replay-detection",
+        "paths": ["src"],
+        "patterns": ["replayIntegration", "sessionSampleRate", "replaysOnErrorSampleRate"]
+      },
+      "expectation": "Sentry session replay captures DOM state. Even with PII masking, the user should be notified (privacy policy + optional onboarding mention) that error tracking + session replay is active. This is primarily enforced through the privacy policy under 5.1.1(i), but reviewers occasionally cite (vi) directly when consent is absent.",
+      "typicalRejection": "Guideline 5.1.1(vi): 'Your app collects user data without obtaining consent.'"
+    },
+    {
+      "id": "5.1.2-att",
+      "guideline": "5.1.2 App Tracking Transparency",
+      "title": "Must request ATT permission before tracking users across apps/sites for advertising",
+      "severity": "high",
+      "automated": false,
+      "expectation": "Required only if the app (or any SDK it ships with — ad networks, analytics that cross app/website boundaries) tracks users for ad targeting. Error-tracking tools like Sentry do NOT require ATT as long as no data goes to advertising partners. Snippd appears to have no ad SDKs today — PASS by default, but revisit if ads are added.",
+      "typicalRejection": "Guideline 5.1.2: 'Your app tracks user activity without asking permission.'"
+    },
+    {
+      "id": "5.1.1-app-privacy-labels",
+      "guideline": "5.1 App Privacy Details",
+      "title": "Accurate 'App Privacy' labels declared in App Store Connect",
+      "severity": "high",
+      "automated": false,
+      "expectation": "Must declare every data type collected (email, Sentry diagnostics, Supabase IDs, Stripe payment info collected by Stripe not Snippd, etc.) in the App Privacy questionnaire. Errors here are not rejections but WILL delay review. Gather data types from this audit's findings + review team inputs.",
+      "typicalRejection": "Review delay with 'Please update your App Privacy details' message."
+    },
+    {
+      "id": "5.6-terms-of-use",
+      "guideline": "5.6 Developer Code of Conduct",
+      "title": "Terms of Use (a.k.a. EULA) either default Apple EULA or a custom one reachable in-app",
+      "severity": "medium",
+      "automated": true,
+      "automation": {
+        "kind": "file-existence-or-grep",
+        "paths": ["src", "public"],
+        "patterns": ["terms-of-service", "termsOfService", "TermsOfService", "/terms", "EULA", "/eula"]
+      },
+      "expectation": "Apple's default EULA is fine for most apps and doesn't require a page. If you present one (common for subscription apps), it must be reachable before purchase AND at any time from Settings. Required IN-APP link if your Terms meaningfully differ from Apple's default.",
+      "typicalRejection": "Guideline 5.6 or subscription-specific 3.1.2(a): 'Auto-renewable subscription apps must include links to Terms of Use and Privacy Policy.'"
+    },
+    {
+      "id": "3.1.2a-subscription-disclosures",
+      "guideline": "3.1.2(a) Auto-Renewable Subscriptions",
+      "title": "Snippd Pro subscription must disclose title, price, period, renewal terms, cancellation URL",
+      "severity": "blocker",
+      "automated": true,
+      "automation": {
+        "kind": "grep",
+        "paths": ["src/SnippdProScreen.jsx", "src"],
+        "patternsAll": ["\\$4\\.99", "month", "cancel|manage|subscription"]
+      },
+      "expectation": "Subscription UI must clearly state: subscription title ('Snippd Pro'), billing period ('monthly'), price ($4.99), and a link to manage/cancel. 'Payment will be charged to Apple ID at confirmation' language is required if using Apple IAP. If using Stripe web checkout (today's flow), this guideline is reduced but 5.6 + 3.1.2(a) disclosures still apply.",
+      "typicalRejection": "Guideline 3.1.2(a): 'Your subscription does not clearly identify the subscription name, duration, content offered, and price.'"
+    },
+    {
+      "id": "4.0-spam",
+      "guideline": "4.0 / 4.3 Spam",
+      "title": "App is not a duplicate or near-duplicate of existing apps",
+      "severity": "medium",
+      "automated": false,
+      "expectation": "Snippd's grocery-deals + mission-based stack planning is novel relative to the category. Low risk. Re-evaluate if the app is ever forked into near-duplicates for different regions/retailers.",
+      "typicalRejection": "Guideline 4.3: 'Spam apps will be rejected.'"
+    },
+    {
+      "id": "1.1.6-safety-content",
+      "guideline": "1.1.6 Safety - Objectionable Content",
+      "title": "User-generated content (if any) must have moderation + reporting",
+      "severity": "high",
+      "automated": true,
+      "automation": {
+        "kind": "ugc-absence",
+        "paths": ["src"],
+        "ugcPatterns": ["createPost\\(", "submitReview\\(", "uploadContent\\(", "user.*comment", "generateContent"]
+      },
+      "expectation": "If users can post, comment, or upload, the app must have (1) an EULA with zero-tolerance for objectionable content, (2) a way to filter, (3) in-app reporting, (4) a way to block abusive users, and (5) ability for developer to remove content + users. When UGC is detected in the codebase this flips to manual-review; absence of UGC patterns is a pass."
+    },
+    {
+      "id": "2.5.1-private-apis",
+      "guideline": "2.5.1 Software Requirements",
+      "title": "Only public APIs and documented capabilities",
+      "severity": "blocker",
+      "automated": false,
+      "expectation": "Purely web-based apps (Vite SPA) have nothing to check here; the concern arises when wrapping in Capacitor/React Native with native plugins. When you add the wrapper, audit any native plugin's source for undocumented iOS APIs (e.g. private UIKit selectors). Re-evaluate at iOS wrapping time."
+    },
+    {
+      "id": "2.5.13-push-notifications",
+      "guideline": "2.5.13 Push Notifications",
+      "title": "Push notifications cannot be required for the app to function, or be used for ads",
+      "severity": "high",
+      "automated": false,
+      "expectation": "If notifications are added, they must: be optional, not include ads/promotions as their sole content, and not tie core features to acceptance. Snippd doesn't appear to request notifications today — revisit when/if added for mission reminders."
+    }
+  ]
+}

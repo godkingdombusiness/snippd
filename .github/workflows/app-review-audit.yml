@@ -1,0 +1,54 @@
+name: App Store review audit
+
+# @Apple-Reviewer heartbeat — runs `scripts/audit_app_review.mjs` against the
+# App Store Review Guidelines checklist in `.snippd/app-review-checks.json`
+# and posts the verdict to #app-review in Slack.
+#
+# Runs weekly (Mondays 14:00 UTC ≈ 10am ET / 7am PT) so you always enter the
+# week with a fresh read on submission readiness, plus on-demand for PRs that
+# touch submission-adjacent code and on manual dispatch before any App Store
+# Connect submission.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly Monday, 14:00 UTC. Change via workflow file if you want more/less.
+    - cron: "0 14 * * 1"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+    paths:
+      - "src/**"
+      - "index.html"
+      - "package.json"
+      - ".snippd/app-review-checks.json"
+      - "scripts/audit_app_review.mjs"
+      - ".github/workflows/app-review-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # We don't need npm deps — the script only uses Node built-ins.
+      - name: Run App Review audit (summary to log)
+        run: node scripts/audit_app_review.mjs --summary
+
+      - name: Post to #app-review in Slack
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          SLACK_APP_REVIEW_WEBHOOK_URL: ${{ secrets.SLACK_APP_REVIEW_WEBHOOK_URL }}
+        run: |
+          if [ -z "${SLACK_APP_REVIEW_WEBHOOK_URL}" ]; then
+            echo "::notice::SLACK_APP_REVIEW_WEBHOOK_URL not set — skipping Slack post."
+            exit 0
+          fi
+          node scripts/audit_app_review.mjs
