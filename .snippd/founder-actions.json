@@ -93,16 +93,6 @@
       "where": "Sentry → Alerts → Rules → 'Slack #engineering-alerts on new Issue'",
       "addedAt": "2026-04-22",
       "addedBy": "@Auditor"
-    },
-    {
-      "id": "bundle-size-strategy",
-      "title": "Decide bundle-size strategy (753 kB / 234 kB gz triggers Vite warning)",
-      "category": "polish",
-      "priority": "low",
-      "why": "Not urgent — mobile 4G load is still <2s gz — but the audit flagged it. Options: route-level code-split (easy), lazy-load Sentry replay (medium), or just bump chunkSizeWarningLimit and move on.",
-      "where": "Decision to make; implementation belongs to @Lead-Architect once chosen.",
-      "addedAt": "2026-04-22",
-      "addedBy": "@Auditor"
     }
   ]
 }

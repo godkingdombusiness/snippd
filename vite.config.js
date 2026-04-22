@@ -20,6 +20,19 @@ export default defineConfig(({ mode }) => {
     // without leaking the source tree to users.
     build: {
       sourcemap: uploadSourceMaps ? "hidden" : false,
+      rollupOptions: {
+        output: {
+          // Split heavy vendors into parallel-loadable chunks. Keeps main
+          // under the 500 kB Vite warning and lets long-lived libs (Sentry,
+          // Supabase, React Router) cache independently of app code — so a
+          // deploy that only changes app JS invalidates ~100 kB, not ~700 kB.
+          manualChunks: {
+            "vendor-sentry": ["@sentry/react"],
+            "vendor-supabase": ["@supabase/supabase-js"],
+            "vendor-router": ["react-router-dom"],
+          },
+        },
+      },
     },
     plugins: [
       react(),
