@@ -1,0 +1,71 @@
+name: founder-actions-sync
+
+# Posts the current Founder Action Queue to #founder-actions in Slack.
+#
+# Triggers:
+#   - PR opened/closed/reopened/ready_for_review on main → the "Open PRs
+#     awaiting review" block is now stale; re-post so the queue reflects reality.
+#   - push to main when .snippd/founder-actions.json changes → the canonical
+#     backlog was edited (by an agent in a PR or by direct commit); re-post.
+#   - workflow_dispatch → manual nudge from the GitHub UI if anything feels off.
+#   - schedule (daily 14:00 UTC ≈ 9am ET) → daily nudge so the queue can't
+#     silently go stale if all other triggers miss for a week.
+#
+# Silently skips (no failure) if SLACK_ACTIONS_WEBHOOK_URL secret is unset —
+# the founder hasn't finished the Slack setup yet, so a missing secret is
+# expected for the first few days, not a CI failure.
+
+on:
+  pull_request:
+    types: [opened, closed, reopened, ready_for_review]
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - ".snippd/founder-actions.json"
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: founder-actions-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # The script itself has graceful no-ops when the webhook secret is
+      # missing, but we skip the whole job early when we can — keeps the
+      # Actions log clean during bootstrap.
+      - name: Check webhook secret
+        id: check
+        run: |
+          if [ -n "${{ secrets.SLACK_ACTIONS_WEBHOOK_URL }}" ]; then
+            echo "have_webhook=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have_webhook=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SLACK_ACTIONS_WEBHOOK_URL is not set — skipping founder-actions sync."
+          fi
+
+      - name: Sync queue to Slack
+        if: steps.check.outputs.have_webhook == 'true'
+        env:
+          SLACK_ACTIONS_WEBHOOK_URL: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL }}
+          GITHUB_REPO: ${{ github.repository }}
+          # gh CLI is pre-installed on ubuntu runners; authenticate it so the
+          # script's `gh pr list` call can enrich with live PR state.
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/sync_founder_actions.mjs
