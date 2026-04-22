@@ -15,7 +15,16 @@ import logging
 import os
 from typing import Any, Iterable, Optional
 
-from tools.sentry_hook import sentry_traced_tool
+from tools.guardrails import (
+    ValidationError,
+    hardened_tool,
+    validate_confidence,
+    validate_enum,
+    validate_http_url,
+    validate_iso_date,
+    validate_slug,
+    validate_text,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -315,9 +324,58 @@ def _supabase() -> SupabaseTool:
 # ----------------------------------------------------------------------
 # ADK tool surface — plain functions with typed signatures + docstrings
 # (ADK auto-wraps these as FunctionTool when passed to Agent(tools=[...])).
+#
+# Every tool below is @hardened_tool — that stacks: Sentry tracing +
+# R3 timeout + R5 rate-limit + (where present) R4 input validation.
 # ----------------------------------------------------------------------
 
-@sentry_traced_tool
+# Policy-type vocabulary from .cursorrules DNA. Kept here (not in guardrails)
+# so it stays next to the RPC that consumes it.
+_POLICY_TYPES: frozenset[str] = frozenset(
+    {
+        "coupon_acceptance",
+        "price_match",
+        "rebate_compat",
+        "rewards_program",
+        "ibotta_compat",
+        "bogo_rules",
+        "stacking_rules",
+        "return_policy",
+        "sales_calendar",
+        "app_deals",
+    }
+)
+
+
+def _validate_upsert_retailer_policy(
+    store_id: str,
+    policy_type: str,
+    policy_key: str,
+    value_json: Any,
+    summary: Optional[str] = None,
+    source_url: Optional[str] = None,
+    source_snippet: Optional[str] = None,
+    effective_date: Optional[str] = None,
+    confidence: Optional[float] = None,
+) -> None:
+    """R4: reject malformed upserts before they touch the DB or rate-limit."""
+    validate_slug(store_id, "store_id")
+    validate_enum(policy_type, "policy_type", _POLICY_TYPES)
+    validate_slug(policy_key, "policy_key")
+    if not isinstance(value_json, dict):
+        raise ValidationError(
+            f"value_json must be a JSON object, got {type(value_json).__name__}"
+        )
+    if len(json.dumps(value_json, default=str)) > 16384:
+        raise ValidationError("value_json exceeds 16 KB")
+    validate_text(summary, "summary", max_len=512)
+    validate_http_url(source_url, "source_url")
+    validate_text(source_snippet, "source_snippet", max_len=1024)
+    validate_iso_date(effective_date, "effective_date")
+    validate_confidence(confidence, "confidence")
+
+
+@hardened_tool(timeout_s=8.0, rate_calls=60, rate_per_s=60.0)
 def query_stack_candidates(limit: int = 200) -> str:
     """Query Supabase `stack_candidates` for current live deal candidates.
 
@@ -329,7 +387,7 @@ def query_stack_candidates(limit: int = 200) -> str:
     return _supabase().fetch_stack_candidates(limit)
 
 
-@sentry_traced_tool
+@hardened_tool(timeout_s=5.0, rate_calls=30, rate_per_s=60.0)
 def audit_store_coverage() -> str:
     """Return per-store row counts from `v_snippd_store_audit`.
 
@@ -339,7 +397,7 @@ def audit_store_coverage() -> str:
     return _supabase().store_coverage()
 
 
-@sentry_traced_tool
+@hardened_tool(timeout_s=5.0, rate_calls=30, rate_per_s=60.0)
 def audit_mismatched_store_ids() -> str:
     """List `stack_candidates.store_id` values NOT matching any canonical slug.
 
@@ -349,7 +407,7 @@ def audit_mismatched_store_ids() -> str:
     return _supabase().mismatched_store_ids()
 
 
-@sentry_traced_tool
+@hardened_tool(timeout_s=5.0, rate_calls=10, rate_per_s=60.0)
 def audit_stack_candidates_schema() -> str:
     """Return `information_schema.columns` for `stack_candidates`.
 
@@ -358,7 +416,7 @@ def audit_stack_candidates_schema() -> str:
     return _supabase().stack_candidates_columns()
 
 
-@sentry_traced_tool
+@hardened_tool(timeout_s=8.0, rate_calls=60, rate_per_s=60.0)
 def fetch_retailer_policies(
     store_id: Optional[str] = None,
     policy_type: Optional[str] = None,
@@ -374,7 +432,7 @@ def fetch_retailer_policies(
     return _supabase().fetch_retailer_policies(store_id, policy_type, limit)
 
 
-@sentry_traced_tool
+@hardened_tool(timeout_s=5.0, rate_calls=30, rate_per_s=60.0)
 def list_stale_retailer_policies(days: int = 30) -> str:
     """Return retailer policies older than `days` since last verification.
 
@@ -383,7 +441,12 @@ def list_stale_retailer_policies(days: int = 30) -> str:
     return _supabase().stale_retailer_policies(days)
 
 
-@sentry_traced_tool
+@hardened_tool(
+    timeout_s=12.0,
+    rate_calls=20,
+    rate_per_s=60.0,
+    validator=_validate_upsert_retailer_policy,
+)
 def upsert_retailer_policy(
     store_id: str,
     policy_type: str,
