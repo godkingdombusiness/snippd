@@ -19,6 +19,7 @@ import ChefStashScreen from "@/ChefStashScreen";
 import ChefMealScreen from "@/ChefMealScreen";
 import StudioScreen from "@/StudioScreen";
 import DebugScreen from "@/DebugScreen";
+import SnippdProScreen from "@/SnippdProScreen";
 import "./App.css";
 
 // React Router v7 + Sentry: wrap the plain Routes component so route spans
@@ -72,7 +73,19 @@ function Shell() {
         <Link to="/verify">Verify</Link>
         <Link to="/chef">Chef</Link>
         <Link to="/studio">Studio</Link>
-        <Link to="/debug" style={{ marginLeft: "auto", opacity: 0.6 }}>
+        <Link
+          to="/pro"
+          style={{
+            marginLeft: "auto",
+            padding: "0.25rem 0.75rem",
+            borderRadius: 999,
+            background: "linear-gradient(135deg, #6f6cff, #9c8bff)",
+            color: "#0b0b10",
+          }}
+        >
+          Pro · $4.99
+        </Link>
+        <Link to="/debug" style={{ opacity: 0.6 }}>
           Debug
         </Link>
       </nav>
@@ -93,6 +106,10 @@ export default function App() {
             {/* Debug console is intentionally unauthenticated so the
                 founder can verify the Sentry→Slack bridge from any device. */}
             <Route path="/debug" element={<DebugScreen />} />
+            {/* Pro landing page is public so we can drive traffic to it
+                from social and unauthenticated referrals. Checkout still
+                requires an email (captured on the page). */}
+            <Route path="/pro" element={<SnippdProScreen />} />
             <Route element={<AuthGate />}>
               <Route element={<Shell />}>
                 <Route path="/plan" element={<WeeklyPlanScreen />} />
