@@ -11,7 +11,10 @@
     "report": "node scripts/generate_report.mjs",
     "report:dry": "node scripts/generate_report.mjs --dry-run",
     "sync:actions": "node scripts/sync_founder_actions.mjs",
-    "sync:actions:dry": "node scripts/sync_founder_actions.mjs --dry-run"
+    "sync:actions:dry": "node scripts/sync_founder_actions.mjs --dry-run",
+    "audit:app-review": "node scripts/audit_app_review.mjs",
+    "audit:app-review:dry": "node scripts/audit_app_review.mjs --dry-run",
+    "audit:app-review:summary": "node scripts/audit_app_review.mjs --summary"
   },
   "dependencies": {
     "@sentry/react": "^10.49.0",
