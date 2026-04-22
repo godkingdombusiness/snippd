@@ -1,0 +1,138 @@
+{
+  "$comment": "Canonical backlog of action items only the founder can complete. Agents append/remove via commits to this file; scripts/sync_founder_actions.mjs renders the current state to #founder-actions in Slack. Delete an item to mark it done.",
+  "version": 1,
+  "channel": "#founder-actions",
+  "items": [
+    {
+      "id": "rotate-stripe-secret",
+      "title": "Rotate STRIPE_SECRET_KEY",
+      "category": "security",
+      "priority": "critical",
+      "why": "Secret was pasted in chat during Stripe setup on 2026-04-22. Must be rotated before the key is used in a committed Edge Function deploy.",
+      "where": "Stripe Dashboard → Developers → API keys → Roll secret key",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Auditor"
+    },
+    {
+      "id": "rotate-supabase-service-role",
+      "title": "Rotate SUPABASE_SERVICE_ROLE_KEY",
+      "category": "security",
+      "priority": "critical",
+      "why": "Service-role JWT was pasted in chat on 2026-04-22. It grants full RLS bypass; rotate before it lands in any committed env file or deploy.",
+      "where": "Supabase Dashboard → Project Settings → API → Reset service_role key",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Auditor"
+    },
+    {
+      "id": "merge-pr-7",
+      "title": "Review + merge PR #7 — kill critical CVE + Sentry DSN hygiene",
+      "category": "ship",
+      "priority": "high",
+      "why": "Removes the last unused Firebase dep (protobufjs RCE GHSA-h755-8qp9-cq85) and drops the hardcoded Sentry DSN fallback. npm audit goes from 9 vulns → 0.",
+      "where": "https://github.com/godkingdombusiness/snippd/pull/7",
+      "addedAt": "2026-04-22",
+      "addedBy": "@SRE-Warden"
+    },
+    {
+      "id": "merge-pr-8",
+      "title": "Review + merge PR #8 — first real CI gate",
+      "category": "ship",
+      "priority": "high",
+      "why": "Adds lint+build, Python guardrails smoke test, and npm audit fail-on-high across every PR and push. Main stops being on the honor system.",
+      "where": "https://github.com/godkingdombusiness/snippd/pull/8",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Lead-Architect"
+    },
+    {
+      "id": "merge-pr-9",
+      "title": "Review + merge PR #9 — delete 9 dead .js re-export shims",
+      "category": "ship",
+      "priority": "medium",
+      "why": "Cosmetic close-out. Build/lint green, bundle unchanged (already tree-shaken), repo easier to reason about.",
+      "where": "https://github.com/godkingdombusiness/snippd/pull/9",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Architect"
+    },
+    {
+      "id": "stripe-price-id",
+      "title": "Generate Stripe price_id for Snippd Pro ($4.99/mo)",
+      "category": "ship",
+      "priority": "high",
+      "why": "Edge Function Checkout Session path needs a concrete Price ID. Payment Link fast-path works without it today, but the robust path (with metadata + email pre-fill) is blocked until this exists.",
+      "where": "Stripe Dashboard → Products → Snippd Pro → Pricing → Add price → copy price_…",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Growth-Agent"
+    },
+    {
+      "id": "deploy-stripe-edge-function",
+      "title": "Deploy supabase/functions/create-checkout-session",
+      "category": "ship",
+      "priority": "medium",
+      "why": "Upgrades the /pro page from Payment Link redirect to a proper Checkout Session. Requires price_id (above) + STRIPE_SECRET_KEY (rotate first) set as Edge Function secrets.",
+      "where": "Supabase Dashboard → Edge Functions → Deploy from this repo",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Lead-Architect",
+      "blockedBy": ["stripe-price-id", "rotate-stripe-secret"]
+    },
+    {
+      "id": "sentry-slack-alert",
+      "title": "Confirm Sentry → Slack alert rule is active",
+      "category": "verify",
+      "priority": "medium",
+      "why": "You confirmed earlier that the rule fired on a test issue; this is just a periodic re-check. If it stops firing the entire self-healing loop goes dark.",
+      "where": "Sentry → Alerts → Rules → 'Slack #engineering-alerts on new Issue'",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Auditor"
+    },
+    {
+      "id": "repo-secret-wins-webhook",
+      "title": "Verify SLACK_WINS_WEBHOOK_URL is set as repo secret",
+      "category": "verify",
+      "priority": "medium",
+      "why": "The .github/workflows/wins.yml action will silently skip if this secret is missing, so celebration posts would stop and nobody would notice.",
+      "where": "https://github.com/godkingdombusiness/snippd/settings/secrets/actions",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Reporter"
+    },
+    {
+      "id": "repo-secret-actions-webhook",
+      "title": "Create #founder-actions channel + add SLACK_ACTIONS_WEBHOOK_URL as repo secret",
+      "category": "verify",
+      "priority": "high",
+      "why": "This backlog can only post to Slack once the webhook exists. Also needed as a GitHub secret so the auto-sync workflow can run on PR events.",
+      "where": "Slack → Create channel #founder-actions → Apps → Incoming Webhooks → Add → copy URL → paste into .env.local AND https://github.com/godkingdombusiness/snippd/settings/secrets/actions as SLACK_ACTIONS_WEBHOOK_URL",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Chief-of-Staff"
+    },
+    {
+      "id": "pro-e2e-smoke",
+      "title": "Live-test /pro Payment Link end-to-end",
+      "category": "verify",
+      "priority": "medium",
+      "why": "Confirm the redirect to buy.stripe.com/… succeeds, payment clears, and Sentry breadcrumb 'stripe: Redirecting via Payment Link' appears on the user's session replay.",
+      "where": "https://snippd.app/pro (or local dev) → click upgrade → Stripe-hosted page → test card if in test mode",
+      "addedAt": "2026-04-22",
+      "addedBy": "@QA"
+    },
+    {
+      "id": "index-html-title",
+      "title": "Update index.html <title> from 'snippd-beta-demo' to 'Snippd'",
+      "category": "polish",
+      "priority": "low",
+      "why": "Browser tab still says the scaffold name. Low-effort brand hygiene.",
+      "where": "c:/Users/godki/snippd-beta-demo/index.html",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Auditor"
+    },
+    {
+      "id": "bundle-size-strategy",
+      "title": "Decide bundle-size strategy (738 kB / 228 kB gz triggers Vite warning)",
+      "category": "polish",
+      "priority": "low",
+      "why": "Not urgent — mobile 4G load is still <2s gz — but the audit flagged it. Options: route-level code-split (easy), lazy-load Sentry replay (medium), or just bump chunkSizeWarningLimit and move on.",
+      "where": "Decision to make; implementation belongs to @Lead-Architect once chosen.",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Auditor"
+    }
+  ]
+}
