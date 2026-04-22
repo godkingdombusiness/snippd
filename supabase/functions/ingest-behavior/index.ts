@@ -201,7 +201,6 @@ const TEMPLATES: Record<string, (body: Record<string, unknown>) => CypherJob> = 
 
 function jsonResponse(status: number, body: unknown, origin: string | null) {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   };
@@ -209,6 +208,15 @@ function jsonResponse(status: number, body: unknown, origin: string | null) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Vary"] = "Origin";
   }
+  // HTTP spec: 204/205/304 responses MUST have a null body. Deno's Response
+  // constructor throws RangeError otherwise, which the edge runtime surfaces
+  // as a 500 — breaking CORS preflight for any browser client. Skip the body
+  // and the Content-Type header for null-body statuses.
+  const nullBodyStatus = status === 204 || status === 205 || status === 304;
+  if (nullBodyStatus) {
+    return new Response(null, { status, headers });
+  }
+  headers["Content-Type"] = "application/json";
   return new Response(JSON.stringify(body), { status, headers });
 }
 
