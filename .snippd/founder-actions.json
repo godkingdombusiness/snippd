@@ -34,14 +34,14 @@
       "addedBy": "@Chief-of-Staff"
     },
     {
-      "id": "supabase-mgmt-token-for-provision",
-      "title": "Add SUPABASE_ACCESS_TOKEN + SUPABASE_PROJECT_REF as repo secrets",
-      "category": "ops",
+      "id": "rotate-supabase-access-token",
+      "title": "Rotate SUPABASE_ACCESS_TOKEN (pasted in chat 2026-04-22)",
+      "category": "security",
       "priority": "high",
-      "why": "Without these, provision-neo4j.yml can't push the existing NEO4J_* values into the Edge Function runtime — the ingest-behavior function stays in 'accept + drop' (202 degraded) mode and no behavioral events actually land in Aura. Zero user-facing impact today, but blocks every personalization feature that relies on the graph.",
-      "where": "Supabase dashboard → Account → Access Tokens → Generate (name: 'github actions provision') → copy. Project ref lives in Project Settings → General → Reference ID. Then https://github.com/godkingdombusiness/snippd/settings/secrets/actions → add both as repo secrets.",
+      "why": "The management-API token was pasted in chat on 2026-04-22 to bootstrap the Supabase CLI provisioning. Standard hygiene: any credential touched by a human in chat gets rotated after first use. Functionally identical to the earlier STRIPE_SECRET_KEY + SERVICE_ROLE_KEY rotations. No rush — the token is already wired into GitHub secrets and does its job; rotating just closes the exposure window.",
+      "where": "Supabase dashboard → Account → Access Tokens → revoke the 'github actions provision' token → Generate new → paste into https://github.com/godkingdombusiness/snippd/settings/secrets/actions (overwrite SUPABASE_ACCESS_TOKEN). provision-neo4j and deploy-delete-account workflows pick up the new value on next run.",
       "addedAt": "2026-04-22",
-      "addedBy": "@Lead-Architect"
+      "addedBy": "@Auditor"
     },
     {
       "id": "stripe-price-id",
