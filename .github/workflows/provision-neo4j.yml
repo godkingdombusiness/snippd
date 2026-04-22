@@ -50,11 +50,12 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       NEO4J_URI: ${{ secrets.NEO4J_URI || 'neo4j+s://43e46705.databases.neo4j.io' }}
-      NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME || 'neo4j' }}
+      # Accept either NEO4J_USERNAME or the pre-existing NEO4J_USER secret name.
+      NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME || secrets.NEO4J_USER || 'neo4j' }}
       NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
       NEO4J_DATABASE: ${{ secrets.NEO4J_DATABASE || 'neo4j' }}
       ALLOWED_ORIGINS: ${{ secrets.SNIPPD_ALLOWED_ORIGINS || 'https://snippd.app,http://localhost:5173,http://localhost:5174' }}
-      SLACK_WEBHOOK: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
 
     steps:
       - name: Guard — required secrets are set
@@ -126,11 +127,11 @@ jobs:
         run: |
           curl -sS -X POST "$SLACK_WEBHOOK" \
             -H 'Content-Type: application/json' \
-            -d '{"text":":white_check_mark: Neo4j ingest-behavior redeployed against Aura 43e46705 — events now writing to graph. Triggered by `'"$GITHUB_EVENT_NAME"'` on `'"$GITHUB_REF_NAME"'`."}'
+            -d '{"text":"*[provision]* :white_check_mark: Neo4j ingest-behavior redeployed against Aura 43e46705 — events now writing to graph. Triggered by `'"$GITHUB_EVENT_NAME"'` on `'"$GITHUB_REF_NAME"'`."}'
 
       - name: Slack notify on failure
         if: failure() && env.SLACK_WEBHOOK != ''
         run: |
           curl -sS -X POST "$SLACK_WEBHOOK" \
             -H 'Content-Type: application/json' \
-            -d '{"text":":x: Neo4j provision failed — see https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+            -d '{"text":"*[provision]* :x: Neo4j provision failed — see https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'

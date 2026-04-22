@@ -1,0 +1,84 @@
+name: slack-smoketest
+
+# One-click verifier: proves Slack delivery works end-to-end for each
+# webhook currently configured. Posts a labeled test message via every
+# webhook the repo has — SLACK_WEBHOOK_URL (the shared hub) plus any
+# channel-specific webhooks that are set.
+#
+# Use when:
+#   - You just pasted SLACK_WEBHOOK_URL and want to verify it lands.
+#   - Nothing is showing up in Slack and you want to know which
+#     webhook is broken before chasing individual workflows.
+#
+# Does NOT post anything elsewhere, does NOT touch state. Pure probe.
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: "Optional free-text note included in the test message"
+        required: false
+        default: "smoketest"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      HUB: ${{ secrets.SLACK_WEBHOOK_URL }}
+      WINS: ${{ secrets.SLACK_WINS_WEBHOOK_URL }}
+      ACTIONS: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL }}
+      REPORTS: ${{ secrets.SLACK_REPORTS_WEBHOOK_URL }}
+      APP_REVIEW: ${{ secrets.SLACK_APP_REVIEW_WEBHOOK_URL }}
+      NOTE: ${{ inputs.note }}
+      RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Inventory secrets
+        run: |
+          echo "=== which Slack webhooks are configured ==="
+          [ -n "$HUB"        ] && echo "✓ SLACK_WEBHOOK_URL (hub)"          || echo "✗ SLACK_WEBHOOK_URL (hub) — unset"
+          [ -n "$WINS"       ] && echo "✓ SLACK_WINS_WEBHOOK_URL"           || echo "✗ SLACK_WINS_WEBHOOK_URL — unset"
+          [ -n "$ACTIONS"    ] && echo "✓ SLACK_ACTIONS_WEBHOOK_URL"        || echo "✗ SLACK_ACTIONS_WEBHOOK_URL — unset"
+          [ -n "$REPORTS"    ] && echo "✓ SLACK_REPORTS_WEBHOOK_URL"        || echo "✗ SLACK_REPORTS_WEBHOOK_URL — unset"
+          [ -n "$APP_REVIEW" ] && echo "✓ SLACK_APP_REVIEW_WEBHOOK_URL"     || echo "✗ SLACK_APP_REVIEW_WEBHOOK_URL — unset"
+
+      - name: Probe each configured webhook
+        run: |
+          AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          fail=0
+
+          probe() {
+            local label="$1"
+            local url="$2"
+            if [ -z "$url" ]; then
+              echo "— skipping $label (not configured)"
+              return 0
+            fi
+            body=$(printf '{"text":"*[smoketest]* %s — webhook *%s* is live at %s. Run log: %s · note: _%s_"}' \
+              ":mag:" "$label" "$AT" "$RUN_URL" "$NOTE")
+            code=$(curl -sS -o /tmp/resp.txt -w "%{http_code}" \
+              -X POST "$url" -H 'Content-Type: application/json' --data "$body")
+            if [ "$code" = "200" ]; then
+              echo "✓ $label → 200 OK"
+            else
+              echo "✗ $label → $code"
+              cat /tmp/resp.txt
+              fail=1
+            fi
+          }
+
+          probe "SLACK_WEBHOOK_URL"           "$HUB"
+          probe "SLACK_WINS_WEBHOOK_URL"      "$WINS"
+          probe "SLACK_ACTIONS_WEBHOOK_URL"   "$ACTIONS"
+          probe "SLACK_REPORTS_WEBHOOK_URL"   "$REPORTS"
+          probe "SLACK_APP_REVIEW_WEBHOOK_URL" "$APP_REVIEW"
+
+          if [ -z "$HUB$WINS$ACTIONS$REPORTS$APP_REVIEW" ]; then
+            echo "::error::no Slack webhooks configured — paste at least SLACK_WEBHOOK_URL in repo secrets"
+            exit 1
+          fi
+          exit $fail

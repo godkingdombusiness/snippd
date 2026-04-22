@@ -107,7 +107,8 @@ jobs:
       # prints "[post_win] skipped: SLACK_WINS_WEBHOOK_URL is not set" and
       # exits 0. So we always invoke it — one step, no expression gymnastics,
       # no "workflow file issue" surface.
-      - name: Post to #wins (no-op if webhook secret is unset)
+      - name: Post win to Slack (no-op if no webhook is set)
         env:
-          SLACK_WINS_WEBHOOK_URL: ${{ secrets.SLACK_WINS_WEBHOOK_URL }}
+          SLACK_WINS_WEBHOOK_URL: ${{ secrets.SLACK_WINS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL }}
+          SLACK_TOPIC_PREFIX: "[win]"
         run: node scripts/post_win.mjs --from-env
