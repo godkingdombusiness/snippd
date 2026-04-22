@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Navigate,
   Route,
@@ -11,20 +11,33 @@ import * as Sentry from "@sentry/react";
 import { supabase } from "@/lib/supabase";
 import { MissionProvider } from "@/context/MissionProvider";
 import SignInScreen from "@/SignInScreen";
-import WeeklyPlanScreen from "@/WeeklyPlanScreen";
-import MyListScreen from "@/MyListScreen";
-import CheckoutScreen from "@/CheckoutScreen";
-import ReceiptVerifiedScreen from "@/ReceiptVerifiedScreen";
-import ChefStashScreen from "@/ChefStashScreen";
-import ChefMealScreen from "@/ChefMealScreen";
-import StudioScreen from "@/StudioScreen";
-import DebugScreen from "@/DebugScreen";
-import SnippdProScreen from "@/SnippdProScreen";
-import PrivacyPolicyScreen from "@/PrivacyPolicy";
-import TermsOfServiceScreen from "@/TermsOfService";
-import SettingsScreen from "@/SettingsScreen";
 import LegalFooter from "@/components/LegalFooter";
 import "./App.css";
+
+// Route-level code split. Every screen below the sign-in gate becomes its
+// own chunk so the initial download is just the login shell + router. This
+// is what keeps the /login LCP under 2s on 4G and makes Vite stop warning
+// about the 500 kB chunk-size limit.
+const WeeklyPlanScreen = lazy(() => import("@/WeeklyPlanScreen"));
+const MyListScreen = lazy(() => import("@/MyListScreen"));
+const CheckoutScreen = lazy(() => import("@/CheckoutScreen"));
+const ReceiptVerifiedScreen = lazy(() => import("@/ReceiptVerifiedScreen"));
+const ChefStashScreen = lazy(() => import("@/ChefStashScreen"));
+const ChefMealScreen = lazy(() => import("@/ChefMealScreen"));
+const StudioScreen = lazy(() => import("@/StudioScreen"));
+const DebugScreen = lazy(() => import("@/DebugScreen"));
+const SnippdProScreen = lazy(() => import("@/SnippdProScreen"));
+const PrivacyPolicyScreen = lazy(() => import("@/PrivacyPolicy"));
+const TermsOfServiceScreen = lazy(() => import("@/TermsOfService"));
+const SettingsScreen = lazy(() => import("@/SettingsScreen"));
+
+function RouteLoading() {
+  return (
+    <div className="snippd-screen" style={{ padding: "2rem" }}>
+      <p style={{ opacity: 0.7 }}>Loading…</p>
+    </div>
+  );
+}
 
 // React Router v7 + Sentry: wrap the plain Routes component so route spans
 // and transaction names track the app's navigation automatically.
@@ -97,7 +110,9 @@ function Shell() {
         </Link>
       </nav>
       <main className="snippd-main">
-        <Outlet />
+        <Suspense fallback={<RouteLoading />}>
+          <Outlet />
+        </Suspense>
       </main>
       <LegalFooter />
     </div>
@@ -109,34 +124,36 @@ export default function App() {
     <Sentry.ErrorBoundary fallback={<SentryErrorFallback />} showDialog={false}>
       <BrowserRouter>
         <MissionProvider>
-          <SentryRoutes>
-            <Route path="/login" element={<SignInScreen />} />
-            {/* Debug console is intentionally unauthenticated so the
-                founder can verify the Sentry→Slack bridge from any device. */}
-            <Route path="/debug" element={<DebugScreen />} />
-            {/* Pro landing page is public so we can drive traffic to it
-                from social and unauthenticated referrals. Checkout still
-                requires an email (captured on the page). */}
-            <Route path="/pro" element={<SnippdProScreen />} />
-            {/* Legal pages are public so App Store Connect can link them and
-                so unauthenticated visitors can read them before signing up. */}
-            <Route path="/privacy" element={<PrivacyPolicyScreen />} />
-            <Route path="/terms" element={<TermsOfServiceScreen />} />
-            <Route element={<AuthGate />}>
-              <Route element={<Shell />}>
-                <Route path="/plan" element={<WeeklyPlanScreen />} />
-                <Route path="/list" element={<MyListScreen />} />
-                <Route path="/checkout" element={<CheckoutScreen />} />
-                <Route path="/verify" element={<ReceiptVerifiedScreen />} />
-                <Route path="/chef/:slot" element={<ChefMealScreen />} />
-                <Route path="/chef" element={<ChefStashScreen />} />
-                <Route path="/studio" element={<StudioScreen />} />
-                <Route path="/settings" element={<SettingsScreen />} />
+          <Suspense fallback={<RouteLoading />}>
+            <SentryRoutes>
+              <Route path="/login" element={<SignInScreen />} />
+              {/* Debug console is intentionally unauthenticated so the
+                  founder can verify the Sentry→Slack bridge from any device. */}
+              <Route path="/debug" element={<DebugScreen />} />
+              {/* Pro landing page is public so we can drive traffic to it
+                  from social and unauthenticated referrals. Checkout still
+                  requires an email (captured on the page). */}
+              <Route path="/pro" element={<SnippdProScreen />} />
+              {/* Legal pages are public so App Store Connect can link them and
+                  so unauthenticated visitors can read them before signing up. */}
+              <Route path="/privacy" element={<PrivacyPolicyScreen />} />
+              <Route path="/terms" element={<TermsOfServiceScreen />} />
+              <Route element={<AuthGate />}>
+                <Route element={<Shell />}>
+                  <Route path="/plan" element={<WeeklyPlanScreen />} />
+                  <Route path="/list" element={<MyListScreen />} />
+                  <Route path="/checkout" element={<CheckoutScreen />} />
+                  <Route path="/verify" element={<ReceiptVerifiedScreen />} />
+                  <Route path="/chef/:slot" element={<ChefMealScreen />} />
+                  <Route path="/chef" element={<ChefStashScreen />} />
+                  <Route path="/studio" element={<StudioScreen />} />
+                  <Route path="/settings" element={<SettingsScreen />} />
+                </Route>
+                <Route path="/" element={<Navigate to="/plan" replace />} />
               </Route>
-              <Route path="/" element={<Navigate to="/plan" replace />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/plan" replace />} />
-          </SentryRoutes>
+              <Route path="*" element={<Navigate to="/plan" replace />} />
+            </SentryRoutes>
+          </Suspense>
         </MissionProvider>
       </BrowserRouter>
     </Sentry.ErrorBoundary>
