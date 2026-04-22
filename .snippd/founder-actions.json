@@ -105,6 +105,36 @@
       "addedBy": "@Chief-of-Staff"
     },
     {
+      "id": "repo-secret-reports-webhook",
+      "title": "Create #reports channel + add SLACK_REPORTS_WEBHOOK_URL as repo secret",
+      "category": "verify",
+      "priority": "high",
+      "why": "The 6x-daily @Reporter heartbeat (.github/workflows/reports-cron.yml from PR #12) silently skips when the webhook is missing. You won't get any 1am/5am/9am/11am/3pm/8pm ET posts until the secret is set.",
+      "where": "Slack → Create channel #reports → Apps → Incoming Webhooks → Add → copy URL → paste into .env.local AND https://github.com/godkingdombusiness/snippd/settings/secrets/actions as SLACK_REPORTS_WEBHOOK_URL",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Reporter"
+    },
+    {
+      "id": "merge-pr-11-wins-fix",
+      "title": "Review + merge PR #11 — stop wins.yml failure-email spam",
+      "category": "ship",
+      "priority": "high",
+      "why": "wins.yml has a broken job-level if: expression that makes every branch push report 'workflow file issue' — 5 failed-run emails since yesterday. PR #11 removes the gate; the script's own graceful-skip handles the missing-webhook case.",
+      "where": "https://github.com/godkingdombusiness/snippd/pull/11",
+      "addedAt": "2026-04-22",
+      "addedBy": "@SRE-Warden"
+    },
+    {
+      "id": "merge-pr-12-reports",
+      "title": "Review + merge PR #12 — #reports heartbeat cron",
+      "category": "ship",
+      "priority": "medium",
+      "why": "Ships the generator + 6x-daily cron. Blocked on nothing; posts will start flowing as soon as the #reports channel + SLACK_REPORTS_WEBHOOK_URL secret exist (tracked as repo-secret-reports-webhook above).",
+      "where": "https://github.com/godkingdombusiness/snippd/pull/12",
+      "addedAt": "2026-04-22",
+      "addedBy": "@Reporter"
+    },
+    {
       "id": "pro-e2e-smoke",
       "title": "Live-test /pro Payment Link end-to-end",
       "category": "verify",
