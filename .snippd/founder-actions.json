@@ -4,6 +4,16 @@
   "channel": "#founder-actions (or SLACK_WEBHOOK_URL hub)",
   "items": [
     {
+      "id": "install-slack-bot",
+      "title": "Install Snippd Ops Slack app (one-time OAuth consent, ~90 seconds)",
+      "category": "ship",
+      "priority": "high",
+      "why": "Replaces the blind SLACK_WINS_WEBHOOK_URL pipe with a proper bot. Unblocks: (a) identifying which channel the legacy webhook has been posting to, (b) auto-creating all 12 per-department Slack channels from .snippd/slack-channels.json, (c) agents posting to any channel by name instead of being stuck in one. Steps are in docs/slack-bot-install.md — install from manifest, authorize, paste xoxb- token into SLACK_BOT_TOKEN secret, run the slack-bootstrap workflow.",
+      "where": "docs/slack-bot-install.md → follow the 5-step install, then https://github.com/godkingdombusiness/snippd/actions/workflows/slack-bootstrap.yml → Run workflow",
+      "addedAt": "2026-04-23",
+      "addedBy": "@Auditor"
+    },
+    {
       "id": "rotate-stripe-secret",
       "title": "Rotate STRIPE_SECRET_KEY",
       "category": "security",

@@ -1,0 +1,75 @@
+name: slack-bootstrap
+
+# Run this once after pasting SLACK_BOT_TOKEN into repo secrets. It:
+#   1. Identifies which channel the existing SLACK_WINS_WEBHOOK_URL points
+#      to (so we can finally answer "where do the posts go?").
+#   2. Creates any missing per-department channels defined in
+#      .snippd/slack-channels.json.
+#   3. Posts a confirmation to #ops-control-center so you can see the bot
+#      working end-to-end.
+#
+# Safe to re-run — ensure-channels is idempotent, and the identify probe
+# posts a single innocuous marker then prints which channel it landed in.
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_identify:
+        description: "Skip the webhook-channel identification probe"
+        required: false
+        default: "false"
+      skip_ensure:
+        description: "Skip creating missing department channels"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Gate on token presence
+        env:
+          BOT: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: |
+          if [ -z "$BOT" ]; then
+            echo "::error::SLACK_BOT_TOKEN is not set. Install the Slack app from docs/slack-app-manifest.yml, then paste the xoxb- token into repo secrets as SLACK_BOT_TOKEN."
+            exit 1
+          fi
+          echo "::notice::SLACK_BOT_TOKEN present (${#BOT} chars)"
+
+      - name: Identify which channel the webhook points to
+        if: inputs.skip_identify != 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_WINS_WEBHOOK_URL: ${{ secrets.SLACK_WINS_WEBHOOK_URL }}
+        run: node scripts/slack_ops.mjs identify-webhook-channel
+
+      - name: Ensure per-department channels exist
+        if: inputs.skip_ensure != 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: node scripts/slack_ops.mjs ensure-channels
+
+      - name: List everything the bot can see
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: node scripts/slack_ops.mjs list-channels
+
+      - name: Confirmation post
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: |
+          node scripts/slack_ops.mjs post ops-control-center \
+            ":white_check_mark: Snippd Ops bot installed. Channels bootstrapped from .snippd/slack-channels.json. Run \`slack-bootstrap\` again anytime to re-sync channels or re-identify the legacy webhook."
