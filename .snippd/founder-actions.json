@@ -4,6 +4,16 @@
   "channel": "#founder-actions (or SLACK_WEBHOOK_URL hub)",
   "items": [
     {
+      "id": "verify-google-oauth-redirects",
+      "title": "Verify Google OAuth redirect allowlists (Supabase + Google Cloud)",
+      "category": "ship",
+      "priority": "critical",
+      "why": "Fixed the client-side Google sign-in bug (added the /auth/callback route, PKCE exchange, and already-signed-in guard). The app-side code is now correct — the remaining failure mode is that either (a) Supabase → Auth → URL Configuration does not list `${origin}/auth/callback` in its Redirect URLs, or (b) Google Cloud → Credentials → OAuth 2.0 Client does not list the Supabase callback `https://<project>.supabase.co/auth/v1/callback` in its Authorized redirect URIs. Either misconfig produces exactly the symptoms you reported (timeout + no redirect back). Takes ~60 seconds in each dashboard.",
+      "where": "docs/google-oauth-setup.md has the full checklist. Supabase: https://supabase.com/dashboard/project/agznvorioymmfsnbjsoq/auth/url-configuration · Google Cloud: https://console.cloud.google.com/apis/credentials",
+      "addedAt": "2026-04-23",
+      "addedBy": "@Lead-Architect"
+    },
+    {
       "id": "install-slack-bot",
       "title": "Install Snippd Ops Slack app (one-time OAuth consent, ~90 seconds)",
       "category": "ship",
