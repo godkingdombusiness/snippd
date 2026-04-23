@@ -1,0 +1,67 @@
+{
+  "$comment": "Canonical Slack channel map. scripts/slack_ops.mjs ensure-channels reads this file to create any missing channels in the getsnippd workspace. Each channel mirrors a department and a topic prefix that the agent team uses in posts.",
+  "version": 1,
+  "channels": [
+    {
+      "name": "ops-control-center",
+      "topic": "[ops] Firmwide feed · mirrors issue #27",
+      "purpose": "Every automated event from any department. See-everything feed. Slack-side mirror of GitHub issue #27."
+    },
+    {
+      "name": "action-needed",
+      "topic": "[action-needed] Founder action queue · live",
+      "purpose": "The founder-action queue. Mirrors issue #37 body on every sync. Reply in the Founder approval inbox workflow to clear items."
+    },
+    {
+      "name": "app-review",
+      "topic": "[app-review] Apple reviewer audit · pre-submission gates",
+      "purpose": "App Store review audit runs land here. Dept: cx."
+    },
+    {
+      "name": "reports",
+      "topic": "[report] Daily app-health scorecard",
+      "purpose": "reports-cron posts daily. Dept: data."
+    },
+    {
+      "name": "wins",
+      "topic": "[wins] Shipped PRs, hit metrics, closed actions",
+      "purpose": "Celebration channel. post_win.mjs posts here on merges and hit scorecards."
+    },
+    {
+      "name": "dept-cx",
+      "topic": "[cx] Customer Experience",
+      "purpose": "Support tickets, App Store reviews, researcher insights. Mirrors issue #30."
+    },
+    {
+      "name": "dept-product",
+      "topic": "[product] Product & Design",
+      "purpose": "Roadmap, specs, release notes. Mirrors issue #31."
+    },
+    {
+      "name": "dept-data",
+      "topic": "[data] Data & Intelligence",
+      "purpose": "Neo4j, ETL, ML, dashboards. Mirrors issue #32."
+    },
+    {
+      "name": "dept-revops",
+      "topic": "[revops] Revenue Operations",
+      "purpose": "Stripe, dunning, disputes, unit economics. Mirrors issue #33."
+    },
+    {
+      "name": "dept-legal",
+      "private": true,
+      "topic": "[legal] Legal & Compliance · private",
+      "purpose": "ToS, DMCA, DSAR, privacy. Private by policy — counsel + compliance operator only. Mirrors issue #34."
+    },
+    {
+      "name": "dept-partnerships",
+      "topic": "[partnerships] Partnerships & Platform",
+      "purpose": "Retailer deals, CPG sponsorships, integrations. Mirrors issue #35."
+    },
+    {
+      "name": "dept-marketing",
+      "topic": "[marketing] Marketing",
+      "purpose": "Brand, content, social, creative, SEO, lifecycle, community, analyst, paid. Mirrors issue #36."
+    }
+  ]
+}

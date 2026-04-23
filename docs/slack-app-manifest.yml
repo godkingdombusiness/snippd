@@ -1,0 +1,58 @@
+# Snippd Ops — Slack App manifest.
+#
+# Install via: https://api.slack.com/apps?new_app=1 → "From an app manifest"
+# → pick the `getsnippd` workspace → paste this YAML → Create → Install to
+# Workspace → authorize → copy the "Bot User OAuth Token" (starts with xoxb-)
+# → paste into GitHub secret SLACK_BOT_TOKEN.
+#
+# Scope rationale:
+#   chat:write            post messages as the Snippd Ops bot
+#   chat:write.public     post to channels the bot is not a member of
+#                         (lets the bot drop a receipt in any dept channel
+#                         without us having to invite it to each one)
+#   channels:read         list public channels (diagnose where webhooks land)
+#   channels:manage       create public channels (bootstrap per-dept channels)
+#   channels:join         bot joins channels it creates
+#   groups:read           list private channels (same rationale as public)
+#   groups:write          create private channels (if we ever want a private
+#                         #legal channel — legal events are DM-only by policy)
+#   users:read            resolve usernames → IDs for @-mentions
+#   incoming-webhook      backward-compatible with the existing
+#                         SLACK_WINS_WEBHOOK_URL three-level fallback chain
+#
+# The bot token is not rotated because GitHub Actions pulls it fresh from
+# secrets on every run; rotating is a one-click operation from the app page
+# if it ever needs to be invalidated.
+display_information:
+  name: Snippd Ops
+  description: Autonomous agent-team notifications and channel operator
+  background_color: "#0F172A"
+  long_description: >
+    Snippd's autonomous agent team uses this app to post status, audit,
+    approval, and incident events into Slack and to create/maintain the
+    per-department channels that the team operates in. Installed and
+    maintained by the Snippd Auditor agent via the scripts/slack_ops.mjs
+    helper in the github.com/godkingdombusiness/snippd repo.
+
+features:
+  bot_user:
+    display_name: Snippd Ops
+    always_online: true
+
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - chat:write.public
+      - channels:read
+      - channels:manage
+      - channels:join
+      - groups:read
+      - groups:write
+      - users:read
+      - incoming-webhook
+
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
