@@ -30,6 +30,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  issues: write
 
 concurrency:
   group: founder-actions-sync
@@ -71,8 +72,10 @@ jobs:
             echo "::notice::no Slack webhook configured — skipping."
           fi
 
-      - name: Sync queue to Slack
-        if: steps.check.outputs.have_webhook == 'true'
+      # Always runs: the script posts to Slack if a webhook is resolvable, and
+      # always overwrites the pinned #37 [action-needed] issue body. That way
+      # the founder sees the live queue in GitHub even when Slack is dark.
+      - name: Sync queue (Slack + GitHub issue mirror)
         env:
           SLACK_ACTIONS_WEBHOOK_URL: ${{ secrets.SLACK_ACTIONS_WEBHOOK_URL || secrets.SLACK_WEBHOOK_URL || secrets.SLACK_WINS_WEBHOOK_URL }}
           SLACK_TOPIC_PREFIX: "[action-needed]"
