@@ -30,6 +30,7 @@ const SnippdProScreen = lazy(() => import("@/SnippdProScreen"));
 const PrivacyPolicyScreen = lazy(() => import("@/PrivacyPolicy"));
 const TermsOfServiceScreen = lazy(() => import("@/TermsOfService"));
 const SettingsScreen = lazy(() => import("@/SettingsScreen"));
+const AuthCallbackScreen = lazy(() => import("@/AuthCallbackScreen"));
 
 function RouteLoading() {
   return (
@@ -127,6 +128,12 @@ export default function App() {
           <Suspense fallback={<RouteLoading />}>
             <SentryRoutes>
               <Route path="/login" element={<SignInScreen />} />
+              {/* OAuth callback — Google (and any future providers) redirect
+                  here with ?code=... so `AuthCallbackScreen` can exchange
+                  it for a Supabase session before pushing the user to /plan.
+                  Must be public (no AuthGate) because the session doesn't
+                  exist yet when this route renders. */}
+              <Route path="/auth/callback" element={<AuthCallbackScreen />} />
               {/* Debug console is intentionally unauthenticated so the
                   founder can verify the Sentry→Slack bridge from any device. */}
               <Route path="/debug" element={<DebugScreen />} />

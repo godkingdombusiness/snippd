@@ -40,6 +40,9 @@ function buildStubClient(reason: string): SupabaseClient {
             signOut: () => notConfigured("auth.signOut"),
             signInWithOtp: () => notConfigured("auth.signInWithOtp"),
             signInWithPassword: () => notConfigured("auth.signInWithPassword"),
+            signInWithOAuth: () => notConfigured("auth.signInWithOAuth"),
+            exchangeCodeForSession: () =>
+              notConfigured("auth.exchangeCodeForSession"),
           };
         }
         if (prop === "from" || prop === "rpc") {
@@ -63,9 +66,23 @@ function buildStubClient(reason: string): SupabaseClient {
   return proxy as unknown as SupabaseClient;
 }
 
+// PKCE is the correct flow for SPAs: tokens never appear in the URL hash, the
+// exchange requires a code-verifier stored in localStorage which defeats
+// token-stealing attacks, and crucially it is what `exchangeCodeForSession`
+// expects on the /auth/callback route. Without flowType: "pkce" Supabase
+// defaults to an implicit-grant compatible flow that puts tokens in the URL
+// hash — we don't want that, and it is part of why the Google-login redirect
+// was timing out without establishing a session.
 export const supabase: SupabaseClient =
   URL && ANON
-    ? createClient(URL, ANON)
+    ? createClient(URL, ANON, {
+        auth: {
+          flowType: "pkce",
+          detectSessionInUrl: true,
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+      })
     : buildStubClient(
         !URL && !ANON
           ? "VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are both missing"
