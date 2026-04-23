@@ -39,6 +39,9 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { writeFile, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import {
   CATEGORY_META,
   CATEGORY_ORDER,
@@ -50,6 +53,30 @@ import {
 
 const execFileP = promisify(execFile);
 const DEFAULT_REPO = "godkingdombusiness/snippd";
+
+// Title of the pinned GitHub Issue that mirrors the live founder-action queue.
+// Must match the issue created in the repo — see also issues #27 (firmwide) and
+// #30-36 (per-department channels). This one is owned by dept:exec and serves
+// as the GitHub-side equivalent of the Slack action-needed channel so the
+// queue stays visible even when Slack is dark.
+const FOUNDER_ACTIONS_ISSUE_TITLE =
+  "[action-needed] Founder action queue · live";
+
+// GitHub Markdown emoji equivalents for the same priority/category signals
+// Slack uses. Keep these parallel to PRIORITY_EMOJI / CATEGORY_META in
+// _founder_actions_shared.mjs so the two surfaces feel identical.
+const PRIORITY_MD = {
+  critical: ":fire:",
+  high: ":rocket:",
+  medium: ":white_check_mark:",
+  low: ":broom:",
+};
+const CATEGORY_MD = {
+  security: { emoji: ":lock:", label: "Security" },
+  ship: { emoji: ":ship:", label: "Ship" },
+  verify: { emoji: ":mag:", label: "Verify" },
+  polish: { emoji: ":sparkles:", label: "Polish" },
+};
 
 function parseArgs(argv) {
   const out = {};
@@ -252,6 +279,186 @@ function buildBlocks({ backlog, prs, repo }) {
   return blocks;
 }
 
+/**
+ * Render the current queue as a GitHub-flavored Markdown body. This is what
+ * gets written into the pinned `[action-needed] Founder action queue · live`
+ * issue every sync, so the founder can see the live queue in GitHub (and
+ * receive a notification email on every change) even while Slack is dark.
+ */
+function renderMarkdownBody({ backlog, prs, repo }) {
+  const indexed = indexedItems(backlog.items);
+  const grouped = groupByCategory(indexed);
+
+  const totalsByPriority = PRIORITY_ORDER.reduce((acc, p) => {
+    acc[p] = indexed.filter((i) => i.priority === p).length;
+    return acc;
+  }, {});
+
+  const headerCounts = PRIORITY_ORDER.filter((p) => totalsByPriority[p] > 0)
+    .map((p) => `${PRIORITY_MD[p]} **${p}** ${totalsByPriority[p]}`)
+    .join(" · ");
+
+  const lines = [];
+  lines.push("# :clipboard: Founder Action Queue");
+  lines.push("");
+  lines.push(
+    `**${indexed.length} open** · ${headerCounts || "_none_"} · updated ${new Date().toUTCString()}`
+  );
+  lines.push("");
+  lines.push(
+    "> This issue body is rewritten automatically by `founder-actions-sync` " +
+      "every time the queue changes. Subscribe to this issue to receive an " +
+      "email the moment a new founder action lands, and so you can see the " +
+      "current queue without digging through Slack."
+  );
+  lines.push("");
+
+  for (const categoryKey of CATEGORY_ORDER) {
+    const items = grouped.get(categoryKey);
+    if (!items || !items.length) continue;
+    const meta = CATEGORY_MD[categoryKey];
+    lines.push(`## ${meta.emoji} ${meta.label} _(${items.length})_`);
+    lines.push("");
+    for (const item of items) {
+      const pri = PRIORITY_MD[item.priority] || PRIORITY_MD.low;
+      lines.push(`### ${pri} [${item.index}] ${item.title}`);
+      const meta = [];
+      if (item.priority) meta.push(`**priority:** ${item.priority}`);
+      if (item.category) meta.push(`**category:** ${item.category}`);
+      if (item.addedBy) meta.push(`**added by:** ${item.addedBy}`);
+      if (item.addedAt) meta.push(`**added:** ${item.addedAt}`);
+      if (Array.isArray(item.blockedBy) && item.blockedBy.length) {
+        meta.push(`:hourglass_flowing_sand: **blocked by:** ${item.blockedBy.join(", ")}`);
+      }
+      if (meta.length) lines.push(meta.join(" · "));
+      if (item.why) {
+        lines.push("");
+        lines.push(`**Why:** ${item.why}`);
+      }
+      if (item.where) {
+        lines.push("");
+        if (item.where.startsWith("http")) {
+          lines.push(`**Where:** <${item.where}>`);
+        } else {
+          lines.push(`**Where:** ${item.where}`);
+        }
+      }
+      lines.push("");
+    }
+  }
+
+  if (prs.length) {
+    lines.push("---");
+    lines.push("");
+    lines.push(`## :mag_right: Open PRs awaiting your review _(${prs.length})_`);
+    lines.push("");
+    for (const pr of [...prs].sort((a, b) => a.number - b.number)) {
+      const draft = pr.isDraft ? " _(draft)_" : "";
+      const author = pr.author?.login ? ` — @${pr.author.login}` : "";
+      lines.push(`- [#${pr.number}](${pr.url}) ${pr.title}${draft}${author}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("---");
+  lines.push("");
+  lines.push("## :ballot_box_with_check: How to approve");
+  lines.push("");
+  lines.push(
+    `Open the [Founder approval inbox workflow](https://github.com/${repo}/actions/workflows/process-approvals.yml), ` +
+      "click **Run workflow**, and paste an approval spec:"
+  );
+  lines.push("");
+  lines.push("- `all` → approve every item above");
+  lines.push("- `1-3` → approve items 1 through 3");
+  lines.push("- `1,9,4,3` → approve those specific items");
+  lines.push("- `1-3,7,9-11` → any mix of ranges and singles");
+  lines.push("");
+  lines.push(
+    "Approved items that have an automated action run immediately. Manual items " +
+      "get acknowledged and drop out of the queue on the next sync."
+  );
+  lines.push("");
+  lines.push(
+    `_Source of truth: [\`.snippd/founder-actions.json\`](https://github.com/${repo}/blob/main/.snippd/founder-actions.json) · ` +
+      `numbers above are stable until the next sync · edit the JSON in a PR to add items._`
+  );
+
+  return lines.join("\n");
+}
+
+/**
+ * Find the pinned `[action-needed] Founder action queue · live` issue and
+ * overwrite its body with the current rendered queue. Silently skips if the
+ * `gh` CLI isn't authenticated or the issue doesn't exist — the Slack post is
+ * still the primary surface, this is just a mirror.
+ */
+async function updateFounderActionsIssue({ body, repo }) {
+  let issueNumber = process.env.FOUNDER_ACTIONS_ISSUE_NUMBER;
+
+  if (!issueNumber) {
+    try {
+      const { stdout } = await execFileP(
+        "gh",
+        [
+          "issue",
+          "list",
+          "--repo",
+          repo,
+          "--state",
+          "open",
+          "--label",
+          "channel",
+          "--search",
+          FOUNDER_ACTIONS_ISSUE_TITLE,
+          "--json",
+          "number,title",
+          "--limit",
+          "20",
+        ],
+        { timeout: 10_000 }
+      );
+      const parsed = JSON.parse(stdout || "[]");
+      const match = parsed.find((i) => i.title === FOUNDER_ACTIONS_ISSUE_TITLE);
+      if (!match) {
+        console.warn(
+          `[sync_founder_actions] no issue titled "${FOUNDER_ACTIONS_ISSUE_TITLE}" found — ` +
+            "create it once with the ch_action_needed.md body and this script will keep it in sync."
+        );
+        return { updated: false };
+      }
+      issueNumber = String(match.number);
+    } catch (err) {
+      console.warn(
+        `[sync_founder_actions] gh issue lookup failed (${err.code || err.message}) — skipping issue mirror.`
+      );
+      return { updated: false };
+    }
+  }
+
+  const dir = await mkdtemp(path.join(tmpdir(), "founder-actions-"));
+  const bodyPath = path.join(dir, "body.md");
+  try {
+    await writeFile(bodyPath, body, "utf8");
+    await execFileP(
+      "gh",
+      ["issue", "edit", issueNumber, "--repo", repo, "--body-file", bodyPath],
+      { timeout: 15_000 }
+    );
+    console.log(
+      `[sync_founder_actions] updated issue #${issueNumber} body (${body.length} chars).`
+    );
+    return { updated: true, issueNumber };
+  } catch (err) {
+    console.warn(
+      `[sync_founder_actions] gh issue edit failed (${err.code || err.message}) — skipping issue mirror.`
+    );
+    return { updated: false };
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 function buildFallbackText(indexed) {
   return (
     `Founder action queue: ${indexed.length} open. ` +
@@ -290,15 +497,31 @@ async function main() {
   const blocks = buildBlocks({ backlog, prs, repo });
   const indexed = indexedItems(backlog.items);
   const fallback = buildFallbackText(indexed);
+  const markdownBody = renderMarkdownBody({ backlog, prs, repo });
 
   const payload = { text: fallback, blocks };
 
   if (args.dryRun) {
     console.log(JSON.stringify(payload, null, 2));
+    console.log("---- markdown body (for GitHub issue) ----");
+    console.log(markdownBody);
     console.log(
       `[sync_founder_actions] dry-run: ${backlog.items.length} items, ${prs.length} live PRs.`
     );
     return;
+  }
+
+  // Mirror the queue to the pinned GitHub channel issue so the founder sees
+  // it even when Slack is dark. Best-effort — never fails the workflow. Skip
+  // when SKIP_ISSUE_MIRROR is set (useful for local dry runs without gh auth).
+  if (!process.env.SKIP_ISSUE_MIRROR) {
+    try {
+      await updateFounderActionsIssue({ body: markdownBody, repo });
+    } catch (err) {
+      console.warn(
+        `[sync_founder_actions] issue mirror threw (${err.message}) — continuing.`
+      );
+    }
   }
 
   const webhook = process.env.SLACK_ACTIONS_WEBHOOK_URL;
