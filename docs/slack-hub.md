@@ -2,8 +2,9 @@
 
 Every automated thing Snippd does — action items you need to approve,
 wins when code merges, 6×/day health reports, Apple Review audits,
-Neo4j provisioning status — posts to Slack. This doc explains how the
-plumbing works and, when nothing is showing up, which knob to turn.
+Neo4j provisioning status, and real-time retailer policy changes — posts
+to Slack. This doc explains how the plumbing works and, when nothing is
+showing up, which knob to turn.
 
 ## The one-knob setup
 
@@ -27,6 +28,7 @@ so you can scan one channel and tell them apart:
 | `[app-review]` | `app-review-audit.yml` — weekly Apple Reviewer audit |
 | `[provision]` | `provision-neo4j.yml` — Edge Function deploy status |
 | `[smoketest]` | `slack-smoketest.yml` — one-click verification |
+| :sparkles: / :warning: / :skull: | Retailer policy changes (insert/update/delete) — triggered by Supabase |
 
 ### How to create the webhook (2 minutes)
 
@@ -82,3 +84,80 @@ wins-channel stops carrying unrelated topics.
 4. **If the webhook returns 200 but nothing appears in Slack**, the webhook
    is pointed at a different channel than you think. Slack's webhook
    URLs bind at creation time to the channel picked in step 2 above.
+
+## Supabase-triggered notifications (retailer policy changes)
+
+In addition to GitHub Actions workflows, Snippd also sends real-time
+notifications from **Supabase** whenever the Retailer Policy Curator
+agent or a manual operation creates, updates, or deletes a retailer
+policy. These notifications are powered by a Postgres trigger
+(`notify_retailer_policy_change`) and stored webhook configuration in
+the `snippd_integrations` table.
+
+### Setup for #engineering policy change notifications (2 minutes)
+
+1. In Slack: **Apps** → search for **Incoming Webhooks** → toggle ON →
+   **Add New Webhook to Workspace**
+2. Pick the channel you want to receive policy change notifications
+   (typically `#engineering`)
+3. Copy the webhook URL (starts with `https://hooks.slack.com/services/…`)
+4. In your terminal, from the Snippd repo root:
+
+```bash
+scripts/setup-slack-webhook.sh "https://hooks.slack.com/services/T.../B.../XXX"
+```
+
+This script will:
+- Validate the webhook URL format
+- Send a test message to Slack
+- Insert the webhook into `public.snippd_integrations` (service-role only table)
+- Send a confirmation message
+
+### What you'll see
+
+Every time a retailer policy is inserted, updated (hash change), or
+deleted, Slack will receive a Block Kit message showing:
+
+- **Header emoji**: :sparkles: (insert), :warning: (update), :skull: (delete)
+- **Store ID**, policy type, policy key
+- **Source URL** and verification metadata
+- **Old value** vs. **New value** (JSON diff)
+- **Confidence score** and timestamp
+
+### Troubleshooting
+
+- **No notifications after setup**: Check that the `slack_policy_changes`
+  row in `snippd_integrations` has `is_enabled = true`. Query with
+  service-role credentials:
+  ```sql
+  SELECT * FROM snippd_integrations WHERE name = 'slack_policy_changes';
+  ```
+- **Disable without removing the config**:
+  ```sql
+  UPDATE snippd_integrations
+  SET is_enabled = false
+  WHERE name = 'slack_policy_changes';
+  ```
+- **Re-enable**:
+  ```sql
+  UPDATE snippd_integrations
+  SET is_enabled = true
+  WHERE name = 'slack_policy_changes';
+  ```
+- **Update the webhook URL**: Re-run the setup script with the new URL,
+  or manually update:
+  ```sql
+  UPDATE snippd_integrations
+  SET config = '{"webhook_url":"https://hooks.slack.com/services/NEW/URL"}'::jsonb
+  WHERE name = 'slack_policy_changes';
+  ```
+
+### Technical details
+
+- **Trigger**: `trg_retailer_policy_history_slack` on
+  `public.retailer_policy_history`
+- **Function**: `public.notify_retailer_policy_change()` (security definer)
+- **Transport**: `pg_net` extension (async HTTP POST)
+- **Migration**: `supabase/migrations/20260421140000_retailer_policy_slack_notifier.sql`
+- **Failure handling**: Webhook errors are logged as warnings and never
+  block policy writes
