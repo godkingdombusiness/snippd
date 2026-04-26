@@ -1,0 +1,109 @@
+name: deploy
+
+# Auto-deploys the Vite SPA to Vercel.
+#
+# Was missing entirely until 2026-04-25 — root cause of "the app is not
+# loading": the React/Vite codebase had been built locally for two days but
+# had never reached a public host, and snippd.app was pointing at an
+# unrelated Pop.site landing page. See docs/deploy-setup.md.
+#
+# Behaviour:
+#   - PR  -> preview deploy, comments URL on the PR
+#   - push to main -> production deploy
+#
+# Required secrets (one-time founder setup, ~3 minutes):
+#   VERCEL_TOKEN       - Vercel → Account Settings → Tokens → Create
+#   VERCEL_ORG_ID      - Vercel → Team Settings → General → Team ID
+#   VERCEL_PROJECT_ID  - Vercel → Project → Settings → General → Project ID
+#
+# If the secrets are missing the job exits gracefully (with a clear log
+# line) instead of failing red on every commit — keeps the queue clean
+# until the founder has a chance to wire it up.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: vercel (${{ github.event_name == 'push' && 'production' || 'preview' }})
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bail out cleanly if Vercel is not yet wired up
+        id: gate
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::warning::Skipping deploy — VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID not set. See docs/deploy-setup.md."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.gate.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Vercel CLI
+        if: steps.gate.outputs.skip == 'false'
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          vercel pull --yes \
+            --environment=${{ github.event_name == 'push' && 'production' || 'preview' }} \
+            --token="$VERCEL_TOKEN"
+
+      - name: Build
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          VITE_APP_VERSION: ${{ github.sha }}
+        run: |
+          vercel build ${{ github.event_name == 'push' && '--prod' || '' }} \
+            --token="$VERCEL_TOKEN"
+
+      - name: Deploy
+        if: steps.gate.outputs.skip == 'false'
+        id: deploy
+        run: |
+          URL=$(vercel deploy --prebuilt ${{ github.event_name == 'push' && '--prod' || '' }} \
+            --token="$VERCEL_TOKEN")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Deployed to::$URL"
+
+      - name: Comment preview URL on PR
+        if: steps.gate.outputs.skip == 'false' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        with:
+          script: |
+            const url = process.env.DEPLOY_URL;
+            if (!url) return;
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Preview deploy ready: ${url}`
+            });
