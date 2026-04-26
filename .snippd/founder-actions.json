@@ -4,6 +4,16 @@
   "channel": "#founder-actions (or SLACK_WEBHOOK_URL hub)",
   "items": [
     {
+      "id": "wire-vercel-deploy",
+      "title": "Wire up Vercel deploy so snippd.app actually serves the app (~3 min)",
+      "category": "ship",
+      "priority": "critical",
+      "why": "ROOT CAUSE of 'the app is not loading'. The React/Vite codebase has never been deployed — there is no .vercel/ link, no deploy workflow had ever existed, and snippd.app currently points at an unrelated Pop.site marketing landing page (which itself is showing a broken 'Pro features required' overlay). The OAuth fix shipped April 23 is sitting in main with nowhere to go. This PR adds vercel.json (with the SPA fallback rewrite React Router needs) and .github/workflows/deploy.yml (auto-deploy on push to main + preview on PRs). The workflow is already in place and will start deploying automatically the moment the three secrets land. Steps: (1) https://vercel.com/new → import godkingdombusiness/snippd → Deploy (Vite is auto-detected). (2) Paste VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID into GitHub secrets. (3) In Vercel → Project → Settings → Domains, add snippd.app and follow the DNS instructions to point the registrar away from Pop.site. Full walkthrough in docs/deploy-setup.md.",
+      "where": "docs/deploy-setup.md → 5-step setup. Vercel: https://vercel.com/new · GitHub secrets: https://github.com/godkingdombusiness/snippd/settings/secrets/actions",
+      "addedAt": "2026-04-25",
+      "addedBy": "@Auditor"
+    },
+    {
       "id": "verify-google-oauth-redirects",
       "title": "Verify Google OAuth redirect allowlists (Supabase + Google Cloud)",
       "category": "ship",
