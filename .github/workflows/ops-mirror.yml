@@ -145,3 +145,5 @@ jobs:
             gh issue comment "$NUM" --repo "$REPO" --body-file /tmp/comment.md
             echo "✓ $dept: issue #$NUM"
           done
+
+# Contributed via bounty system
