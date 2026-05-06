@@ -44,6 +44,28 @@ Use these categories:
 
 Be specific. Not "added files" — write "Added `stackValidator.ts` — validates 9 policy rules per retailer".
 
+---
+
+## MANDATORY: Git Sync Across AI Tools
+
+Codex, Claude Code, and any other assistant must keep work synchronized through the same Git repo.
+
+Before starting work:
+- Confirm the repo root is `C:\Users\Dina Davis\snippd`.
+- Confirm the active branch is `frontend-v2-launch` unless Dina explicitly asks for another branch.
+- Run `git pull --rebase` when the working tree allows it. If local uncommitted files block the pull, stop and report the blocker instead of overwriting work.
+
+After every meaningful change:
+- Run `git status --short`.
+- Stage only the intended files for that task; do not use broad `git add .` in a dirty tree.
+- Include new files required by imports, routes, helpers, or build/runtime behavior. Never leave required files untracked.
+- Run a local bundle/test check when practical.
+- Commit with a focused message.
+- Push to `origin/frontend-v2-launch`.
+- Report the commit hash and any files intentionally left uncommitted.
+
+Vercel builds from GitHub, not local Expo. A change is not deploy-ready until it is committed and pushed.
+
 ### 2. Update the relevant doc in `docs/`
 
 | Change type | Doc to update |
