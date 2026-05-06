@@ -1,14 +1,11 @@
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// ── Block directories Metro must never crawl ─────────────────────────────────
-// Large non-RN trees (Next.js app, Python services, Terraform, etc.) cause
-// the DiskCacheManager "Data cannot be cloned, out of memory" error because
-// Metro tries to serialize their entire file graph into a V8 buffer.
-const ROOT = __dirname.replace(/\\/g, '/');
-
+// ── Block large non-RN directories from Metro's file crawler ─────────────────
+// Metro crashes with "Data cannot be cloned, out of memory" when it tries to
+// serialize these directories into a V8 IPC buffer.
+// NOTE: Do NOT use watchFolders — Metro crashes if any listed directory is missing.
 config.resolver.blockList = [
   // Neo4j Node.js driver — server-only, large binary buffers
   /node_modules\/neo4j-driver\//,
@@ -16,41 +13,26 @@ config.resolver.blockList = [
   /node_modules\/neo4j-driver-bolt-connection\//,
   /node_modules\/neo4j-driver-lite\//,
 
-  // Next.js web app — not part of the React Native bundle
-  new RegExp(`${ROOT}/web/`),
+  // Next.js web app
+  /[/\\]web[/\\]/,
 
-  // Python/Cloud Run services
-  new RegExp(`${ROOT}/services/`),
-  new RegExp(`${ROOT}/agent/`),
+  // Python / Cloud Run services
+  /[/\\]services[/\\]/,
+  /[/\\]agent[/\\]/,
 
   // Terraform infrastructure
-  new RegExp(`${ROOT}/infra/`),
+  /[/\\]infra[/\\]/,
 
   // Playwright / e2e tests
-  new RegExp(`${ROOT}/e2e/`),
+  /[/\\]e2e[/\\]/,
 
-  // Build artifacts
-  new RegExp(`${ROOT}/dist-run-check/`),
-  new RegExp(`${ROOT}/snippd-backup/`),
-
-  // Python bytecode
-  /__pycache__/,
+  // Build artifacts and backups
+  /[/\\]dist-run-check[/\\]/,
+  /[/\\]snippd-backup[/\\]/,
+  /[/\\]__pycache__[/\\]/,
 ];
 
-// Reduce parallel workers to cut IPC memory pressure
+// Limit parallel workers to reduce IPC memory pressure
 config.maxWorkers = 2;
-
-// Only watch the app source — keeps the file-map small
-config.watchFolders = [
-  path.resolve(__dirname, 'assets'),
-  path.resolve(__dirname, 'components'),
-  path.resolve(__dirname, 'contexts'),
-  path.resolve(__dirname, 'hooks'),
-  path.resolve(__dirname, 'lib'),
-  path.resolve(__dirname, 'node_modules'),
-  path.resolve(__dirname, 'screens'),
-  path.resolve(__dirname, 'src'),
-  path.resolve(__dirname, 'supabase'),
-];
 
 module.exports = config;
