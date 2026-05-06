@@ -22,8 +22,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
+
+// Required for expo-web-browser to complete the auth session on iOS
+WebBrowser.maybeCompleteAuthSession();
 
 // ── Palette (matches HTML reference) ──────────────────────────────
 const FOREST       = '#0C7A3D';
@@ -72,8 +77,8 @@ function BlobBg() {
     const loop = (val, dur) =>
       Animated.loop(
         Animated.sequence([
-          Animated.timing(val, { toValue: 1, duration: dur, useNativeDriver: true }),
-          Animated.timing(val, { toValue: 0, duration: dur, useNativeDriver: true }),
+          Animated.timing(val, { toValue: 1, duration: dur, useNativeDriver: Platform.OS !== 'web' }),
+          Animated.timing(val, { toValue: 0, duration: dur, useNativeDriver: Platform.OS !== 'web' }),
         ])
       );
     loop(a1, 6000).start();
@@ -84,7 +89,7 @@ function BlobBg() {
   const tx2 = a2.interpolate({ inputRange: [0, 1], outputRange: [0, -20] });
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <Animated.View
         style={[
           blobStyle(300, 300, -80, -80, 'rgba(12,122,61,0.10)'),
@@ -162,6 +167,11 @@ function Field({ label, value, onChangeText, secureTextEntry, keyboardType,
           onFocus={onFocus}
           onBlur={onBlur}
           autoCorrect={false}
+          autoComplete="off"
+          importantForAutofill="no"
+          textContentType="none"
+          selectionColor={FOREST}
+          cursorColor={FOREST}
         />
         {rightEl}
       </View>
@@ -170,7 +180,7 @@ function Field({ label, value, onChangeText, secureTextEntry, keyboardType,
 }
 
 // ── MAIN COMPONENT ─────────────────────────────────────────────────
-export default function SignInScreen() {
+export default function SignInScreen({ navigation }) {
   const { width } = useWindowDimensions();
   const isTablet  = width > 768;
 
@@ -235,18 +245,30 @@ export default function SignInScreen() {
         if (data?.session?.access_token) {
           tracker.setAccessToken(data.session.access_token);
         }
-        // App.js onAuthStateChange handles navigation — no manual navigate needed.
+        // App.js onAuthStateChange fires SIGNED_IN → resolveUserStatus → navigates.
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: trimmedEmail, password,
         });
         if (error) throw error;
-        if (data?.user && !data.session) {
-          // Email confirmation required
-          setErrorMsg('Check your inbox to confirm your email, then sign in.');
-          setTab('signin');
+
+        if (data?.user) {
+          // Create profile row immediately so the app has something to work with.
+          await supabase.from('profiles').upsert({
+            user_id:       data.user.id,
+            email:         data.user.email,
+            full_name:     data.user.email?.split('@')[0],
+            weekly_budget: 15000,
+          }, { onConflict: 'user_id', ignoreDuplicates: true });
+
+          if (data.session) {
+            // Email confirmation is OFF — onAuthStateChange fires and routes via resolveUserStatus.
+            tracker.setAccessToken(data.session.access_token);
+          } else {
+            // Email confirmation is ON — navigate directly; they'll confirm in background.
+            navigation.navigate('ConciergeOnboarding');
+          }
         }
-        // If session returned immediately, onAuthStateChange handles routing.
       }
     } catch (err) {
       setErrorMsg(err.message || 'Authentication failed. Please try again.');
@@ -260,14 +282,33 @@ export default function SignInScreen() {
     clearError();
     setOauthLoading(provider);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      // Build the redirect URL that Supabase will send the user back to.
+      // makeRedirectUri handles Expo Go (exp://...) vs standalone (snippd://) automatically.
+      const redirectTo = makeRedirectUri({
+        scheme: 'snippd',
+        path: 'auth/callback',
+      });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          skipBrowserRedirect: false,
+          redirectTo,
+          skipBrowserRedirect: true, // We control the browser open ourselves
         },
       });
       if (error) throw error;
-      // Browser opens; onAuthStateChange handles return.
+
+      // Open the OAuth URL in a controlled browser session so expo-web-browser
+      // can intercept the redirect and close itself automatically.
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result.type === 'success' && result.url) {
+          // Exchange the auth code returned in the URL for a Supabase session.
+          const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(result.url);
+          if (exchangeErr) throw exchangeErr;
+          // onAuthStateChange in App.js will fire SIGNED_IN and route the user.
+        }
+      }
     } catch (err) {
       setErrorMsg(`${provider === 'google' ? 'Google' : 'Apple'} sign-in failed. Try email instead.`);
     } finally {
@@ -494,18 +535,18 @@ export default function SignInScreen() {
         // Two-panel tablet layout
         <View style={root.twoPanelRow}>
           <View style={root.leftCol}>
-            <LeftPanel />
+            {LeftPanel()}
           </View>
           <View style={root.rightCol}>
             <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-              <FormPanel />
+              {FormPanel()}
             </SafeAreaView>
           </View>
         </View>
       ) : (
         // Single-panel phone layout
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <FormPanel />
+          {FormPanel()}
         </SafeAreaView>
       )}
     </View>
@@ -711,23 +752,32 @@ const form = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: BORDER,
     borderRadius: 12,
-    backgroundColor: GLASS,
+    backgroundColor: WHITE,
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === 'ios' ? 14 : 10,
   },
   inputWrapFocused: {
     borderColor: FOREST,
     backgroundColor: WHITE,
-    shadowColor: FOREST,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 0,
+    ...Platform.select({
+      web: { boxShadow: '0px 0px 0px 3px rgba(46,125,50,0.15)' },
+      default: {
+        shadowColor: FOREST,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
   },
   input: {
     flex: 1,
     fontSize: 14,
     color: INK,
+    backgroundColor: WHITE,
+    underlineColorAndroid: 'transparent',
+    paddingVertical: 0,  // let inputWrap own the vertical padding
+    ...Platform.select({ web: { outline: 'none' } }),
   },
   eyeBtn: { padding: 4 },
 

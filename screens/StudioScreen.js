@@ -70,10 +70,13 @@ const LEADERBOARD_SEED = [
 
 const SHARE_PLATFORMS = ['TikTok', 'Instagram', 'Facebook'];
 
-export default function StudioScreen({ navigation }) {
+export default function StudioScreen({ navigation, route }) {
+  const videoMaxSec = route?.params?.chefStashMaxSec ?? 30;
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tripsVerified, setTripsVerified] = useState(0);
+  const [receiptAwards, setReceiptAwards] = useState(0);
   const [videosSubmitted, setVideosSubmitted] = useState(0);
   const [creditsEarned, setCreditsEarned] = useState(0);
   const [userId, setUserId] = useState(null);
@@ -93,7 +96,7 @@ export default function StudioScreen({ navigation }) {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, stash_credits, posts_count, preferences')
+        .select('full_name, stash_credits, posts_count, preferences, receipt_credit_award_count')
         .eq('user_id', user.id)
         .single();
 
@@ -101,9 +104,10 @@ export default function StudioScreen({ navigation }) {
         setUserProfile(profile);
         setVideosSubmitted(profile.posts_count || 0);
         setCreditsEarned(profile.stash_credits || 0);
+        setReceiptAwards(Number(profile.receipt_credit_award_count) || 0);
       }
 
-      // Count verified trips
+      // Count verified trips (display stat)
       const { count } = await supabase
         .from('trip_results')
         .select('id', { count: 'exact' })
@@ -120,16 +124,23 @@ export default function StudioScreen({ navigation }) {
 
   useEffect(() => { fetchProfile(); }, []);
 
+  useEffect(() => {
+    if (route?.params?.chefStashMaxSec && route?.params?.mealName) {
+      setSelectedType('proof_of_cook');
+      setStep(2);
+    }
+  }, [route?.params?.chefStashMaxSec, route?.params?.mealName]);
+
   const onRefresh = () => { setRefreshing(true); fetchProfile(); };
 
-  const isUnlocked = tripsVerified >= TRIPS_REQUIRED;
+  const isUnlocked = receiptAwards >= TRIPS_REQUIRED;
   const displayName = userProfile?.full_name?.split(' ')[0] || 'You';
 
   const handleCreate = () => {
     if (!isUnlocked) {
       Alert.alert(
         'Studio Locked',
-        `Verify ${TRIPS_REQUIRED - tripsVerified} more receipt${TRIPS_REQUIRED - tripsVerified !== 1 ? 's' : ''} to unlock Snippd Studio.`,
+        `Complete ${TRIPS_REQUIRED - receiptAwards} more verified receipt${TRIPS_REQUIRED - receiptAwards !== 1 ? 's' : ''} to unlock Snippd Studio (tracked via receipt credits).`,
         [
           { text: 'Verify Receipt', onPress: () => navigation.navigate('ReceiptUpload') },
           { text: 'Later', style: 'cancel' },
@@ -293,7 +304,9 @@ export default function StudioScreen({ navigation }) {
           {/* ── STEP 2 — RECORD ───────────────────────────────────────────── */}
           {step === 2 && (
             <View style={styles.flowSection}>
-              <Text style={styles.flowSectionTitle}>Record your{'\n'}30-second video</Text>
+              <Text style={styles.flowSectionTitle}>
+                Record your{'\n'}{videoMaxSec}-second video
+              </Text>
               <Text style={styles.flowSectionSub}>
                 {selectedType === 'proof_of_shop'
                   ? 'Show your receipt and the savings at the register. Be authentic — your story matters.'
@@ -317,7 +330,7 @@ export default function StudioScreen({ navigation }) {
                 {[
                   'Hold your phone steady and use good lighting',
                   'Show the actual savings amount clearly',
-                  'Keep it under 30 seconds for best results',
+                  `Keep it under ${videoMaxSec} seconds for best results`,
                   'Be yourself — authentic content performs best',
                 ].map((tip, i) => (
                   <View key={i} style={styles.tipRow}>
@@ -538,20 +551,20 @@ export default function StudioScreen({ navigation }) {
               </View>
               <Text style={styles.lockedTitle}>Unlock Creator Studio</Text>
               <Text style={styles.lockedSub}>
-                Verify {TRIPS_REQUIRED} receipts to start sharing your savings story and earning Stash Credits.
+                Earn {TRIPS_REQUIRED} receipt-verify credits to unlock Snippd Studio and share your savings story.
               </Text>
 
               <View style={styles.lockedProgressWrap}>
                 <View style={styles.lockedProgressHead}>
-                  <Text style={styles.lockedProgressLabel}>Receipts verified</Text>
+                  <Text style={styles.lockedProgressLabel}>Receipt credits</Text>
                   <Text style={styles.lockedProgressVal}>
-                    {tripsVerified} of {TRIPS_REQUIRED}
+                    {receiptAwards} of {TRIPS_REQUIRED}
                   </Text>
                 </View>
                 <View style={styles.lockedTrack}>
                   <View style={[
                     styles.lockedFill,
-                    { width: `${(tripsVerified / TRIPS_REQUIRED) * 100}%` },
+                    { width: `${Math.min(100, (receiptAwards / TRIPS_REQUIRED) * 100)}%` },
                   ]} />
                 </View>
               </View>

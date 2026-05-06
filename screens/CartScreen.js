@@ -9,7 +9,7 @@
  * "Verify Receipt" → ReceiptUpload screen.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, RefreshControl, ScrollView,
@@ -20,6 +20,11 @@ import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
+import {
+  authorizedTotalsForRoute,
+  displayQuantity,
+  fetchAuthorizedCheckoutMath,
+} from '../src/services/authoritativeCheckoutMath';
 
 // ── Constants ──────────────────────────────────────────────────────
 const CART_KEY    = 'snippd_cart';
@@ -61,30 +66,30 @@ function DealBadge({ dealType }) {
 }
 
 // ── Cart math helpers ──────────────────────────────────────────────
-function computeBogoPrice(item) {
+function disabledLocalBogoDisplay(item) {
   // BOGO: customer pays for one, gets two.
   // sale_cents should already be the per-unit price; we display qty=2.
   const unitCents = item.sale_cents || item.reg_cents || 0;
   return {
     quantity:     2,
-    youPayCents:  unitCents,                         // pay for 1
-    regTotalCents: (item.reg_cents || unitCents) * 2, // would cost 2× regular
+    payCents:  unitCents,                         // pay for 1
+    fullCents: (item.reg_cents || unitCents) * 2, // would cost 2× regular
     savingsCents:  item.reg_cents || unitCents,       // save 1 unit
-    savingsPct:    50,                               // always 50%
+    saveRate:    50,                               // always 50%
   };
 }
 
-function computeItemTotals(item) {
-  if (item.deal_type === 'BOGO') return computeBogoPrice(item);
+function disabledLocalItemDisplay(item) {
+  if (item.deal_type === 'BOGO') return disabledLocalBogoDisplay(item);
   const qty         = Math.max(1, item.quantity || 1);
   const saleCents   = item.sale_cents || item.reg_cents || 0;
   const regCents    = item.reg_cents  || item.sale_cents || 0;
   return {
     quantity:      qty,
-    youPayCents:   saleCents * qty,
-    regTotalCents: regCents  * qty,
+    payCents:   saleCents * qty,
+    fullCents: regCents  * qty,
     savingsCents:  Math.max(0, regCents - saleCents) * qty,
-    savingsPct:    regCents > 0
+    saveRate:    regCents > 0
       ? Math.round(((regCents - saleCents) / regCents) * 100)
       : 0,
   };
@@ -92,8 +97,8 @@ function computeItemTotals(item) {
 
 // ── Personal cart item row ─────────────────────────────────────────
 function PersonalItemRow({ item, onRemove }) {
-  const totals = computeItemTotals(item);
   const isBogo = item.deal_type === 'BOGO';
+  const qty = displayQuantity(item);
 
   return (
     <View style={s.itemRow}>
@@ -101,7 +106,7 @@ function PersonalItemRow({ item, onRemove }) {
         <View style={s.itemTopRow}>
           <Text style={s.itemName} numberOfLines={2}>
             {item.product_name || item.name}
-            {totals.quantity > 1 ? `  ×${totals.quantity}` : ''}
+            {qty > 1 ? `  x${qty}` : ''}
           </Text>
           <TouchableOpacity
             style={s.removeBtn}
@@ -128,46 +133,41 @@ function PersonalItemRow({ item, onRemove }) {
       </View>
 
       <View style={s.itemPricing}>
-        {totals.regTotalCents > totals.youPayCents ? (
-          <Text style={s.strikePrice}>{fmt(totals.regTotalCents)}</Text>
-        ) : null}
-        <Text style={s.salePrice}>{fmt(totals.youPayCents)}</Text>
-        {totals.savingsCents > 0 ? (
-          <View style={s.saveBadge}>
-            <Text style={s.saveTxt}>save {fmt(totals.savingsCents)}</Text>
-          </View>
-        ) : null}
+        <Text style={s.salePrice}>Plan item</Text>
+        <View style={s.saveBadge}>
+          <Text style={s.saveTxt}>server priced</Text>
+        </View>
       </View>
     </View>
   );
 }
 
 // ── Cart totals ────────────────────────────────────────────────────
-function computeCartTotals(items) {
-  let regularTotal  = 0;
-  let youPay        = 0;
+function disabledCartAuthorityFallback(items) {
+  let authorityRegular  = 0;
+  let authorityPay        = 0;
   let atRegisterSav = 0;
 
   for (const item of items) {
-    const t = computeItemTotals(item);
-    regularTotal  += t.regTotalCents;
-    youPay        += t.youPayCents;
+    const t = disabledItemAuthorityFallback(item);
+    authorityRegular  += t.fullCents;
+    authorityPay        += t.payCents;
     atRegisterSav += t.savingsCents;
   }
 
-  const trueFinal    = youPay; // no rebates modelled yet
-  const totalSavings = Math.max(0, regularTotal - trueFinal);
-  const savingsPct   = regularTotal > 0
-    ? ((totalSavings / regularTotal) * 100).toFixed(1)
+  const trueFinal    = authorityPay; // no rebates modelled yet
+  const authoritySavings = Math.max(0, authorityRegular - trueFinal);
+  const saveRate   = authorityRegular > 0
+    ? ((authoritySavings / authorityRegular) * 100).toFixed(1)
     : '0.0';
 
   return {
-    regularTotal,
-    atRegisterSavings: atRegisterSav,
-    youPay,
+    authorityRegular,
+    authorityRegisterSavings: atRegisterSav,
+    authorityPay,
     trueFinal,
-    totalSavings,
-    savingsPct,
+    authoritySavings,
+    saveRate,
   };
 }
 
@@ -182,13 +182,11 @@ function CouponChecklist({ items }) {
     <View style={s.checklistCard}>
       <Text style={s.checklistTitle}>BEFORE YOU CHECKOUT</Text>
       {couponItems.map((item, i) => {
-        const totals = computeItemTotals(item);
         return (
           <View key={i} style={s.checklistRow}>
             <Feather name="square" size={14} color={FOREST} />
             <Text style={s.checklistTxt}>
               Clip coupon for {item.product_name || item.name}
-              {totals.savingsCents > 0 ? ` — saves ${fmt(totals.savingsCents)}` : ''}
             </Text>
           </View>
         );
@@ -202,15 +200,24 @@ export default function CartScreen({ navigation }) {
   const [personalItems, setPersonalItems] = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [refreshing,    setRefreshing]    = useState(false);
+  const [checkoutAuthority, setCheckoutAuthority] = useState(null);
+
+  // Per-user cart key so carts don't bleed across accounts on shared devices
+  const cartKeyRef = useRef(CART_KEY);
 
   // ── Load cart from AsyncStorage ──────────────────────────────────
   const loadCart = useCallback(async () => {
     try {
-      const raw = await AsyncStorage.getItem(CART_KEY);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) cartKeyRef.current = `snippd_cart_${user.id}`;
+      const raw = await AsyncStorage.getItem(cartKeyRef.current);
       const items = raw ? JSON.parse(raw) : [];
-      setPersonalItems(Array.isArray(items) ? items : []);
+      const normalized = Array.isArray(items) ? items : [];
+      setPersonalItems(normalized);
+      setCheckoutAuthority(normalized.length ? await fetchAuthorizedCheckoutMath({ items: normalized }) : null);
     } catch {
       setPersonalItems([]);
+      setCheckoutAuthority(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -225,7 +232,7 @@ export default function CartScreen({ navigation }) {
   const removeItem = useCallback(async (item) => {
     const updated = personalItems.filter(i => i.id !== item.id);
     setPersonalItems(updated);
-    await AsyncStorage.setItem(CART_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(cartKeyRef.current, JSON.stringify(updated));
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -256,14 +263,15 @@ export default function CartScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             setPersonalItems([]);
-            await AsyncStorage.removeItem(CART_KEY);
+            await AsyncStorage.removeItem(cartKeyRef.current);
           },
         },
       ]
     );
   };
 
-  const totals = computeCartTotals(personalItems);
+  const authorizedTotals = authorizedTotalsForRoute(checkoutAuthority);
+  const mathUnavailable = personalItems.length > 0 && !authorizedTotals;
 
   if (loading) {
     return <View style={s.center}><ActivityIndicator size="large" color={GREEN} /></View>;
@@ -330,17 +338,17 @@ export default function CartScreen({ navigation }) {
       {/* Summary bar */}
       <View style={s.summaryBar}>
         <View style={s.summaryItem}>
-          <Text style={s.summaryVal}>{fmt(totals.youPay)}</Text>
+          <Text style={s.summaryVal}>{authorizedTotals ? fmt(authorizedTotals.you_pay_cents) : '--'}</Text>
           <Text style={s.summaryLabel}>YOU PAY</Text>
         </View>
         <View style={s.summaryDivider} />
         <View style={s.summaryItem}>
-          <Text style={[s.summaryVal, { color: '#4ADE80' }]}>{fmt(totals.totalSavings)}</Text>
+          <Text style={[s.summaryVal, { color: '#4ADE80' }]}>{authorizedTotals ? fmt(authorizedTotals.total_savings_cents) : '--'}</Text>
           <Text style={s.summaryLabel}>SAVING</Text>
         </View>
         <View style={s.summaryDivider} />
         <View style={s.summaryItem}>
-          <Text style={s.summaryVal}>{totals.savingsPct}%</Text>
+          <Text style={s.summaryVal}>{authorizedTotals ? `${authorizedTotals.savings_pct}%` : '--'}</Text>
           <Text style={s.summaryLabel}>OFF REGULAR</Text>
         </View>
       </View>
@@ -364,56 +372,91 @@ export default function CartScreen({ navigation }) {
         {/* Coupon checklist */}
         <CouponChecklist items={personalItems} />
 
+        {mathUnavailable && (
+          <View style={s.checklistCard}>
+            <Text style={s.checklistTitle}>CHECKOUT MATH UNAVAILABLE</Text>
+            <Text style={s.checklistTxt}>
+              Totals stay hidden until Cloud Run returns signed checkout math.
+            </Text>
+          </View>
+        )}
+
         {/* Totals receipt */}
         <View style={s.receiptCard}>
           <Text style={s.receiptTitle}>ORDER SUMMARY</Text>
 
           <View style={s.receiptRow}>
             <Text style={s.receiptLabel}>Regular total</Text>
-            <Text style={[s.receiptVal, s.strikeVal]}>{fmt(totals.regularTotal)}</Text>
+            <Text style={[s.receiptVal, s.strikeVal]}>{authorizedTotals ? fmt(authorizedTotals.regular_total_cents) : '--'}</Text>
           </View>
 
           <View style={s.receiptRow}>
             <Text style={s.receiptLabel}>At-register savings</Text>
-            <Text style={[s.receiptVal, { color: GREEN }]}>−{fmt(totals.atRegisterSavings)}</Text>
+            <Text style={[s.receiptVal, { color: GREEN }]}>{authorizedTotals ? `-${fmt(authorizedTotals.at_register_savings_cents)}` : '--'}</Text>
           </View>
 
           <View style={[s.receiptRow, s.receiptRowBig]}>
             <Text style={s.receiptLabelBig}>You pay at register</Text>
-            <Text style={s.receiptValBig}>{fmt(totals.youPay)}</Text>
+            <Text style={s.receiptValBig}>{authorizedTotals ? fmt(authorizedTotals.you_pay_cents) : '--'}</Text>
           </View>
 
           <View style={s.receiptDivider} />
 
           <View style={[s.receiptRow, s.receiptRowTotal]}>
             <Text style={s.receiptTotalLabel}>True cost</Text>
-            <Text style={s.receiptTotalVal}>{fmt(totals.trueFinal)}</Text>
+            <Text style={s.receiptTotalVal}>{authorizedTotals ? fmt(authorizedTotals.true_final_cents) : '--'}</Text>
           </View>
 
           <Text style={s.withoutSnippd}>
-            Without Snippd: <Text style={s.withoutSnippdStrike}>{fmt(totals.regularTotal)}</Text>
+            Without Snippd: <Text style={s.withoutSnippdStrike}>{authorizedTotals ? fmt(authorizedTotals.regular_total_cents) : '--'}</Text>
           </Text>
         </View>
 
-        {/* Verify receipt button */}
+        {/* Step 1: Prep coupons before heading to store */}
         <TouchableOpacity
-          style={s.verifyBtn}
+          style={s.couponPrepBtn}
           onPress={() =>
-            navigation.navigate('ReceiptUpload', {
+            navigation.navigate('CouponClipping', {
               cartItems: personalItems,
-              totals: {
-                regular_total_cents:       totals.regularTotal,
-                at_register_savings_cents: totals.atRegisterSavings,
-                you_pay_cents:             totals.youPay,
-                rebate_total_cents:        0,
-                true_final_cents:          totals.trueFinal,
-              },
+              checkoutAuthority,
+              totals: authorizedTotals,
             })
           }
           activeOpacity={0.88}
         >
-          <Feather name="camera" size={17} color={WHITE} style={{ marginRight: 8 }} />
-          <Text style={s.verifyBtnTxt}>Verify Receipt</Text>
+          <Feather name="scissors" size={17} color={GREEN} style={{ marginRight: 8 }} />
+          <Text style={s.couponPrepBtnTxt}>Prep coupons for this trip</Text>
+        </TouchableOpacity>
+
+        {/* Step 2: Transparent checkout → verified */}
+        <TouchableOpacity
+          style={s.verifyBtn}
+          onPress={() =>
+            navigation.navigate('CheckoutBreakdown', {
+              cartItems: personalItems,
+              checkoutAuthority,
+              totals: authorizedTotals,
+            })
+          }
+          activeOpacity={0.88}
+        >
+          <Feather name="layers" size={17} color={WHITE} style={{ marginRight: 8 }} />
+          <Text style={s.verifyBtnTxt}>Review transparent checkout</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={s.uploadLink}
+          onPress={() =>
+            navigation.navigate('ReceiptUpload', {
+              cartItems: personalItems,
+              checkoutAuthority,
+              totals: authorizedTotals,
+            })
+          }
+          activeOpacity={0.88}
+        >
+          <Feather name="camera" size={15} color={GREEN} style={{ marginRight: 6 }} />
+          <Text style={s.uploadLinkTxt}>Upload receipt photo instead</Text>
         </TouchableOpacity>
 
         <View style={{ height: 120 }} />
@@ -526,6 +569,15 @@ const s = StyleSheet.create({
   withoutSnippd:     { fontSize: 11, color: GRAY, marginTop: 8, textAlign: 'center' },
   withoutSnippdStrike: { textDecorationLine: 'line-through' },
 
+  // Coupon prep button
+  couponPrepBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: PALE_GREEN, borderRadius: 16, borderWidth: 1.5, borderColor: GREEN,
+    paddingVertical: 14, paddingHorizontal: 24,
+    marginBottom: 8,
+  },
+  couponPrepBtnTxt: { fontSize: 14, fontWeight: '700', color: GREEN },
+
   // Verify button
   verifyBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -536,6 +588,15 @@ const s = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
   },
   verifyBtnTxt: { fontSize: 16, fontWeight: '800', color: WHITE },
+
+  uploadLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  uploadLinkTxt: { fontSize: 14, fontWeight: '600', color: GREEN },
 
   // Empty state
   emptyWrap: {
@@ -556,3 +617,4 @@ const s = StyleSheet.create({
   },
   emptyBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '700' },
 });
+

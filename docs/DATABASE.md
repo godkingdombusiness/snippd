@@ -6,6 +6,159 @@
 
 ---
 
+## Deal Intelligence Layer (added 2026-04-29)
+Migration: `supabase/migrations/20260429_deal_intelligence_layer.sql`
+
+### price_observations
+Price history per product/retailer/store/ZIP. Feeds volatility scoring.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `offer_source_id` | uuid FK | → `offer_sources`. Nullable. |
+| `retailer_key` | text NOT NULL | |
+| `normalized_key` | text NOT NULL | Product dedupe key |
+| `product_name` | text NOT NULL | |
+| `observed_price_cents` | int NOT NULL | |
+| `store_id` | text | |
+| `zip_code` | text | |
+| `state` | text | |
+| `source_type` | text | `flyer`\|`user`\|`receipt`\|`api` |
+| `is_verified` | boolean | Verified by receipt? |
+| `observed_at` | timestamptz | |
+
+**Indexes:** `(offer_source_id, observed_at DESC)`, `(retailer_key, normalized_key, observed_at DESC)`, `(zip_code, retailer_key)`, `(state, retailer_key)`
+
+### validation_events
+Full audit trail for every offer status change.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `offer_source_id` | uuid FK | |
+| `event_type` | text | `ingested`\|`normalized`\|`scored`\|`approved`\|`flagged`\|`blocked`\|`published`\|`retracted`\|`price_changed`\|`expired`\|`user_confirmed`\|`user_rejected` |
+| `old_status` / `new_status` | text | |
+| `old_score` / `new_score` | numeric | 0.0–1.0 |
+| `actor_type` | text | `ai`\|`human`\|`user`\|`system` |
+| `reason_codes` | text[] | |
+| `evidence_json` | jsonb | |
+
+### user_deal_feedback
+User outcome reports — feeds back into confidence scoring.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid FK | auth.users — RLS own rows |
+| `offer_source_id` | uuid FK | |
+| `outcome` | text | `worked`\|`coupon_failed`\|`out_of_stock`\|`wrong_price`\|`substituted`\|`quantity_not_met`\|`exclusion_hit`\|`register_rejected` |
+| `predicted_savings_cents` | int | What we predicted |
+| `actual_savings_cents` | int | What actually happened |
+| `store_id` | text | |
+| `zip_code` | text | |
+| `state` | text | |
+
+### source_reliability
+Per-source trust scores, updated by feedback loop. 10 sources seeded.
+
+| Column | Type | Notes |
+|---|---|---|
+| `source_type` | text | `flyer`\|`influencer`\|`manual`\|`api`\|`promo` |
+| `source_key` | text | e.g. `publix`, `ibotta` |
+| `reliability_score` | numeric | 0.0–1.0 |
+| `accuracy_score` | numeric | 0.0–1.0 |
+| `confirmed_deals` / `failed_deals` | int | Running counts |
+
+### retailer_coverage
+Market readiness by retailer/state/ZIP. 10 markets seeded (FL, TN, OH).
+
+| Column | Type | Notes |
+|---|---|---|
+| `retailer_key` | text | |
+| `state` | text | |
+| `coverage_status` | text | `full`\|`partial`\|`none`\|`demo_only` |
+| `market_readiness_score` | numeric | 0.0–1.0, updated by `compute_market_readiness()` |
+| `active_offer_count` | int | |
+
+### deal_review_queue
+Human/AI review pipeline. Populated by `publish_gate()`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `offer_source_id` | uuid FK | |
+| `trigger_reason` | text | `low_confidence`\|`missing_terms`\|`high_savings`\|`bogo_unclear`\|... |
+| `review_status` | text | `pending`\|`in_progress`\|`approved`\|`rejected`\|`escalated` |
+| `priority` | int | 1=urgent, 10=low |
+
+### validation_rules
+33 configurable rules — all rule logic lives here, not in code.
+
+| Column | Type | Notes |
+|---|---|---|
+| `rule_code` | text UNIQUE | e.g. `R001`, `C003`, `E003` |
+| `category` | text | `retailer`\|`product`\|`coupon`\|`deal`\|`stack`\|`regional`\|`pricing`\|`evidence` |
+| `is_blocking` | boolean | Blocks publishing if fails |
+| `sends_to_review` | boolean | Queues review if fails |
+| `score_penalty` | numeric | Subtracted from confidence |
+
+### SQL Functions (RPC)
+
+| Function | Returns | Purpose |
+|---|---|---|
+| `compute_confidence_score(offer_source_id)` | numeric 0–100 | 10-factor weighted formula |
+| `validate_offer(offer_source_id)` | jsonb | Runs all 33 rules + persists result |
+| `publish_gate(offer_source_id)` | jsonb | Single publishing decision point |
+| `compute_price_volatility(offer_source_id, window_days)` | numeric | Price variance → volatility_score |
+| `compute_market_readiness(state, zip, retailer)` | jsonb | Market readiness 0–100 |
+| `process_deal_feedback(...)` | jsonb | Records outcome, updates scores |
+| `flag_stale_prices()` | void | pg_cron daily — marks stale/expired |
+
+### Views
+
+| View | Purpose |
+|---|---|
+| `v_active_offers` | Display-ready, filtered, scored offers for the app |
+| `v_offer_price_history` | Price trend with LAG delta per product/retailer |
+| `v_deal_review_dashboard` | Admin review queue enriched with offer data |
+
+---
+
+## healing_events
+
+Self-healing memory log. Written on every app startup by `lib/healthMonitor.js` (via `lib/healingLog.js`). Append-only — no UPDATE or DELETE policies.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `user_id` | uuid | Nullable FK → `auth.users`. NULL for pre-auth startup checks. |
+| `session_id` | text NOT NULL | Identifies one app startup run (e.g. `hm_1714000000_abc123`) |
+| `check_name` | text NOT NULL | `secure_store` \| `async_storage` \| `cache_staleness` \| `supabase_connectivity` \| `session_integrity` \| `user_persona` |
+| `status` | text NOT NULL | `ok` \| `warning` \| `critical` |
+| `issue` | text | Human-readable description of the issue. NULL if `status = ok`. |
+| `healed` | boolean | `true` if an auto-fix was applied |
+| `heal_action` | text | Description of the fix applied |
+| `duration_ms` | integer | How long the check took (milliseconds) |
+| `app_version` | text | Semver string from `expo-constants` |
+| `created_at` | timestamptz | Defaults to `now()` |
+
+**Indexes**
+- `idx_healing_events_user_time` — `(user_id, created_at DESC)`
+- `idx_healing_events_check_time` — `(check_name, created_at DESC)`
+- `idx_healing_events_healed` — partial on `healed = true`
+- `idx_healing_events_unhealed_critical` — partial on `status = 'critical' AND healed = false`
+
+**RLS**
+- `healing_events_select_own` — users SELECT their own rows OR rows where `user_id IS NULL`
+- `healing_events_insert_own` — users INSERT their own rows OR rows where `user_id IS NULL`
+
+**Views**
+- `v_user_health_score` — health score (0–100) per user, last 7 days
+- `v_chronic_checks` — checks that failed 5+ times in last 30 days (chronic pattern detection)
+
+**Migration:** `supabase/migrations/20260425_healing_events.sql`
+
+---
+
 ## Tables
 
 ### event_stream
@@ -442,6 +595,7 @@ One row per weekly-ad PDF to be processed. Created by `trigger-ingestion` Edge F
 | `parsed_at` | timestamptz | Set after Gemini OCR completes (migration 017) |
 | `completed_at` | timestamptz | |
 | `processing_started_at` | timestamptz | Original column |
+| `gemini_file_uri` | text | Cached Gemini Files API URI (valid 48h). Set after first upload for PDFs > 3MB. Retry invocations reuse it to skip re-upload. (migration 20260420_ingestion_file_uri_cache) |
 
 **Indexes**
 - `idx_ingestion_jobs_status` — `(status, created_at ASC)` — worker polling
@@ -734,3 +888,381 @@ Added by `supabase/migrations/015_nutrition_profile.sql`.
 - `keto` deselects `low_carb` (keto is stricter)
 
 **Source:** `src/constants/nutritionTargets.ts` — `MEMBER_OPTIONS`, `DIETARY_MODES`, `computeHouseholdCalorieTarget()`, `DIETARY_MODE_CONFLICTS`
+
+---
+
+### storage trigger — on_pdf_upload (migration 20260419)
+
+Added by `supabase/migrations/20260419_data_quality_and_storage_trigger.sql`.
+
+**Trigger:** `on_pdf_upload` — `AFTER INSERT ON storage.objects FOR EACH ROW`
+
+Fires whenever a file is uploaded to the Supabase Storage `deal-pdfs` bucket. Skips non-PDF files and unknown filename formats.
+
+**Supported filename formats:**
+- Flat: `retailer-YYYY-MM-DD-type.pdf` (e.g. `publix-2026-04-20-weekly-flyer.pdf`)
+- Legacy folder: `retailer/YYYY-MM-DD/type.pdf`
+
+**Type mapping:**
+
+| Filename suffix | `source_type` |
+|---|---|
+| `weekly-flyer`, `weekly`, `flyer` | `pdf_weekly_ad` |
+| `extra-savings`, `extra`, `coupons` | `pdf_extra_savings` |
+| `bogo` | `pdf_bogo` |
+| anything else | `pdf_weekly_ad` |
+
+**Behaviour:**
+- Inserts a `queued` row in `ingestion_jobs` with `attempts = 0`
+- On conflict (same `storage_path`), resets status to `queued` only when the existing job is `failed`, `parsed`, or `done` — does not interrupt a job currently `processing` or already `queued`
+- The existing `pg_cron` job (`008_ingestion_cron.sql`) picks up queued jobs on its schedule; invoke `run-ingestion-worker` manually for immediate processing
+
+**Helper function:** `storage_path_to_job(storage_path text)` — returns `(retailer_key, week_of, source_type)` from a storage path string.
+
+---
+
+### offer_sources — schema fixes (migration 20260419)
+
+Added by `supabase/migrations/20260419_fix_offer_sources_worker_compat.sql`.
+
+- `source_type` column now has default `'flyer'` — prevents NOT NULL violation when the ingestion worker omits it
+- Duplicate `dedupe_key` rows removed (kept most-recently-updated per key)
+- New partial unique index `ux_offer_sources_dedupe_key` on `(dedupe_key) WHERE dedupe_key IS NOT NULL` — allows `onConflict:'dedupe_key'` upserts from the worker
+
+---
+
+### stack_candidates — data quality fixes (migration 20260419)
+
+Applied by `supabase/migrations/20260419_data_quality_and_storage_trigger.sql`.
+
+- All `category` and `primary_category` values normalised to lowercase
+- `meal_type` recomputed from normalised category values
+- Unpriced BOGO rows (`base_price = 0`, `sale_savings = 0`) deactivated
+- `stack_rank_score` for aldi/keyfoods/walgreens rows rescored: `0.15` for known-price/unknown-savings items (honest signal — Gemini returned sale price only, no regular price to diff against)
+
+---
+
+### agent_initialization
+
+Web-app waitlist and paid beta signups. Written by the Next.js `initialize-agent` API route and updated by the Stripe webhook. One row per email address.
+
+**Migration:** `supabase/migrations/20260423_agent_initialization.sql`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `email` | text NOT NULL UNIQUE | Primary key for web-app users |
+| `mission` | text | `rent_killer` \| `save_goal` \| `find_deals` |
+| `budget_cents` | int | Monthly spend budget |
+| `power_level` | text | `notify_only` \| `ask_first` \| `full_auto` |
+| `leak_category` | text | `amazon` \| `food_apps` \| `clothing` |
+| `style_vibe` | text | `casual_minimal` \| `trend_forward` \| `investment` |
+| `clothing_size` | text | Optional |
+| `shoe_size` | text | Optional |
+| `shop_frequency` | text | `daily` \| `weekly` \| `big_events` |
+| `status` | text NOT NULL | `waitlist` \| `beta` \| `lifetime` — updated by Stripe webhook |
+| `payment_id` | text | Stripe subscription or payment intent ID |
+| `stripe_customer_id` | text | Stripe customer ID |
+| `crm_tags` | text[] | e.g. `['Rent-Killer-Segment', 'Beta-Pro-Paid']` |
+| `economic_dna` | jsonb | Full onboarding snapshot |
+| `created_at` | timestamptz | `now()` |
+| `updated_at` | timestamptz | Auto-updated by trigger |
+
+**RLS** — `service_role_only`: no direct client access (web app uses Next.js API routes)
+
+---
+
+### user_persona
+
+Living shopping persona — the central intelligence record for every user. Written by the `WaitlistForecastScreen` (initial 4-step capture), `OnboardingConciergeScreen` (Deep Brief), and receipt-analysis workers (behavioral signal updates). One row per user.
+
+**Migrations:**
+- `supabase/migrations/20260423_user_persona.sql` — initial schema
+- `supabase/migrations/20260423_user_persona_status.sql` — added `status` column
+- `supabase/migrations/20260427_persona_expansion.sql` — Shopping Bestie expansion (20 new columns)
+
+#### Core identity
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL UNIQUE | FK → `auth.users(id)` ON DELETE CASCADE |
+| `status` | text DEFAULT `'new'` | `new` \| `waitlist` \| `paid_beta` \| `launched` |
+| `created_at` | timestamptz | `now()` |
+| `updated_at` | timestamptz | Auto-updated by trigger |
+
+#### Waitlist Forecast (captured in WaitlistForecastScreen — 4 steps)
+| Column | Type | Notes |
+|---|---|---|
+| `household_composition` | jsonb | Count map: `{"infant":1,"teenager":2,"adult":2,"pet":1}` |
+| `leak_category` | text | `convenience_tax` \| `brand_trap` \| `target_drift` \| `healthy_premium` |
+| `mission_type` | text | `clinical_guardrails` \| `program_tracking` \| `athletic_fuel` \| `pure_savings` |
+| `monthly_spend_cents` | int | User's reported monthly grocery + dining spend |
+| `projected_monthly_recovery_cents` | int | Calculated at forecast time. Base 18% + household/leak/mission multipliers. Capped at 40%. |
+| `why_snippd` | text | Free-text social proof: "Why do you need Snippd?" (max 140 chars) |
+| `forecast_completed` | boolean DEFAULT false | Set to `true` when Forecast is submitted |
+
+#### Deep Brief (captured in ConciergeOnboarding — 5 chapters, on activation)
+| Column | Type | Notes |
+|---|---|---|
+| `child_ages` | int[] | Exact ages of children for growth-spurt modeling |
+| `clinical_allergies` | text[] | `peanut` \| `tree_nut` \| `gluten` \| `dairy` \| `shellfish` \| `soy` \| `egg` |
+| `clinical_diagnoses` | text[] | `diabetes_t2` \| `hypertension` \| `celiac` \| `ibs` \| `lactose_intolerant` |
+| `pantry_anchors` | text[] | Non-negotiable anchor products (e.g. `['Folgers Coffee','Organic Valley Milk']`) |
+| `preferred_stores` | text[] | `costco` \| `kroger` \| `target` \| `walmart` \| `aldi` \| `whole_foods` \| … |
+| `loyalty_cards` | text[] | Stores where user holds a loyalty card (powers deal matching) |
+| `financial_goal` | text | `debt_payoff` \| `build_wealth` \| `emergency_fund` \| `stretch_budget` |
+| `stress_behavior` | text | `orders_delivery` \| `grabs_fast_food` \| `still_cooks` \| `eats_whatever` |
+| `autonomy_level` | text DEFAULT `'confirm'` | `show_deals` \| `build_cart` \| `full_auto` |
+| `cooking_frequency` | text | `daily` \| `few_times_week` \| `weekends_only` \| `rarely` |
+| `brand_affinity` | text | `generic_always` \| `mix` \| `name_brand_loyal` \| `organic_premium` |
+| `shopping_style` | text | `planned_list` \| `sale_hunter` \| `as_needed` \| `weekly_batch` |
+| `persona_notes` | text | Free text: "My kids won't eat anything green" |
+| `briefing_completed` | boolean DEFAULT false | Set to `true` when Deep Brief is submitted |
+
+#### Legacy Concierge columns (preserved for existing users)
+| Column | Type | Notes |
+|---|---|---|
+| `mission` | text | Original 8-step concierge: `rent_killer` \| `save_goal` \| `find_deals` |
+| `monthly_budget_cents` | int | Original budget field |
+| `power_level` | text | Original autonomy field |
+| `style_vibe` | text | Original style field |
+| `economic_dna` | jsonb | Full snapshot of original onboarding answers |
+
+#### Living signals (updated by receipt analysis workers)
+| Column | Type | Notes |
+|---|---|---|
+| `behavior_signals` | jsonb | e.g. `{"fast_food_freq_7d":3,"health_trend":"improving","buying_generics":true}`. **Never overwrite — always merge with `jsonb_set`.** |
+| `persona_version` | int DEFAULT 1 | Increments on each behavioral update |
+
+**Indexes**
+- `idx_user_persona_user_id` — primary lookup
+- `idx_user_persona_status` — UserStatus gate
+- `idx_persona_forecast_pending` — partial: `forecast_completed = false`
+- `idx_persona_household` — GIN on `household_composition` (nurture email segmentation)
+- `idx_persona_behavior_signals` — GIN on `behavior_signals`
+- `idx_persona_allergies` — GIN on `clinical_allergies` (allergy-safe product filtering)
+
+**RLS**
+- `select_own` — users can SELECT their own row
+- `service_role_write` — INSERT/UPDATE/DELETE via service role only
+
+**Trigger**
+- `trg_user_persona_updated_at` (BEFORE UPDATE) → sets `updated_at = now()`
+
+**Savings multiplier reference** (used by `WaitlistForecastScreen` + recommendation engine)
+| Trigger | Multiplier added |
+|---|---|
+| Base rate | +18% |
+| Per Infant | +8% |
+| Per Teenager | +7% (Caloric Surge) |
+| Per Senior | +6% (Rx Optimizer) |
+| Per Toddler/School Age | +4% each |
+| Per Pet | +3% (Pet Cost Cutter) |
+| Leak: Brand Trap | +15% |
+| Leak: Convenience Tax | +12% |
+| Leak: Healthy Premium | +10% |
+| Leak: Target Drift | +8% |
+| Mission: Pure Savings | +10% |
+| Mission: Athletic Fuel | +8% |
+| Mission: Program Tracking | +6% |
+| Mission: Clinical Guardrails | +5% |
+| **Maximum cap** | **40%** |
+
+---
+
+### snippd_integrations
+
+Key/value store for external service configuration (Slack webhooks, future integrations). Only accessible via `service_role`.
+
+**Migration:** `supabase/migrations/20260422_slack_integration.sql`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `key` | text NOT NULL UNIQUE | e.g. `slack_policy_changes` |
+| `value` | text | Webhook URL or config value. NULL = not yet configured |
+| `description` | text | Human-readable explanation |
+| `enabled` | boolean NOT NULL | Default `true`. Set `false` to pause without deleting |
+| `created_at` | timestamptz | `now()` |
+| `updated_at` | timestamptz | Auto-updated by trigger on every write |
+
+**Seeded values**
+- `is_beta_live` — `'false'` (flip to `'true'` in Dashboard SQL Editor to open beta access)
+- `slack_policy_changes` — Slack webhook URL (seeded by `setup-slack-webhook.sh`)
+
+**RLS**
+- `service_role_only` — only `service_role` can SELECT/INSERT/UPDATE/DELETE
+
+---
+
+### v_beta_users (view)
+
+Read-only view of users with `status IN ('paid_beta', 'launched')`. Joins `user_persona` with `auth.users` to expose email alongside persona fields. Service-role only (inherited from table RLS).
+
+**Created by:** `supabase/migrations/20260423_user_persona_status.sql`
+
+**Trigger**
+- `trg_snippd_integrations_updated_at` (BEFORE UPDATE) → sets `updated_at = now()`
+
+**Seeded rows**
+
+| key | Default value | Purpose |
+|---|---|---|
+| `slack_policy_changes` | NULL (disabled) | Slack incoming webhook URL for retailer policy change alerts |
+| `slack_channel_engineering` | `#engineering` | Display name of target Slack channel |
+
+---
+
+### retailer_policy_change_log
+
+Append-only audit log populated by triggers on `retailer_coupon_parameters` and `retailer_rules`. The `slack-notify` Edge Function reads this table to post Slack notifications, then marks rows `notified_at`.
+
+**Migration:** `supabase/migrations/20260422_slack_integration.sql`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `table_name` | text NOT NULL | `retailer_coupon_parameters` or `retailer_rules` |
+| `operation` | text NOT NULL | `INSERT`, `UPDATE`, or `DELETE` |
+| `retailer_id` | text | Extracted from `retailer_id` or `id` column of changed row |
+| `old_data` | jsonb | Full row before change (NULL for INSERT) |
+| `new_data` | jsonb | Full row after change (NULL for DELETE) |
+| `notified_at` | timestamptz | NULL = not yet posted to Slack |
+| `created_at` | timestamptz | `now()` |
+
+**Indexes**
+- `idx_retailer_policy_change_log_pending` — partial index on `(created_at ASC) WHERE notified_at IS NULL` — used by `slack-notify` to find pending rows efficiently
+
+**Triggers feeding this table**
+- `trg_retailer_coupon_parameters_change` (AFTER INSERT/UPDATE/DELETE on `retailer_coupon_parameters`) → `_log_retailer_policy_change()`
+- `trg_retailer_rules_change` (AFTER INSERT/UPDATE/DELETE on `retailer_rules`) → `_log_retailer_policy_change()`
+
+---
+
+## Waitlist System Tables
+
+> Migration: `supabase/migrations/20260427_waitlist_positions.sql`
+>
+> Three-lane waitlist position system.
+> Lane 1–200: **paid** — first 200 payers get instant beta access (auto-approved).
+> Lane 201–300: **gifted** — Snippd admin grants (influencers, featured picks).
+> Lane 301+: **free** — organic waitlist, gamified climb.
+
+---
+
+### waitlist_positions
+
+One row per user. Source of truth for their current waitlist tier, position, and approval status. All writes are server-side (Edge Functions or webhooks) — no authenticated-user write policies.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL UNIQUE | FK → `auth.users(id)` ON DELETE CASCADE |
+| `tier` | text NOT NULL | `paid` \| `gifted` \| `free` (default `free`) |
+| `base_position` | integer NOT NULL | Assigned at join, **never changes**. Paid: 1, 2, 3… Gifted: 201–300. Free: 301 + join order. |
+| `current_position` | integer NOT NULL | `base_position − spots_gained`. Updated by `record_waitlist_action()`. Floor: 1. |
+| `spots_gained` | integer NOT NULL | Running total of spots moved up. Default 0. |
+| `status` | text NOT NULL | `waiting` \| `approved` \| `declined`. Default `waiting`. Paid users ≤ 200 are auto-approved. |
+| `stripe_payment_id` | text | Set on Stripe payment confirmation via webhook |
+| `stripe_tier` | text | `beta_pro` \| `founder` |
+| `approved_at` | timestamptz | Set when Snippd approves this user for beta |
+| `created_at` | timestamptz | `now()` |
+| `updated_at` | timestamptz | `now()`, updated by writes |
+
+**Indexes**
+- `idx_wlpos_user_id` — `(user_id)`
+- `idx_wlpos_tier_position` — `(tier, current_position)`
+- `idx_wlpos_status` — `(status)`
+- `idx_wlpos_current_position` — `(current_position)`
+
+**RLS**
+- `waitlist_positions_select_own` — users SELECT their own row only
+- No INSERT/UPDATE policy for authenticated users — all writes are server-side
+
+---
+
+### waitlist_actions
+
+Append-only log of every move-up event. **Never update or delete rows.**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL | FK → `auth.users(id)` ON DELETE CASCADE |
+| `action_type` | text NOT NULL | See action types below |
+| `spots_awarded` | integer NOT NULL | Spots moved up. Default 0. |
+| `verified` | boolean NOT NULL | `false` for honor-system shares (pending admin review); `true` for auto-verified actions |
+| `referred_user_id` | uuid | FK → `auth.users`. Populated for `referral_join` and `referral_paid` actions. |
+| `note` | text | Admin note for `admin_gift` or `why_featured` actions |
+| `created_at` | timestamptz | `now()` |
+
+**Action types**
+
+| `action_type` | Spots | Verified | Trigger |
+|---|---|---|---|
+| `complete_briefing` | +10 | Auto | User completes 5-chapter ConciergeOnboarding |
+| `share_ig` | +25 | Honor | User tags @getsnippd on Instagram |
+| `share_tiktok` | +25 | Honor | User tags @getsnippd on TikTok |
+| `share_x` | +25 | Honor | User tags @getsnippd on X |
+| `referral_join` | +50 | Auto | A referred user completes forecast |
+| `referral_paid` | +100 | Auto | A referred user pays for beta |
+| `why_featured` | +50 | Admin | Snippd features this user's "Why" |
+| `admin_gift` | variable | Admin | Manual admin grant |
+
+**Indexes**
+- `idx_wlact_user_id` — `(user_id)`
+- `idx_wlact_action_type` — `(action_type)`
+- `idx_wlact_verified` — `(verified)`
+
+**RLS**
+- `waitlist_actions_select_own` — users SELECT their own rows only
+- No INSERT policy for authenticated users — all writes are server-side
+
+---
+
+### Stored Functions (waitlist)
+
+#### assign_free_waitlist_position(p_user_id UUID) → INTEGER
+
+Assigns a free-lane position (`MAX(base_position, 300) + 1`) and inserts a row in `waitlist_positions` with `tier = 'free'`. Uses `ON CONFLICT (user_id) DO NOTHING` — safe to call multiple times. Returns the assigned position.
+
+**Called by:** `ingest-event` Edge Function after `forecast_completed = true` is set.
+
+---
+
+#### assign_paid_waitlist_position(p_user_id UUID, p_stripe_payment_id TEXT, p_stripe_tier TEXT) → INTEGER
+
+Assigns the next paid position (`MAX(paid base_position) + 1`). Users with position ≤ 200 are auto-approved (`status = 'approved'`, `approved_at = NOW()`). Upserts on conflict. Also updates `user_persona.status` to `paid_beta` (if approved) or `waitlist`. Returns the assigned position.
+
+**Called by:** Stripe webhook Edge Function after payment is confirmed.
+
+---
+
+#### record_waitlist_action(p_user_id UUID, p_action_type TEXT, p_spots INTEGER, p_verified BOOLEAN, p_referred_user_id UUID, p_note TEXT) → VOID
+
+Inserts a row in `waitlist_actions` and updates `waitlist_positions`:
+- `spots_gained += p_spots`
+- `current_position = GREATEST(1, current_position − p_spots)` (floor at 1)
+
+**Called by:** Edge Functions or server-side workers for verified actions (referrals, briefing completion). Admin UI for honor-system share verification.
+
+---
+
+### Views (waitlist)
+
+#### v_waitlist_leaderboard
+
+Anonymized leaderboard — no PII, no `user_id`. Safe for public display. Columns: `tier`, `current_position`, `status`, `spots_gained`, `created_at`. Ordered by `current_position ASC`.
+
+#### v_waitlist_stats
+
+Aggregate counts for community display.
+
+| Column | Description |
+|---|---|
+| `total_on_waitlist` | All users in `waitlist_positions` |
+| `paid_count` | Users with `tier = 'paid'` |
+| `gifted_count` | Users with `tier = 'gifted'` |
+| `free_count` | Users with `tier = 'free'` |
+| `approved_count` | Users with `status = 'approved'` |
+| `last_paid_position` | Highest paid `current_position` (i.e. how many paid spots are gone) |

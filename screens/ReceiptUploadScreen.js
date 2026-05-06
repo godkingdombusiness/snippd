@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { FEATURE_IDS, isFeatureEnabled } from '../src/features/registry';
 
 const GREEN = '#0C9E54';
 const NAVY = '#0D1B4B';
@@ -103,6 +104,7 @@ function categoriseItem(name) {
 }
 
 export default function ReceiptUploadScreen({ navigation }) {
+  const studioEnabled = isFeatureEnabled(FEATURE_IDS.STUDIO);
   const [step, setStep] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -829,17 +831,34 @@ export default function ReceiptUploadScreen({ navigation }) {
 
                 <TouchableOpacity
                   style={styles.primaryBtn}
-                  onPress={() => navigation.navigate('HomeTab')}
+                  onPress={() => {
+                    // Fire preference updater in background — next plan improves from this trip
+                    supabase.auth.getSession().then(({ data }) => {
+                      if (data?.session?.user?.id) {
+                        supabase.functions.invoke('run-preference-updater', {
+                          body: { user_id: data.session.user.id, trigger: 'receipt_verified' },
+                        }).catch(() => {});
+                      }
+                    }).catch(() => {});
+                    navigation.navigate('VerifyReceipt', {
+                      totalSaved,
+                      stackItems,
+                      storeName,
+                      creditsEarned,
+                    });
+                  }}
                 >
-                  <Text style={styles.primaryBtnTxt}>Back to Home</Text>
+                  <Text style={styles.primaryBtnTxt}>See Your Win</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.secondaryBtn}
-                  onPress={() => navigation.navigate('StudioTab')}
-                >
-                  <Text style={styles.secondaryBtnTxt}>Share Your Savings Story</Text>
-                </TouchableOpacity>
+                {studioEnabled && (
+                  <TouchableOpacity
+                    style={styles.secondaryBtn}
+                    onPress={() => navigation.navigate('StudioTab')}
+                  >
+                    <Text style={styles.secondaryBtnTxt}>Share Your Savings Story</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}

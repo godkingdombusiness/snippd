@@ -46,3 +46,17 @@ supabase/.temp/
 # generated native folders
 /ios
 /android
+
+# Google Cloud / gcloud credentials — NEVER commit
+.tools/
+*.db
+*access_tokens*
+*credentials.db*
+*application_default_credentials*
+*adc-token*
+
+# Expo log files
+*.err.log
+*.out.log
+.static-run.*
+.expo-start.*

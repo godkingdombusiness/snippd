@@ -606,7 +606,7 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get('authorization') ?? '';
   const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-  if (!authHeader.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return json({ error: 'Unauthorized' }, 401);
   const jwt = authHeader.slice(7);
   const { data: userData, error: authErr } = await db.auth.getUser(jwt);
   if (authErr || !userData?.user) return json({ error: 'Unauthorized' }, 401);

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { FEATURE_IDS, isFeatureEnabled } from '../src/features/registry';
 
 const { width } = Dimensions.get('window');
 const GREEN = '#0C9E54';
@@ -68,6 +69,7 @@ const getExpiryLabel = (days) => {
 };
 
 export default function KitchenScreen({ navigation }) {
+  const chefStashEnabled = isFeatureEnabled(FEATURE_IDS.CHEF_STASH);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState([]);
@@ -145,14 +147,16 @@ export default function KitchenScreen({ navigation }) {
           <Text style={styles.backBtnTxt}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Kitchen</Text>
-        <TouchableOpacity
-          style={styles.chefBtn}
-          onPress={() => navigation.navigate('ChefStash', {
-            stack: null, ingredients: items, fromPantry: true,
-          })}
-        >
-          <Text style={styles.chefBtnTxt}>Chef Stash</Text>
-        </TouchableOpacity>
+        {chefStashEnabled ? (
+          <TouchableOpacity
+            style={styles.chefBtn}
+            onPress={() => navigation.navigate('ChefStash', {
+              stack: null, ingredients: items, fromPantry: true,
+            })}
+          >
+            <Text style={styles.chefBtnTxt}>Chef Stash</Text>
+          </TouchableOpacity>
+        ) : <View style={styles.chefBtnSpacer} />}
       </View>
 
       <ScrollView
@@ -194,14 +198,16 @@ export default function KitchenScreen({ navigation }) {
                   Use these first to avoid waste
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.alertBtn}
-                onPress={() => navigation.navigate('ChefStash', {
-                  stack: null, ingredients: expiringItems, fromPantry: true,
-                })}
-              >
-                <Text style={styles.alertBtnTxt}>Get Recipe</Text>
-              </TouchableOpacity>
+              {chefStashEnabled && (
+                <TouchableOpacity
+                  style={styles.alertBtn}
+                  onPress={() => navigation.navigate('ChefStash', {
+                    stack: null, ingredients: expiringItems, fromPantry: true,
+                  })}
+                >
+                  <Text style={styles.alertBtnTxt}>Get Recipe</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -272,6 +278,7 @@ export default function KitchenScreen({ navigation }) {
         </View>
 
         {/* Chef Stash CTA */}
+        {chefStashEnabled && (
         <View style={styles.pad}>
           <TouchableOpacity
             style={styles.chefCard}
@@ -289,6 +296,7 @@ export default function KitchenScreen({ navigation }) {
             <Text style={styles.chefCardArrow}>›</Text>
           </TouchableOpacity>
         </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -318,6 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: GREEN, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 8,
   },
+  chefBtnSpacer: { width: 92 },
   chefBtnTxt: { color: WHITE, fontSize: 12, fontWeight: 'bold' },
 
   statsRow: { flexDirection: 'row', gap: 10 },

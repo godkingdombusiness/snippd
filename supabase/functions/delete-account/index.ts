@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
 
   // Verify the caller via their session JWT
   const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
-  if (!authHeader.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return json({ error: 'Unauthorized' }, 401);
 
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },

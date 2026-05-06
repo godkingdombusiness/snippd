@@ -6,10 +6,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
-
-const CART_KEY = 'snippd_cart';
+import { FEATURE_IDS, isFeatureEnabled } from '../src/features/registry';
+import { addItemsToActiveCart, readActiveCart } from '../src/services/cartStorage';
+import { fetchTop3StoreEngine } from '../src/services/top3StoreEngine';
 
 const COLORS = {
   green:  '#0C9E54',
@@ -26,18 +26,18 @@ const COLORS = {
 // ── Add-to-cart helper ─────────────────────────────────────────────
 async function addBundleToCart(bundle) {
   try {
-    const raw      = await AsyncStorage.getItem(CART_KEY);
-    const existing = raw ? JSON.parse(raw) : [];
+    const { items: existing } = await readActiveCart();
 
-    const alreadyIn = existing.some(i => i.id === bundle.id);
+    const alreadyIn = existing.some(i => i.bundle_id === bundle.id || i.id === bundle.id);
     if (alreadyIn) return 'already_added';
 
     // Flatten bundle items into cart format
     const newItems = (bundle.items || []).slice(0, 20).map((item, idx) => ({
       id:           `explore_${bundle.id}_${idx}`,
+      bundle_id:    bundle.id,
       product_name: item.name || item.item || `Item ${idx + 1}`,
-      sale_cents:   Math.round((item.sale_price || item.pay_price || 0) * 100),
-      reg_cents:    Math.round((item.regular_price || item.reg_price || item.sale_price || 0) * 100),
+      sale_price:   item.sale_price || item.pay_price || 0,
+      regular_price: item.regular_price || item.reg_price || item.sale_price || 0,
       deal_type:    (item.deal_type || null),
       quantity:     1,
       source:       'explore',
@@ -48,9 +48,10 @@ async function addBundleToCart(bundle) {
       // Fallback: add the bundle itself as a single item
       newItems.push({
         id:           bundle.id,
+        bundle_id:    bundle.id,
         product_name: bundle.title,
-        sale_cents:   Math.round((bundle.pay_price || 0) * 100),
-        reg_cents:    Math.round(((bundle.pay_price || 0) + (bundle.save_price || 0)) * 100),
+        sale_price:   bundle.pay_price || 0,
+        regular_price: (bundle.pay_price || 0) + (bundle.save_price || 0),
         deal_type:    null,
         quantity:     1,
         source:       'explore',
@@ -58,7 +59,7 @@ async function addBundleToCart(bundle) {
       });
     }
 
-    await AsyncStorage.setItem(CART_KEY, JSON.stringify([...existing, ...newItems]));
+    await addItemsToActiveCart(newItems);
     return 'added';
   } catch {
     return 'error';
@@ -66,10 +67,12 @@ async function addBundleToCart(bundle) {
 }
 
 export default function DiscoverScreen({ navigation }) {
+  const omniComparisonEnabled = isFeatureEnabled(FEATURE_IDS.OMNI_STORE_COMPARISON);
   const [loading,    setLoading]    = useState(true);
   const [rawStacks,  setRawStacks]  = useState([]);
   const [profile,    setProfile]    = useState(null);
   const [addedIds,   setAddedIds]   = useState(new Set());
+  const [enginePayload, setEnginePayload] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -77,6 +80,7 @@ export default function DiscoverScreen({ navigation }) {
       const { data: prof } = await supabase
         .from('profiles').select('*').eq('user_id', user.id).single();
       setProfile(prof);
+      fetchTop3StoreEngine({ forceRefresh: true }).then(setEnginePayload).catch(() => {});
 
       const { data: stackData } = await supabase
         .from('app_home_feed').select('*').eq('status', 'active');
@@ -91,6 +95,8 @@ export default function DiscoverScreen({ navigation }) {
         breakdown_list: typeof s.breakdown_list === 'string'
           ? JSON.parse(s.breakdown_list)
           : (s.breakdown_list || []),
+        // Normalize confidence field (DB uses confidence_score, badge uses confidence_pct)
+        confidence_pct: s.confidence_pct ?? s.confidence_score ?? null,
       }));
       setRawStacks(sanitized);
     } catch (e) {
@@ -103,12 +109,11 @@ export default function DiscoverScreen({ navigation }) {
   // Load which bundles are already in cart
   const refreshAddedIds = useCallback(async () => {
     try {
-      const raw   = await AsyncStorage.getItem(CART_KEY);
-      const items = raw ? JSON.parse(raw) : [];
+      const { items } = await readActiveCart();
       const ids   = new Set(items.map(i => {
         // Explore items have id format explore_<bundleId>_<idx>
         const match = (i.id || '').match(/^explore_(.+)_\d+$/);
-        return match ? match[1] : i.id;
+        return i.bundle_id || (match ? match[1] : i.id);
       }));
       setAddedIds(ids);
     } catch { /* ignore */ }
@@ -195,10 +200,31 @@ export default function DiscoverScreen({ navigation }) {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>7-Day Foundations</Text>
+        <Text style={styles.title}>Trending Bundles</Text>
         <Text style={styles.subtitle}>
-          Verified bundles that cover 21 meals + breakfast.
+          Explore all available deals, bundles, and weekly foundations.
         </Text>
+
+        {omniComparisonEnabled && (
+          <TouchableOpacity
+            style={styles.compareCard}
+            activeOpacity={0.88}
+            onPress={() => navigation.navigate('OmniStoreComparison')}
+          >
+            <View style={styles.compareIcon}>
+              <Feather name="git-compare" size={18} color={COLORS.green} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.compareTitle}>Compare Same Items</Text>
+              <Text style={styles.compareSub}>
+                {enginePayload?.top_stores?.length
+                  ? enginePayload.top_stores.map(store => store.retailer_key).join(', ')
+                  : 'Top stores sync from the verified engine'}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={COLORS.grey} />
+          </TouchableOpacity>
+        )}
 
         {sevenDayStrategies.length === 0 && (
           <View style={styles.emptyWrap}>
@@ -245,6 +271,33 @@ export default function DiscoverScreen({ navigation }) {
                   {bundle.items.length > 3 ? `+${bundle.items.length - 3} more` : ''}
                 </Text>
               </View>
+
+              {/* Confidence badge */}
+              {bundle.confidence_pct != null && (
+                <View style={[
+                  styles.confidenceBadge,
+                  bundle.confidence_pct >= 85 ? styles.confHigh :
+                  bundle.confidence_pct >= 70 ? styles.confMed  : styles.confLow,
+                ]}>
+                  <Feather
+                    name={bundle.confidence_pct >= 85 ? 'shield' : bundle.confidence_pct >= 70 ? 'info' : 'alert-circle'}
+                    size={11}
+                    color={bundle.confidence_pct >= 85 ? '#0C7A3D' : bundle.confidence_pct >= 70 ? '#92400E' : '#991B1B'}
+                  />
+                  <Text style={[
+                    styles.confidenceTxt,
+                    bundle.confidence_pct >= 85 ? { color: '#0C7A3D' } :
+                    bundle.confidence_pct >= 70 ? { color: '#92400E' } : { color: '#991B1B' },
+                  ]}>
+                    {bundle.user_badge === 'confirmed'       ? 'Confirmed'          :
+                     bundle.user_badge === 'likely'          ? 'Likely'             :
+                     bundle.user_badge === 'verify_locally'  ? 'Verify Locally'     :
+                     bundle.user_badge === 'price_may_vary'  ? 'Price May Vary'     :
+                     bundle.confidence_pct >= 85             ? 'Confirmed'          :
+                     bundle.confidence_pct >= 70             ? 'Likely'             : 'Verify Locally'}
+                  </Text>
+                </View>
+              )}
 
               {/* FOOTER: savings + price + buttons */}
               <View style={styles.cardFooter}>
@@ -317,6 +370,28 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '900', color: COLORS.navy },
   subtitle: { fontSize: 15, color: COLORS.grey, marginBottom: 25, lineHeight: 22 },
 
+  compareCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  compareIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#F0FDF4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compareTitle: { fontSize: 15, fontWeight: '900', color: COLORS.navy },
+  compareSub: { fontSize: 11, color: COLORS.grey, marginTop: 3, lineHeight: 16 },
+
   emptyWrap: { alignItems: 'center', paddingTop: 40, gap: 10 },
   emptyTxt:  { fontSize: 16, fontWeight: '700', color: COLORS.navy },
   emptySub:  { fontSize: 13, color: COLORS.grey, textAlign: 'center', lineHeight: 19 },
@@ -382,4 +457,10 @@ const styles = StyleSheet.create({
   cartBtnDone:    { borderColor: COLORS.green, backgroundColor: '#F0FDF4' },
   cartBtnTxt:     { fontSize: 11, fontWeight: '700', color: COLORS.grey },
   cartBtnTxtDone: { color: COLORS.green },
+  // Confidence badges
+  confidenceBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 10 },
+  confHigh: { backgroundColor: '#F0FDF4' },
+  confMed:  { backgroundColor: '#FFFBEB' },
+  confLow:  { backgroundColor: '#FEF2F2' },
+  confidenceTxt: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 });

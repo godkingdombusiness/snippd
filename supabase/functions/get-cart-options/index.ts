@@ -380,7 +380,7 @@ Deno.serve(async (req: Request) => {
 
   // ── Auth ────────────────────────────────────────────────────
   const authHeader = req.headers.get('authorization') ?? '';
-  if (!authHeader.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return json({ error: 'Unauthorized' }, 401);
   const jwt = authHeader.slice(7);
 
   const anonDb = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? serviceKey);

@@ -21,6 +21,7 @@ import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
+import { AgenticLedger, DecisionType } from '../src/services/agenticLedger';
 
 const { width } = Dimensions.get('window');
 
@@ -44,17 +45,17 @@ const BLUE_TEXT = '#1D4ED8';
 
 const fmt = (cents) => '$' + ((cents || 0) / 100).toFixed(2);
 
-/** Return "Week of Mon Apr 14 — Fri Apr 18" for the current week */
+/** Return "Mon Apr 14 — Sun Apr 20" for the current week (7-day foundation) */
 function getWeekRange() {
   const now   = new Date();
   const day   = now.getDay(); // 0=Sun
   const diffToMon = (day === 0 ? -6 : 1 - day);
   const mon   = new Date(now); mon.setDate(now.getDate() + diffToMon);
-  const fri   = new Date(mon); fri.setDate(mon.getDate() + 4);
+  const sun   = new Date(mon); sun.setDate(mon.getDate() + 6);
   const opts  = { month: 'short', day: 'numeric' };
   const m = mon.toLocaleDateString('en-US', opts);
-  const f = fri.toLocaleDateString('en-US', opts);
-  return `${m} — ${f}`;
+  const s = sun.toLocaleDateString('en-US', opts);
+  return `${m} — ${s}`;
 }
 
 // ── Deal-type chip colors ───────────────────────────────────────
@@ -102,7 +103,8 @@ function buildCouponNote(protein, side, pantry) {
 
 function buildMealCard(dinner, index) {
   const { night_index, protein, side, pantry_item } = dinner;
-  const dayAbbrev = DAY_ABBREV[index] || 'Day';
+  const slot = typeof night_index === 'number' ? night_index : index;
+  const dayAbbrev = DAY_ABBREV[slot % 7] || DAY_ABBREV[index % 7] || 'Day';
 
   const toIngredient = (item) => {
     if (!item) return null;
@@ -125,7 +127,7 @@ function buildMealCard(dinner, index) {
   const cookMin  = protein?.category === 'meat' ? 30 : 20;
 
   return {
-    id:          night_index,
+    id:          typeof night_index === 'number' ? night_index : index,
     day:         dayAbbrev,
     leftovers:   false,
     name:        buildMealName(protein, side, pantry_item),
@@ -213,7 +215,44 @@ function buildSampleMeals(hh) {
       prep_min: 12, cook_min: 28, cal: 450,
       coupon: null,
     },
+    {
+      id: 6, day: 'Sat', leftovers: false,
+      name: 'Vegetable Stir-Fry with Rice Noodles',
+      ingredients: [
+        { name: 'Stir-Fry Veggie Mix 12oz', sale_cents: 279, reg_cents: 399, deal_type: 'SALE' },
+        { name: 'Rice Noodles 8oz',         sale_cents: 199, reg_cents: 259, deal_type: 'MULTI' },
+        { name: 'Tofu Firm 14oz',           sale_cents: 249, reg_cents: 329, deal_type: 'SALE' },
+        { name: 'Soy Sauce (pantry)',       sale_cents: 0,   reg_cents: 0,   deal_type: null },
+      ],
+      prep_min: 10, cook_min: 15, cal: 410,
+      coupon: null,
+    },
+    {
+      id: 7, day: 'Sun', leftovers: true,
+      name: 'Skillet Sausage with Peppers & Onions',
+      ingredients: [
+        { name: 'Italian Sausage 1lb', sale_cents: 449, reg_cents: 699, deal_type: 'SALE' },
+        { name: 'Sweet Onions 2ct',    sale_cents: 179, reg_cents: 249, deal_type: 'MULTI' },
+        { name: 'Hoagie Rolls 6ct',    sale_cents: 299, reg_cents: 399, deal_type: 'BOGO' },
+      ],
+      prep_min: 8, cook_min: 22, cal: 520,
+      coupon: 'Clip store app coupon for sausage if available',
+    },
   ];
+}
+
+/** Ensure RPC / cache always exposes seven dinner slots (preferences still shape menu via RPC). */
+function padDinnersToSeven(dinners) {
+  const list = Array.isArray(dinners) ? [...dinners] : [];
+  if (list.length === 0) return list;
+  while (list.length < 7) {
+    const last = list[list.length - 1];
+    list.push({
+      ...last,
+      night_index: list.length,
+    });
+  }
+  return list.slice(0, 7);
 }
 
 // ── Compute totals from meals ────────────────────────────────────
@@ -288,7 +327,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
       const { data: plan, error: rpcError } = await supabase.rpc('get_weekly_plan', {
         p_user_id:   user.id,
         p_headcount: headcount,
-        p_nights:    nights,
+        p_nights:    7,
         p_focus:     focus,
         p_week_of:   getNextWednesday(),
       });
@@ -327,13 +366,14 @@ export default function WeeklyPlanScreen({ navigation, route }) {
   }, [headcount, nights, focus]);
 
   function applyPlan(plan, user) {
-    const dinners = plan.dinners ?? [];
+    let dinners = plan.dinners ?? [];
+    dinners = padDinnersToSeven(dinners);
     const hasMeals = dinners.some(d => d.protein || d.side || d.pantry_item);
     if (!hasMeals) { setNoDeals(true); setMeals([]); return; }
 
     setNoDeals(false);
     setPlanMeta({ calMin: plan.meal_calorie_target_min, calMax: plan.meal_calorie_target_max });
-    const built = dinners.map((d, i) => buildMealCard(d, i));
+    const built = dinners.map((d, i) => buildMealCard({ ...d, night_index: i }, i));
     setMeals(built);
   }
 
@@ -348,7 +388,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
 
   const totalDinnerCents  = mealPrices.reduce((s, p) => s + p, 0);
   const totalRegularCents = mealRegulars.reduce((s, p) => s + p, 0);
-  const totalSavedCents   = totalRegularCents - totalDinnerCents;
+  const planSavedCents   = totalRegularCents - totalDinnerCents;
 
   // Snippd range = cheapest meal to most expensive meal
   const snippdLow  = meals.length ? Math.min(...mealPrices) : 0;
@@ -362,12 +402,13 @@ export default function WeeklyPlanScreen({ navigation, route }) {
   const dinnersBill      = totalDinnerCents;
   const householdStack   = Math.round(totalDinnerCents * 0.08);  // ~8% household staples
   const refillItems      = Math.round(totalDinnerCents * 0.12);  // ~12% pantry refills
-  const platformRebates  = Math.round(totalSavedCents * 0.15);   // 15% of savings as rebates
-  const planTotal        = dinnersBill + householdStack + refillItems - platformRebates;
+  const postRegisterCredits  = Math.round(planSavedCents * 0.15);   // 15% of savings as rebates
+  const planTotal        = dinnersBill + householdStack + refillItems - postRegisterCredits;
 
   // Takeout comparison
-  const takeoutLow   = householdSize * 5 * 1800;  // $18/person/night
-  const takeoutHigh  = householdSize * 5 * 2800;  // $28/person/night
+  const planNights   = Math.max(meals.length || 0, nights || 7);
+  const takeoutLow   = householdSize * planNights * 1800;  // $18/person/night
+  const takeoutHigh  = householdSize * planNights * 2800;  // $28/person/night
   const diffLow      = Math.max(0, takeoutLow  - planTotal);
   const diffHigh     = Math.max(0, takeoutHigh - planTotal);
 
@@ -462,7 +503,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
           <View style={styles.heroBlock}>
             <Text style={styles.heroEyebrow}>WEEK OF {weekRange.toUpperCase()}</Text>
             <Text style={styles.heroTitle}>
-              {nights} home-cooked dinners.{'\n'}Built from this week's best deals.
+              {planNights} home-cooked dinners.{'\n'}Built from this week's best deals.
             </Text>
 
             {/* 3-chip stat row */}
@@ -470,14 +511,14 @@ export default function WeeklyPlanScreen({ navigation, route }) {
               {/* Chip 1: total dinner cost */}
               <View style={styles.heroChip}>
                 <Text style={styles.heroChipValue}>{fmt(totalDinnerCents)}</Text>
-                <Text style={styles.heroChipLabel}>all 5 dinners</Text>
+                <Text style={styles.heroChipLabel}>all {planNights} dinners</Text>
               </View>
 
               <View style={styles.heroChipDivider} />
 
               {/* Chip 2: savings vs regular */}
               <View style={styles.heroChip}>
-                <Text style={styles.heroChipValue}>{fmt(totalSavedCents)}</Text>
+                <Text style={styles.heroChipValue}>{fmt(planSavedCents)}</Text>
                 <Text style={styles.heroChipLabel}>you save vs. regular</Text>
               </View>
 
@@ -513,7 +554,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
         {/* ── 3. SECTION LABEL ──────────────────────────────────── */}
         <View style={styles.pad}>
           <Text style={styles.sectionLabel}>
-            Your {nights} dinners — tap any meal to see full recipe
+            Your {planNights} dinners — tap any meal to see full recipe
           </Text>
         </View>
 
@@ -618,7 +659,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
           <View style={styles.receiptCard}>
             {/* Line items */}
             <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>{nights} dinners</Text>
+              <Text style={styles.receiptLabel}>{planNights} dinners</Text>
               <Text style={styles.receiptVal}>{fmt(dinnersBill)}</Text>
             </View>
             <View style={styles.receiptRow}>
@@ -631,7 +672,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
             </View>
             <View style={[styles.receiptRow, { marginBottom: 0 }]}>
               <Text style={[styles.receiptLabel, { color: PURPLE }]}>{platform} rebates</Text>
-              <Text style={[styles.receiptVal, { color: PURPLE }]}>−{fmt(platformRebates)}</Text>
+              <Text style={[styles.receiptVal, { color: PURPLE }]}>−{fmt(postRegisterCredits)}</Text>
             </View>
 
             {/* Footer */}
@@ -652,7 +693,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
         <View style={styles.pad}>
           <View style={styles.takeoutBar}>
             <Text style={styles.takeoutIntro}>
-              {nights} nights of takeout or delivery for {householdSize}{' '}
+              {planNights} nights of takeout or delivery for {householdSize}{' '}
               {householdSize === 1 ? 'person' : 'people'} would run
             </Text>
             <Text style={styles.takeoutRange}>
@@ -666,12 +707,11 @@ export default function WeeklyPlanScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* ── 7. LOCK IN BUTTON ─────────────────────────────────── */}
+        {/* ── 7. ADD TO CART (Premium Concierge) ───────────────── */}
         <View style={styles.pad}>
           <TouchableOpacity
             style={styles.lockBtn}
             onPress={async () => {
-              // Build flat array of all ingredient items across all meals
               const cartItems = meals.flatMap((meal) =>
                 meal.ingredients
                   .filter(i => i.name)
@@ -681,7 +721,6 @@ export default function WeeklyPlanScreen({ navigation, route }) {
                     sale_cents:   i.sale_cents || 0,
                     reg_cents:    i.reg_cents  || i.sale_cents || 0,
                     deal_type:    i.deal_type  || null,
-                    // BOGO: quantity=2, customer pays for 1
                     quantity:     i.deal_type === 'BOGO' ? 2 : 1,
                     source:       'meal_plan',
                     day:          meal.day,
@@ -689,9 +728,27 @@ export default function WeeklyPlanScreen({ navigation, route }) {
                     retailer:     platform || 'Snippd',
                   }))
               );
+              const storeKey = String(platform || 'publix').toLowerCase().replace(/\s+/g, '_');
+              const listRows = meals.flatMap((meal) =>
+                meal.ingredients
+                  .filter(i => i.name && (i.sale_cents || 0) > 0)
+                  .map((i, j) => ({
+                    id: `planlist_${meal.id}_${j}_${String(i.name).slice(0, 24).replace(/\s+/g, '_')}`,
+                    name: i.name,
+                    store: storeKey === 'snippd' ? 'publix' : storeKey,
+                    price_cents: i.sale_cents || 0,
+                    checked: false,
+                    from_stack: true,
+                    category: 'meal_plan',
+                  }))
+              );
+              const planNameSet = [
+                ...new Set(cartItems.map(c => String(c.product_name || '').toLowerCase().trim()).filter(Boolean)),
+              ];
               try {
                 await AsyncStorage.setItem('snippd_cart', JSON.stringify(cartItems));
-                // Track the event
+                await AsyncStorage.setItem('snippd_my_list_import', JSON.stringify({ items: listRows, saved_at: new Date().toISOString() }));
+                await AsyncStorage.setItem('snippd_weekly_plan_ingredient_names', JSON.stringify(planNameSet));
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user?.id) {
                   tracker.track('cart_accepted', {
@@ -700,17 +757,30 @@ export default function WeeklyPlanScreen({ navigation, route }) {
                     metadata: {
                       plan_type: 'weekly',
                       items_count: cartItems.length,
-                      total_savings_cents: totalSavedCents,
+                      total_savings_cents: planSavedCents,
+                      concierge_bridge: 'add_to_cart_my_list',
+                    },
+                  });
+                  await AgenticLedger.log({
+                    user_id: session.user.id,
+                    decision_type: DecisionType.CONCIERGE_ADD_TO_CART,
+                    actor: 'WeeklyPlanScreen',
+                    result: 'approved',
+                    metadata: {
+                      items_count: cartItems.length,
+                      list_rows: listRows.length,
+                      plan_nights: planNights,
+                      mirror_neo4j: true,
                     },
                   });
                 }
-              } catch { /* AsyncStorage failure is non-critical */ }
-              // Navigate to cart tab
-              navigation.getParent()?.navigate('SnippdTab');
+              } catch { /* non-critical */ }
+              const tabNav = navigation.getParent?.();
+              tabNav?.navigate('SnippdTab', { screen: 'MyList' });
             }}
             activeOpacity={0.88}
           >
-            <Text style={styles.lockBtnTxt}>Lock in this week's plan</Text>
+            <Text style={styles.lockBtnTxt}>Add to Cart</Text>
           </TouchableOpacity>
         </View>
 
@@ -954,3 +1024,4 @@ const styles = StyleSheet.create({
   },
   lockBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '800' },
 });
+

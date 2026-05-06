@@ -1,8 +1,151 @@
-# Snippd — Node.js Services Reference
+# Snippd — Services Reference
 
 > Background services that run outside of the Supabase Edge Functions runtime.
-> All require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` environment variables.
-> All services are in `src/services/` and use CommonJS (`tsconfig.test.json`).
+> Node.js services: `src/services/` (TypeScript/CommonJS, `tsconfig.test.json`), require `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
+> Python multi-agent backend: `agent/` (Python 3.11+, `agent/requirements.txt`).
+
+---
+
+## Agentic Loop — Full Lifecycle (2026-04-29)
+
+The full lifecycle loop is now wired end-to-end:
+
+```
+WeeklyPlan → List → Cart
+  → CouponClipping (prep coupons)
+  → CheckoutBreakdown (transparent pricing)
+  → [shop at store]
+  → ReceiptUpload (OCR + match)
+  → VerifyReceipt (signed win confirmation)
+  → Wins (verified savings history)
+  → HomeScreen hero (real dollars)
+  → run-preference-updater fires in background
+  → next WeeklyPlan improves
+```
+
+- `run-preference-updater` is called fire-and-forget from `ReceiptUploadScreen` after the verified step, with `trigger: 'receipt_verified'`. Failure is non-fatal.
+- `checkout_math_snapshots` (status=APPROVED) is the single source of truth for all savings numbers displayed in `WinsScreen` and `HomeScreen`.
+
+---
+
+## Titan Multi-Agent Backend (`agent/`)
+
+**Language:** Python 3.11+
+**Runtime:** Async (`asyncio`)
+**Install:** `cd agent && pip install -r requirements.txt`
+
+### Architecture overview
+
+```
+agent/
+├── agents/
+│   ├── shared.py      # Grounding Hub — Gemini client + Neo4j singleton
+│   └── architect.py   # Decision Engine — 5-step haul workflow
+└── tools/
+    └── graph_tool.py  # Graph Engine — Cypher queries + GPS filtering
+```
+
+### agents/shared.py — Grounding Hub
+
+Configures Gemini 2.5-Flash with native Google grounding tools.
+
+**Model:** `gemini-2.5-flash` (override via `GEMINI_MODEL` env var)
+
+**Tools configured:**
+- `GoogleSearch` — Native grounding, dynamic retrieval mode
+- `GoogleMaps` — Native grounding for store lookup (auto-detected; falls back to Places REST API if SDK does not expose `types.GoogleMaps`)
+
+**Neo4jDriver singleton:**
+- Double-checked locking (thread-safe under 100k+ concurrent users)
+- Pool: 200 connections, 30s acquisition timeout, 15s retry window
+- `verify_connectivity()` on first instantiation — fails fast
+- `Neo4jDriver.get().session()` — always use as a context manager
+- `Neo4jDriver.close()` — call on application teardown
+
+### tools/graph_tool.py — Graph Engine
+
+#### find_compatibility_bridges(user_id) → list[dict]
+
+Discovers cross-retailer coupon compatibility for a user before the Maps step.
+
+Cypher pattern:
+```cypher
+(User)-[:HAS_COUPON]->(Coupon)-[:VALID_AT]->(IssuerStore)
+                                            -[:ACCEPTS_COUPON_FROM]-(PartnerStore)
+```
+
+Returns up to 50 bridges ordered by `discount_value DESC`. Returns `[]` on error.
+
+#### find_hidden_stacks(user_id, stores, gps_coords, radius_km) → list[dict]
+
+Finds all valid clipped coupons redeemable at the given stores.
+
+GPS filter uses Neo4j native `point()` type:
+```cypher
+point.distance(s.location, point({latitude: $lat, longitude: $lng, crs: 'WGS-84'})) <= $radius_m
+```
+
+Returns up to 100 stacks ordered by `discount_value DESC`. Returns `[]` on error.
+
+### agents/architect.py — Decision Engine
+
+**Entry point:** `await run_architect(user_id, gps_coords)`
+
+**5-step workflow:**
+
+| Step | Label | What happens |
+|---|---|---|
+| B | SECRET | `find_compatibility_bridges(user_id)` — all cross-retailer bridges |
+| C | MAPS | Google Maps grounding → 3 nearest stores (native or Places REST fallback) |
+| B2 | GRAPH FILTER | `find_hidden_stacks(user_id, stores, gps_coords)` — stacks at confirmed stores |
+| D | SEARCH | Gemini 2.5-Flash + Google Search → 7+1 haul with live inventory; pivots on OOS |
+| E | OUTPUT | Returns `ShoppingHaul` Pydantic model |
+
+**Out-of-stock handling:** Gemini system prompt requires pivot to next best item in the same category. `fallback_used: true` is set on any replacement item.
+
+**Error handling:** `ArchitectError` wraps all failures with a safe user-facing message. Raw Cypher / Gemini tracebacks never propagate.
+
+**Returns:** `ShoppingHaul` (Pydantic v2)
+```python
+ShoppingHaul(
+    user_id, generated_at, stores,
+    items: list[HaulItem],          # 7 ranked items
+    essential: HaulItem,            # 1 staple item
+    compatibility_bridges,          # raw Neo4j bridge dicts
+    hidden_stacks,                  # raw Neo4j stack dicts
+    grounding_metadata,             # [{uri, title}] from Gemini Search
+    total_savings_cents,
+)
+```
+
+### Required env vars
+
+| Var | Description |
+|---|---|
+| `GEMINI_API_KEY` | Google AI Studio or Vertex API key |
+| `GOOGLE_MAPS_API_KEY` | Maps Platform key (Places API New enabled) |
+| `NEO4J_URI` | e.g. `neo4j+s://xxx.databases.neo4j.io` |
+| `NEO4J_USER` | Neo4j username (default: `neo4j`) |
+| `NEO4J_PASSWORD` | Neo4j password |
+| `GEMINI_MODEL` | (Optional) Override model, default `gemini-2.5-flash` |
+
+### How to run (quick test)
+```bash
+cd agent
+pip install -r requirements.txt
+python - <<'EOF'
+import asyncio, os
+os.environ["GEMINI_API_KEY"]    = "..."
+os.environ["GOOGLE_MAPS_API_KEY"] = "..."
+os.environ["NEO4J_URI"]         = "neo4j+s://xxx.databases.neo4j.io"
+os.environ["NEO4J_PASSWORD"]    = "..."
+from agents.architect import run_architect
+haul = asyncio.run(run_architect("user-uuid", {"lat": 25.7617, "lng": -80.1918}))
+print(haul.model_dump_json(indent=2))
+EOF
+```
+
+---
 
 ---
 
@@ -300,7 +443,45 @@ Called on-demand by `process-receipt`. Also safe to call nightly as a batch for 
 
 ---
 
-## Ingestion pipeline
+## updateExpoDependencies
+
+**File:** `scripts/update-expo-dependencies.js`
+**Purpose:** Automated maintenance script that keeps Expo-related packages updated to the latest compatible patch versions for the installed Expo SDK.
+
+### What it does
+
+1. Reads current `package.json` and identifies Expo packages (expo, expo-*, etc.)
+2. Parses version specifiers (e.g., `~55.0.12`) to extract major.minor line
+3. Fetches latest published versions from npm registry for each package
+4. Filters to latest patch version within the same major.minor line
+5. Updates `package.json` if newer patches are available
+6. Outputs summary of changes made
+
+### Exported API
+```javascript
+// CLI usage
+npm run update:expo-dependencies
+
+// Or directly
+node scripts/update-expo-dependencies.js
+```
+
+### How to run
+```bash
+# Manual run
+npm run update:expo-dependencies
+
+# Automated (GitHub Actions)
+.github/workflows/expo-dependency-update.yml
+```
+
+### Required env vars
+None — uses public npm registry API.
+
+### Recommended schedule
+**Daily at 08:00 UTC** via GitHub Actions workflow. Creates PRs automatically when updates are needed.
+
+---
 
 All files in `src/services/ingestion/`. Together they form the pipeline that converts raw weekly-ad PDFs into live `stack_candidates` consumed by the cart engine.
 
@@ -678,3 +859,77 @@ Calorie alignment: +0.08 if within 20% of per-person target; −0.05 if >150% ov
 ```bash
 npx ts-node --project tsconfig.test.json src/services/geniusStackEngine.ts <userId>
 ```
+
+---
+
+## agenticLedger
+
+**File:** `src/services/agenticLedger.ts`  
+**Purpose:** Client- and server-side append-only audit log into Supabase `agentic_ledger`. Failures are non-fatal (`console.warn`). Rows include `payload_hash` (SHA-256 of metadata) for integrity. Long-term profile enrichment is mirrored to Neo4j via the existing ledger replication path; client metadata may set `mirror_neo4j: true` on concierge events.
+
+### DecisionType additions (Premium Concierge)
+
+| Value | When logged |
+|-------|-------------|
+| `CONCIERGE_ADD_TO_CART` | Weekly plan “Add to Cart” bridge to smart list + cart |
+| `CONCIERGE_CLIP_STEP` | Each store step in link-by-link coupon tour |
+| `CONCIERGE_LIST_STOCK_SWAP` | User accepts a Snippd replacement on My List |
+| `CONCIERGE_CHECKOUT_VIEW` | User opens transparent checkout breakdown |
+| `STASH_INSIGHT_VIEW` | Receipt verified screen computes planned vs unplanned |
+| `UNPLANNED_ITEM_OPT_IN` | User opts an unplanned line into future weekly plans (`profiles.preferences.concierge_opt_in_items`) |
+
+### Usage
+
+```typescript
+import { AgenticLedger, DecisionType } from './agenticLedger';
+
+await AgenticLedger.log({
+  decision_type: DecisionType.CONCIERGE_CHECKOUT_VIEW,
+  actor: 'CheckoutBreakdownScreen',
+  result: 'approved',
+  metadata: { register_cents: 12345, mirror_neo4j: true },
+});
+```
+
+---
+
+## Slack Policy Notifier
+
+**Edge Function:** `supabase/functions/slack-notify/index.ts`
+**Trigger:** pg_cron job `snippd-slack-policy-notify` — every 5 minutes
+**Purpose:** Monitors `retailer_policy_change_log` for unnotified rows and posts a formatted Slack Block Kit message to the `#engineering` channel (or whichever channel the webhook targets).
+
+### Flow
+
+1. pg_cron fires `net.http_post` to `/functions/v1/slack-notify` every 5 minutes
+2. Function reads `snippd_integrations` for key `slack_policy_changes`
+3. If `enabled = false` or `value = NULL` → returns `{ skipped: true }` cleanly
+4. Queries `retailer_policy_change_log WHERE notified_at IS NULL` (up to 20 rows)
+5. Builds a Slack Block Kit payload grouped by table; UPDATE rows show field-level diffs
+6. POSTs to the Slack webhook URL
+7. Marks all posted rows `notified_at = now()`
+
+### What triggers a notification
+
+| Source table | Operations watched |
+|---|---|
+| `retailer_coupon_parameters` | INSERT, UPDATE, DELETE |
+| `retailer_rules` | INSERT, UPDATE, DELETE |
+
+### Configuration
+
+The webhook URL is stored in `snippd_integrations` and is **not** hardcoded. To configure:
+
+```bash
+bash scripts/setup-slack-webhook.sh "https://hooks.slack.com/services/..."
+```
+
+The script validates the URL, sends a test message, and seeds it into the database. See [scripts/setup-slack-webhook.sh](../scripts/setup-slack-webhook.sh) for the full Slack app setup guide.
+
+### Environment variables required
+
+| Variable | Source |
+|---|---|
+| `SUPABASE_URL` | Auto-injected by Supabase runtime |
+| `SUPABASE_SERVICE_ROLE_KEY` | Auto-injected by Supabase runtime |
+| `CRON_SECRET` | Set in Supabase project secrets |

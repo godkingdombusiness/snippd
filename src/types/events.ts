@@ -58,7 +58,13 @@ export type EventName =
   // Wealth / alerts
   | 'WEALTH_SNAPSHOT_VIEWED'
   | 'SMART_ALERT_SHOWN'
-  | 'SMART_ALERT_DISMISSED';
+  | 'SMART_ALERT_DISMISSED'
+  // Lifecycle manual learning hooks
+  | 'MEAL_SELECTED'
+  | 'RECIPE_SAVED'
+  | 'QUANTITY_ADJUSTED'
+  | 'SUBSTITUTION_ACCEPTED'
+  | 'SURPLUS_ACTION_VIEWED';
 
 // ============================================================
 // EVENT PAYLOADS

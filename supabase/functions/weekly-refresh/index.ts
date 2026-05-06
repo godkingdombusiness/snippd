@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
   const cronHeader = req.headers.get('x-cron-secret') ?? '';
   const authHeader  = req.headers.get('authorization') ?? '';
   const isCron      = cronSecret && cronHeader === cronSecret;
-  const isUser      = authHeader.startsWith('Bearer ');
+  const isUser      = authHeader.toLowerCase().startsWith('bearer ');
 
   if (!isCron && !isUser) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {

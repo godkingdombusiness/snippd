@@ -31,9 +31,14 @@ const json = (body: unknown, status = 200) =>
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 
-const MAX_JOBS      = 3;
-const MAX_ATTEMPTS  = 3;
-const GEMINI_MODEL  = 'gemini-2.5-flash';
+// Process 1 job per invocation — keeps well under the 150s Edge Function timeout.
+// The cron runs every 5 min; MAX_ATTEMPTS=24 means a job retries for up to 2 hours
+// before being marked failed, surviving typical Gemini demand spikes.
+const MAX_JOBS      = 1;
+const MAX_ATTEMPTS  = 24;
+// Only gemini-2.5-flash is available on this API key.
+// Fallback handled by cron retries (every 5 min) not model switching.
+const GEMINI_MODELS = ['gemini-2.5-flash'];
 
 // ── Gemini Vision ─────────────────────────────────────────────
 
@@ -147,52 +152,130 @@ async function callGemini(
   geminiKey: string,
   prompt: string,
 ): Promise<string> {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiKey}`;
-  const mediaPart = pdfPart.type === 'inline'
-    ? { inline_data: { mime_type: 'application/pdf', data: pdfPart.base64 } }
-    : { file_data:   { mime_type: 'application/pdf', file_uri: pdfPart.uri } };
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [ { text: prompt }, mediaPart ] }],
-      // Disable thinking for structured extraction (thinking tokens use quota and split parts)
-      generationConfig: { temperature: 0.1, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } },
-    }),
-  });
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
-  // deno-lint-ignore no-explicit-any
-  const data = await res.json() as any;
-  const parts: Array<{ text?: string; thought?: boolean }> =
-    data?.candidates?.[0]?.content?.parts ?? [];
-  // Collect all non-thinking text parts (gemini-2.5 returns thinking in parts with thought:true)
-  const textParts = parts.filter(p => !p.thought).map(p => p.text ?? '').join('');
-  return textParts || parts.map(p => p.text ?? '').join('') || '[]';
+  let lastErr = '';
+  for (const model of GEMINI_MODELS) {
+    // 2.5-flash supports thinkingConfig; older models don't — omit it for those
+    const is25 = model.startsWith('gemini-2.5');
+    const generationConfig = is25
+      ? { temperature: 0.1, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }
+      : { temperature: 0.1, maxOutputTokens: 8192 };
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+    const mediaPart = pdfPart.type === 'inline'
+      ? { inline_data: { mime_type: 'application/pdf', data: pdfPart.base64 } }
+      : { file_data:   { mime_type: 'application/pdf', file_uri: pdfPart.uri } };
+
+    // Exponential backoff on 503: 5s → 15s → 30s within this invocation.
+    // Keeps total extra wait under 55s — well within the 150s Edge Function limit.
+    // If all retries are exhausted, the 5-min cron picks up the job again.
+    const BACKOFF_MS = [5_000, 15_000, 30_000];
+    let modelErr = '';
+    for (let attempt = 0; attempt <= BACKOFF_MS.length; attempt++) {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [ { text: prompt }, mediaPart ] }],
+          generationConfig,
+        }),
+      });
+
+      // 404 = model not available on this API key — skip immediately
+      if (res.status === 404) {
+        lastErr = `Gemini ${model} 404 (model not available on this key)`;
+        console.warn(`[run-ingestion-worker] ${model} returned 404, skipping`);
+        break; // try next model
+      }
+
+      // 503 = overloaded / rate limited — back off and retry within this invocation
+      if (res.status === 503) {
+        const errText = await res.text();
+        if (attempt < BACKOFF_MS.length) {
+          const delay = BACKOFF_MS[attempt];
+          console.warn(`[run-ingestion-worker] ${model} overloaded (503), backing off ${delay}ms (attempt ${attempt + 1}/${BACKOFF_MS.length + 1}): ${errText}`);
+          await new Promise(r => setTimeout(r, delay));
+          continue; // retry same model
+        }
+        // All backoff attempts exhausted — let cron handle the next retry
+        lastErr = `Gemini ${model} 503 after ${BACKOFF_MS.length + 1} attempts: ${errText}`;
+        console.warn(`[run-ingestion-worker] ${model} still overloaded after all backoff attempts`);
+        break; // try next model
+      }
+
+      if (!res.ok) throw new Error(`Gemini ${model} ${res.status}: ${await res.text()}`);
+
+      // deno-lint-ignore no-explicit-any
+      const data = await res.json() as any;
+      const parts: Array<{ text?: string; thought?: boolean }> =
+        data?.candidates?.[0]?.content?.parts ?? [];
+      // Collect all non-thinking text parts (gemini-2.5 returns thinking in parts with thought:true)
+      const textParts = parts.filter(p => !p.thought).map(p => p.text ?? '').join('');
+      return textParts || parts.map(p => p.text ?? '').join('') || '[]';
+    }
+    lastErr = modelErr || lastErr;
+  }
+  throw new Error(`All Gemini models unavailable. Last error: ${lastErr}`);
 }
 
 function tryParseDeals(text: string): RawDeal[] | null {
+  // Strip markdown code fences
+  const stripped = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+
+  // Attempt 1: parse the whole string as-is
   try {
-    const cleaned = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-    const parsed = JSON.parse(cleaned);
-    return Array.isArray(parsed) ? (parsed as RawDeal[]) : null;
-  } catch {
-    return null;
+    const parsed = JSON.parse(stripped);
+    if (Array.isArray(parsed)) return parsed as RawDeal[];
+    // Sometimes models wrap in { "deals": [...] }
+    if (parsed && Array.isArray(parsed.deals)) return parsed.deals as RawDeal[];
+  } catch { /* fall through */ }
+
+  // Attempt 2: extract the first [...] block — handles trailing "Note: ..." text
+  // that gemini-1.5-pro commonly appends after the JSON array
+  const start = stripped.indexOf('[');
+  const end   = stripped.lastIndexOf(']');
+  if (start !== -1 && end > start) {
+    try {
+      const sliced = stripped.slice(start, end + 1);
+      const parsed = JSON.parse(sliced);
+      if (Array.isArray(parsed)) return parsed as RawDeal[];
+    } catch { /* fall through */ }
   }
+
+  return null;
 }
 
 const LARGE_PDF_THRESHOLD = 3 * 1024 * 1024; // 3 MB — above this, use Gemini Files API
 
+// extractDeals returns the deals AND the file URI used (if any), so the caller
+// can cache it in ingestion_jobs.gemini_file_uri for future retry invocations.
+// On retry, pass the cached URI in existingFileUri to skip the re-upload.
 async function extractDeals(
   pdfBytes: Uint8Array,
   geminiKey: string,
   db: ReturnType<typeof createClient>,
   retailerKey: string,
+  jobId: string,
+  existingFileUri?: string | null,
 ): Promise<RawDeal[]> {
-  // For large PDFs use Gemini Files API; for small ones use inline base64
+  // For large PDFs use Gemini Files API; for small ones use inline base64.
+  // On retries: if we already uploaded this PDF, reuse the cached file URI —
+  // the Files API keeps files for 48h so we won't re-upload unless the URI is stale.
   let pdfPart: { type: 'inline'; base64: string } | { type: 'file'; uri: string };
-  if (pdfBytes.byteLength > LARGE_PDF_THRESHOLD) {
+  if (existingFileUri) {
+    // Reuse previously uploaded file — skip the download+upload cost
+    pdfPart = { type: 'file', uri: existingFileUri };
+    console.log(`[run-ingestion-worker] Reusing cached Gemini file URI for job ${jobId}`);
+  } else if (pdfBytes.byteLength > LARGE_PDF_THRESHOLD) {
     const fileUri = await uploadToGeminiFileApi(pdfBytes, geminiKey);
     pdfPart = { type: 'file', uri: fileUri };
+    // Persist the URI so retries skip re-upload (fire-and-forget, never blocks)
+    (async () => {
+      try {
+        await db.from('ingestion_jobs').update({ gemini_file_uri: fileUri }).eq('id', jobId);
+      } catch (err) {
+        console.warn(`[run-ingestion-worker] Could not cache gemini_file_uri: ${(err as Error).message}`);
+      }
+    })();
   } else {
     pdfPart = { type: 'inline', base64: uint8ToBase64(pdfBytes) };
   }
@@ -208,23 +291,35 @@ async function extractDeals(
   const filtered = deals.filter(d => (d.confidence ?? 0.75) > 0.7);
 
   // Log raw Gemini response preview for debugging (first 800 chars)
-  db.from('ingestion_run_log').insert({
-    source_key:   'run-ingestion-worker',
-    retailer_key: retailerKey,
-    stage:        'gemini_raw',
-    status:       'debug',
-    message:      rawText.slice(0, 800),
-    metadata:     { response_length: rawText.length, pdfPart_type: pdfPart.type },
-  }).then(() => {}).catch(() => {});
+  (async () => {
+    try {
+      await db.from('ingestion_run_log').insert({
+        source_key:   'run-ingestion-worker',
+        retailer_key: retailerKey,
+        stage:        'gemini_raw',
+        status:       'debug',
+        message:      rawText.slice(0, 800),
+        metadata:     { response_length: rawText.length, pdfPart_type: pdfPart.type },
+      });
+    } catch (err) {
+      console.error('[run-ingestion-worker] gemini_raw log write failed:', err);
+    }
+  })();
 
-  db.from('ingestion_run_log').insert({
-    source_key:   'run-ingestion-worker',
-    retailer_key: retailerKey,
-    stage:        'gemini_parse',
-    status:       filtered.length > 0 ? 'ok' : 'warn',
-    message:      `Extracted ${filtered.length} deals (raw: ${deals.length})`,
-    metadata:     { raw_count: deals.length, filtered_count: filtered.length },
-  }).then(() => {}).catch(() => {});
+  (async () => {
+    try {
+      await db.from('ingestion_run_log').insert({
+        source_key:   'run-ingestion-worker',
+        retailer_key: retailerKey,
+        stage:        'gemini_parse',
+        status:       filtered.length > 0 ? 'ok' : 'warn',
+        message:      `Extracted ${filtered.length} deals (raw: ${deals.length})`,
+        metadata:     { raw_count: deals.length, filtered_count: filtered.length },
+      });
+    } catch (err) {
+      console.error('[run-ingestion-worker] gemini_parse log write failed:', err);
+    }
+  })();
 
   return filtered;
 }
@@ -331,6 +426,7 @@ interface IngestionJob {
   week_of: string;
   storage_path: string;
   attempts: number;
+  gemini_file_uri?: string | null;
 }
 
 async function processJob(
@@ -359,8 +455,9 @@ async function processJob(
   const arrayBuffer = await fileBlob.arrayBuffer();
   const pdfBytes = new Uint8Array(arrayBuffer);
 
-  // Extract deals via Gemini Vision (large files use Files API, small files use inline base64)
-  const rawDeals = await extractDeals(pdfBytes, geminiKey, db, job.retailer_key);
+  // Extract deals via Gemini Vision.
+  // Pass cached file URI if available — skips re-upload on retry invocations.
+  const rawDeals = await extractDeals(pdfBytes, geminiKey, db, job.retailer_key, job.id, job.gemini_file_uri);
 
   if (rawDeals.length === 0) {
     await db.from('ingestion_jobs').update({
@@ -471,9 +568,12 @@ async function processJob(
         return overlap >= 2;
       }) ?? null;
 
+      // Hoist couponSavingsCents so it's available for stack_candidates upsert below
+      let couponSavingsCents = 0;
+
       if (matchedCoupon) {
         hasCoupon = true;
-        const couponSavingsCents = matchedCoupon.discount_cents > 0
+        couponSavingsCents = matchedCoupon.discount_cents > 0
           ? matchedCoupon.discount_cents
           : regularCents && matchedCoupon.discount_pct
             ? Math.round(regularCents * matchedCoupon.discount_pct) : 0;
@@ -494,11 +594,19 @@ async function processJob(
       const stackRankScore = computeStackRankScore(
         { ...deal, confidence: deal.confidence_score }, hasCoupon);
 
+      const dealCategory = deal.category ?? 'grocery';
+      const mealType = (() => {
+        if (['meat', 'seafood', 'produce'].includes(dealCategory)) return 'dinner';
+        if (['dairy', 'breakfast', 'bakery'].includes(dealCategory)) return 'breakfast';
+        if (dealCategory === 'deli') return 'lunch';
+        return 'mixed';
+      })();
+
       const stackItem = {
         id: sourceId, name: deal.product_name,
         regularPriceCents: regularCents ?? 0,
         quantity: deal.quantity_required ?? 1,
-        category: deal.category ?? '', brand: deal.brand ?? '',
+        category: dealCategory, brand: deal.brand ?? '',
         offers: [
           {
             id: `${sourceId}-offer`, offerType,
@@ -520,11 +628,27 @@ async function processJob(
       };
 
       await db.from('stack_candidates').upsert({
+        // existing fields
         retailer_key: job.retailer_key, week_of: job.week_of,
         normalized_key: normalizedKey, dedupe_key: dedupeKey,
-        primary_category: deal.category ?? '', primary_brand: deal.brand ?? '',
+        primary_category: dealCategory, primary_brand: deal.brand ?? '',
         stack_rank_score: stackRankScore, items: [stackItem],
         savings_pct: pct, has_coupon: hasCoupon, ingestion_id: job.id,
+        // fields required by NOT NULL schema constraints
+        item_name:     deal.product_name,
+        retailer:      job.retailer_key,
+        category:      dealCategory,
+        meal_type:     mealType,
+        is_bogo:       deal.is_bogo ?? false,
+        base_price:    regularCents != null ? regularCents / 100.0
+                         : saleCents != null ? saleCents / 100.0 : 0,
+        sale_savings:  regularCents != null && saleCents != null
+                         ? Math.max(0, (regularCents - saleCents) / 100.0) : 0,
+        coupon_savings: couponSavingsCents / 100.0,
+        dietary_tags:  JSON.stringify(deal.dietary_flags ?? []),
+        allergen_tags: '[]',
+        valid_to:      expiresOn,
+        is_active:     true,
       }, { onConflict: 'dedupe_key' });
 
       candidateCount++;
@@ -539,17 +663,55 @@ async function processJob(
     .eq('ingestion_id', job.id).eq('status', 'staged');
 
   // Write publish log
-  await db.from('flyer_publish_log').insert({
-    ingestion_id: job.id, retailer_key: job.retailer_key, week_of: job.week_of,
-    deals_staged: rawDeals.length, deals_published: stagingRows.length,
-    coupons_matched: stagingRows.filter((_, i) => i < candidateCount).length,
-    candidates_written: candidateCount, published_at: new Date().toISOString(),
-  }).catch(() => {});
+  try {
+    await db.from('flyer_publish_log').insert({
+      ingestion_id: job.id, retailer_key: job.retailer_key, week_of: job.week_of,
+      deals_staged: rawDeals.length, deals_published: stagingRows.length,
+      coupons_matched: stagingRows.filter((_, i) => i < candidateCount).length,
+      candidates_written: candidateCount, published_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[run-ingestion-worker] flyer_publish_log insert failed:', err);
+  }
 
   // Mark job parsed
   await db.from('ingestion_jobs').update({
     status: 'parsed', parsed_at: new Date().toISOString(), deal_count: rawDeals.length,
   }).eq('id', job.id);
+
+  // Trigger deal scoring on all newly published offers (fire-and-forget)
+  // This runs validate_offer() + publish_gate() on every offer from this ingestion
+  (async () => {
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+      const ingestKey   = Deno.env.get('INGEST_API_KEY') ?? '';
+      if (!supabaseUrl || !ingestKey) return;
+
+      // Fetch offer IDs created by this ingestion job
+      const { data: newOffers } = await db
+        .from('offer_sources')
+        .select('id')
+        .eq('ingestion_id', job.id)
+        .eq('validation_status', 'pending');
+
+      if (!newOffers || newOffers.length === 0) return;
+
+      const offerIds = newOffers.map((o: { id: string }) => o.id);
+      console.log(`[run-ingestion-worker] Scoring ${offerIds.length} new offers via deal-validator/batch`);
+
+      await fetch(`${supabaseUrl}/functions/v1/deal-validator`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-ingest-key': ingestKey,
+        },
+        // Custom body with action: batch handles routing inside deal-validator
+        body: JSON.stringify({ offer_ids: offerIds.slice(0, 100) }),
+      });
+    } catch (err) {
+      console.warn('[run-ingestion-worker] Post-ingestion scoring failed (non-fatal):', (err as Error).message);
+    }
+  })();
 
   return { deals_extracted: rawDeals.length, candidates_written: candidateCount };
 }
@@ -568,16 +730,19 @@ Deno.serve(async (req: Request) => {
   if (!supabaseUrl || !serviceKey) return json({ error: 'Server misconfigured' }, 500);
   if (!geminiKey) return json({ error: 'GEMINI_API_KEY not configured' }, 500);
 
-  // ── Auth: x-cron-secret OR service-role Bearer ────────────
-  const incomingCronSecret = req.headers.get('x-cron-secret') ?? '';
-  const authHeader         = req.headers.get('authorization') ?? '';
+  // ── Auth: x-cron-secret OR x-ingest-key OR Bearer JWT ───────────
+  // The Supabase gateway already verifies Bearer JWTs before the
+  // function is invoked — no need for a redundant key comparison here.
+  const incomingCronSecret  = req.headers.get('x-cron-secret') ?? '';
+  const incomingIngestKey   = req.headers.get('x-ingest-key') ?? '';
+  const authHeader          = req.headers.get('authorization') ?? '';
 
-  const isCronAuth   = cronSecret && incomingCronSecret === cronSecret;
-  const isBearerAuth = authHeader.startsWith('Bearer ');
+  const isCronAuth    = cronSecret && incomingCronSecret === cronSecret;
+  const isIngestKey   = incomingIngestKey && incomingIngestKey === serviceKey;
+  const isBearerAuth  = authHeader.toLowerCase().startsWith('bearer '); // gateway already verified
 
-  if (!isCronAuth && !isBearerAuth) return json({ error: 'Unauthorized' }, 401);
-  if (!isCronAuth && isBearerAuth) {
-    if (authHeader.slice(7) !== serviceKey) return json({ error: 'Forbidden' }, 403);
+  if (!isCronAuth && !isIngestKey && !isBearerAuth) {
+    return json({ error: 'Unauthorized' }, 401);
   }
 
   const db    = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
@@ -587,7 +752,7 @@ Deno.serve(async (req: Request) => {
     // Fetch queued jobs
     const { data: jobs, error: jobsErr } = await db
       .from('ingestion_jobs')
-      .select('id, retailer_key, week_of, storage_path, attempts')
+      .select('id, retailer_key, week_of, storage_path, attempts, gemini_file_uri')
       .eq('status', 'queued')
       .lt('attempts', MAX_ATTEMPTS)
       .order('created_at', { ascending: true })
@@ -608,14 +773,20 @@ Deno.serve(async (req: Request) => {
         const result = await processJob(job, db, geminiKey);
         results.push({ job_id: job.id, status: 'parsed', ...result });
 
-        db.from('ingestion_run_log').insert({
-          source_key:   'run-ingestion-worker',
-          retailer_key: job.retailer_key,
-          stage:        'job_complete',
-          status:       'ok',
-          message:      `Job ${job.id}: ${result.deals_extracted} deals, ${result.candidates_written} candidates`,
-          metadata:     { job_id: job.id, ...result },
-        }).then(() => {}).catch(() => {});
+        (async () => {
+          try {
+            await db.from('ingestion_run_log').insert({
+              source_key:   'run-ingestion-worker',
+              retailer_key: job.retailer_key,
+              stage:        'job_complete',
+              status:       'ok',
+              message:      `Job ${job.id}: ${result.deals_extracted} deals, ${result.candidates_written} candidates`,
+              metadata:     { job_id: job.id, ...result },
+            });
+          } catch (err) {
+            console.error('[run-ingestion-worker] job_complete log write failed:', err);
+          }
+        })();
       } catch (err) {
         const newAttempts = job.attempts + 1;
         const isFinal = newAttempts >= MAX_ATTEMPTS;
@@ -627,14 +798,20 @@ Deno.serve(async (req: Request) => {
           attempts:      newAttempts,
         }).eq('id', job.id);
 
-        db.from('ingestion_run_log').insert({
-          source_key:   'run-ingestion-worker',
-          retailer_key: job.retailer_key,
-          stage:        'job_error',
-          status:       isFinal ? 'failed' : 'retry',
-          message:      errMsg,
-          metadata:     { job_id: job.id, attempt: newAttempts, final: isFinal },
-        }).then(() => {}).catch(() => {});
+        (async () => {
+          try {
+            await db.from('ingestion_run_log').insert({
+              source_key:   'run-ingestion-worker',
+              retailer_key: job.retailer_key,
+              stage:        'job_error',
+              status:       isFinal ? 'failed' : 'retry',
+              message:      errMsg,
+              metadata:     { job_id: job.id, attempt: newAttempts, final: isFinal },
+            });
+          } catch (err) {
+            console.error('[run-ingestion-worker] job_error log write failed:', err);
+          }
+        })();
 
         results.push({ job_id: job.id, status: isFinal ? 'failed' : 'retrying', error: errMsg });
       }

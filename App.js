@@ -1,7 +1,60 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, Component } from 'react';
 import {
-  StyleSheet, View, Platform, Text, Image, TouchableOpacity,
+  StyleSheet, View, Platform, Text, Image, TouchableOpacity, ScrollView,
 } from 'react-native';
+
+// ── Global Error Boundary — catches render crashes and shows the real error ──
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null, windowError: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidMount() {
+    // Catch non-React errors on web (module-level throws, unhandled promises)
+    if (typeof window !== 'undefined') {
+      this._onError = (event) => {
+        this.setState({ windowError: event.message + '\n' + (event.filename ?? '') + ':' + event.lineno });
+      };
+      this._onUnhandled = (event) => {
+        this.setState({ windowError: 'Unhandled promise: ' + (event.reason?.message ?? String(event.reason)) });
+      };
+      window.addEventListener('error', this._onError);
+      window.addEventListener('unhandledrejection', this._onUnhandled);
+    }
+  }
+  componentWillUnmount() {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('error', this._onError);
+      window.removeEventListener('unhandledrejection', this._onUnhandled);
+    }
+  }
+  render() {
+    const err = this.state.error || this.state.windowError;
+    if (err) {
+      const msg = typeof err === 'string' ? err : (err?.message ?? String(err));
+      const stack = typeof err === 'string' ? '' : (err?.stack ?? '');
+      return (
+        <View style={{ flex: 1, backgroundColor: '#fff', padding: 24, paddingTop: 60 }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#B91C1C', marginBottom: 12 }}>
+            App Crash — Real Error:
+          </Text>
+          <ScrollView>
+            <Text selectable style={{ fontSize: 13, color: '#1A1A1A', fontFamily: 'monospace' }}>
+              {msg}
+            </Text>
+            <Text style={{ marginTop: 16, fontSize: 11, color: '#64748B' }}>
+              {stack}
+            </Text>
+          </ScrollView>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -9,16 +62,22 @@ import { navigationRef, resetToScreen } from './lib/navigationRef';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import { useFonts } from 'expo-font';
-import { Feather } from '@expo/vector-icons'; 
+import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './lib/supabase';
 import { tracker } from './src/lib/eventTracker';
+import { HealthMonitor } from './lib/healthMonitor';
+import { filterEnabledItems } from './src/features/registry';
+import { renderChefStashScreen } from './src/features/chefStash';
+import { createStudioStack, studioTab } from './src/features/studio';
+import { renderOmniStoreComparisonScreen } from './src/features/omniStoreComparison';
 
 // ── TAB SCREENS ──────────────────────────────────────────────────────────────
 import HomeScreen from './screens/HomeScreen';
 import DiscoverScreen from './screens/DiscoverScreen';
 import CartScreen from './screens/CartScreen';
-import StudioScreen from './screens/StudioScreen';
 import ProfileScreen from './screens/ProfileScreen';
 
 // ── STACK SCREENS ────────────────────────────────────────────────────────────
@@ -31,7 +90,6 @@ import KitchenScreen from './screens/KitchenScreen';
 import ReceiptUploadScreen from './screens/ReceiptUploadScreen';
 import TripResultsScreen from './screens/TripResultsScreen';
 import ShoppingPlanScreen from './screens/ShoppingPlanScreen';
-import ChefStashScreen from './screens/ChefStashScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import PreferredStoresScreen from './screens/PreferredStoresScreen';
 import BudgetPreferencesScreen from './screens/BudgetPreferencesScreen';
@@ -54,6 +112,7 @@ import BudgetDashboardScreen from './screens/BudgetDashboardScreen';
 import CategoryInsightScreen from './screens/CategoryInsightScreen';
 import { useSessionGuard } from './lib/sessionGuard';
 import { TrialProvider, useTrialStatus } from './lib/trialContext';
+import { BudgetProvider } from './lib/BudgetContext';
 import TrialGateScreen from './screens/TrialGateScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import AdminCircularUploadScreen from './screens/AdminCircularUploadScreen';
@@ -61,6 +120,20 @@ import AdminAnalyticsDashboardScreen from './screens/AdminAnalyticsDashboardScre
 import WeeklyPlanScreen from './screens/WeeklyPlanScreen';
 import WeeklyPlanPersonalizationScreen from './screens/WeeklyPlanPersonalizationScreen';
 import NutritionProfileScreen from './screens/NutritionProfileScreen';
+import RecipeDetailScreen from './screens/RecipeDetailScreen';
+import MyListScreen from './screens/MyListScreen';
+import CouponClippingScreen from './screens/CouponClippingScreen';
+import CheckoutBreakdownScreen from './screens/CheckoutBreakdownScreen';
+import ReceiptVerifiedScreen from './screens/ReceiptVerifiedScreen';
+import SnippdProScreen from './screens/SnippdProScreen';
+import TermsOfUseScreen from './screens/TermsOfUseScreen';
+import OnboardingConciergeScreen from './screens/OnboardingConciergeScreen';
+import SplashIntroScreen from './screens/SplashIntroScreen';
+import WaitlistForecastScreen from './screens/WaitlistForecastScreen';
+import LogicScanScreen from './screens/LogicScanScreen';
+import WaitlistScreen from './screens/WaitlistScreen';
+import FounderDashboardScreen from './screens/FounderDashboardScreen';
+import BarcodeScannerScreen from './screens/BarcodeScannerScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -70,8 +143,8 @@ const HomeStackNav     = createNativeStackNavigator();
 const DiscoverStackNav = createNativeStackNavigator();
 const PlanStackNav     = createNativeStackNavigator();
 const CartStackNav     = createNativeStackNavigator();
-const StudioStackNav   = createNativeStackNavigator();
 const ProfileStackNav  = createNativeStackNavigator();
+const StudioStack      = createStudioStack(createNativeStackNavigator);
 
 const GREEN = '#0C9E54';
 const DARK_NAVY = '#04361D'; 
@@ -106,18 +179,20 @@ function HomeStack() {
   return (
     <HomeStackNav.Navigator screenOptions={{ headerShown: false }}>
       <HomeStackNav.Screen name="Home"               component={HomeScreen} />
-      <HomeStackNav.Screen name="ChefStash"          component={ChefStashScreen} />
+      {renderChefStashScreen(HomeStackNav)}
       <HomeStackNav.Screen name="Kitchen"            component={KitchenScreen} />
       <HomeStackNav.Screen name="Pantry"             component={PantryScreen} />
       <HomeStackNav.Screen name="List"               component={ListScreen} />
       <HomeStackNav.Screen name="ShoppingPlan"       component={ShoppingPlanScreen} />
       <HomeStackNav.Screen name="TripResults"        component={TripResultsScreen} />
       <HomeStackNav.Screen name="ReceiptUpload"      component={ReceiptUploadScreen} />
+      <HomeStackNav.Screen name="VerifyReceipt"      component={ReceiptVerifiedScreen} />
       <HomeStackNav.Screen name="Wins"               component={WinsScreen} />
       <HomeStackNav.Screen name="FamilySharing"       component={FamilySharingScreen} />
       <HomeStackNav.Screen name="BudgetPreferences"  component={BudgetPreferencesScreen} />
       <HomeStackNav.Screen name="BudgetDashboard"    component={BudgetDashboardScreen} />
       <HomeStackNav.Screen name="CategoryInsight"    component={CategoryInsightScreen} />
+      <HomeStackNav.Screen name="BarcodeScanner"     component={BarcodeScannerScreen} />
       <HomeStackNav.Screen name="PrivacyPolicy"      component={PrivacyPolicyScreen} />
     </HomeStackNav.Navigator>
   );
@@ -131,7 +206,8 @@ function DiscoverStack() {
       <DiscoverStackNav.Screen name="StackDetail" component={StackDetailScreen} />
       <DiscoverStackNav.Screen name="Catalog"     component={CatalogScreen} />
       <DiscoverStackNav.Screen name="Cart"        component={CartScreen} options={{ presentation: 'modal' }} />
-      <DiscoverStackNav.Screen name="ChefStash"   component={ChefStashScreen} />
+      {renderChefStashScreen(DiscoverStackNav)}
+      {renderOmniStoreComparisonScreen(DiscoverStackNav)}
     </DiscoverStackNav.Navigator>
   );
 }
@@ -143,6 +219,7 @@ function PlanStack() {
       <PlanStackNav.Screen name="WeeklyPlanPersonalization" component={WeeklyPlanPersonalizationScreen} />
       <PlanStackNav.Screen name="WeeklyPlan"                component={WeeklyPlanScreen} />
       <PlanStackNav.Screen name="NutritionProfile"          component={NutritionProfileScreen} />
+      <PlanStackNav.Screen name="RecipeDetail"              component={RecipeDetailScreen} />
     </PlanStackNav.Navigator>
   );
 }
@@ -156,6 +233,10 @@ function CartStack() {
       <CartStackNav.Screen name="ShoppingPlan"      component={ShoppingPlanScreen} />
       <CartStackNav.Screen name="TripResults"       component={TripResultsScreen} />
       <CartStackNav.Screen name="List"              component={ListScreen} />
+      <CartStackNav.Screen name="MyList"            component={MyListScreen} />
+      <CartStackNav.Screen name="CouponClipping"    component={CouponClippingScreen} />
+      <CartStackNav.Screen name="CheckoutBreakdown" component={CheckoutBreakdownScreen} />
+      <CartStackNav.Screen name="VerifyReceipt"     component={ReceiptVerifiedScreen} />
       <CartStackNav.Screen name="CartOptions"       component={CartOptionsScreen} />
       <CartStackNav.Screen name="CartOptionDetail"  component={CartOptionDetailScreen} />
       <CartStackNav.Screen name="WealthMomentum"   component={WealthMomentumScreen} />
@@ -164,15 +245,6 @@ function CartStack() {
 }
 
 // ── STUDIO STACK ─────────────────────────────────────────────────────────────
-function StudioStack() {
-  return (
-    <StudioStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <StudioStackNav.Screen name="Studio"       component={StudioScreen} />
-      <StudioStackNav.Screen name="ReceiptUpload" component={ReceiptUploadScreen} />
-    </StudioStackNav.Navigator>
-  );
-}
-
 // ── PROFILE STACK ────────────────────────────────────────────────────────────
 function ProfileStack() {
   return (
@@ -191,10 +263,13 @@ function ProfileStack() {
       <ProfileStackNav.Screen name="TestAgent"         component={AppTestAgent} />
       <ProfileStackNav.Screen name="TripResults"       component={TripResultsScreen} />
       <ProfileStackNav.Screen name="ReceiptUpload"     component={ReceiptUploadScreen} />
+      <ProfileStackNav.Screen name="VerifyReceipt"     component={ReceiptVerifiedScreen} />
       <ProfileStackNav.Screen name="MFASetup"          component={MFASetupScreen} />
       <ProfileStackNav.Screen name="WealthMomentum"   component={WealthMomentumScreen} />
       <ProfileStackNav.Screen name="AdminGraph"           component={AdminGraphScreen} />
       <ProfileStackNav.Screen name="PrivacyPolicy"        component={PrivacyPolicyScreen} />
+      <ProfileStackNav.Screen name="TermsOfUse"           component={TermsOfUseScreen} />
+      <ProfileStackNav.Screen name="SnippdPro"            component={SnippdProScreen} options={{ presentation: 'modal' }} />
       <ProfileStackNav.Screen name="AdminCircularUpload"  component={AdminCircularUploadScreen} />
       <ProfileStackNav.Screen name="AdminAnalytics"       component={AdminAnalyticsDashboardScreen} />
       <ProfileStackNav.Screen name="NutritionProfile"     component={NutritionProfileScreen} />
@@ -260,6 +335,15 @@ function TrialBanner() {
 
 // ── TAB NAVIGATOR ────────────────────────────────────────────────────────────
 function MainTabs() {
+  const tabs = filterEnabledItems([
+    { name: 'HomeTab', component: HomeStack, label: 'Home', iconName: 'home' },
+    { name: 'DiscoverTab', component: DiscoverStack, label: 'Explore', iconName: 'compass' },
+    { name: 'PlanTab', component: PlanStack, label: 'Plan', iconName: 'calendar' },
+    { name: 'SnippdTab', component: CartStack, isCart: true },
+    studioTab(StudioStack),
+    { name: 'ProfileTab', component: ProfileStack, label: 'Profile', iconName: 'user' },
+  ]);
+
   return (
     <View style={{ flex: 1 }}>
       <TrialBanner />
@@ -270,75 +354,84 @@ function MainTabs() {
         tabBarShowLabel: false,
       }}
     >
-      <Tab.Screen
-        name="HomeTab"
-        component={HomeStack}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Home" iconName="home" />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="DiscoverTab"
-        component={DiscoverStack}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Explore" iconName="compass" />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="PlanTab"
-        component={PlanStack}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Plan" iconName="calendar" />
-          ),
-        }}
-      />
-
-      <Tab.Screen
-        name="SnippdTab"
-        component={CartStack}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.fabWrap}>
-              <View style={[styles.fabBorder, focused && { borderColor: MINT_POP }]}>
-                <View style={[styles.fab, focused && { backgroundColor: WHITE }]}>
-                  <Image
-                    source={require('./assets/Snippd-White-Cart .png')}
-                    style={[styles.fabLogo, { tintColor: focused ? GREEN : WHITE }]}
-                    resizeMode="contain"
-                  />
+      {tabs.map(tab => (
+        <Tab.Screen
+          key={tab.name}
+          name={tab.name}
+          component={tab.component}
+          options={{
+            tabBarIcon: ({ focused }) => tab.isCart ? (
+              <View style={styles.fabWrap}>
+                <View style={[styles.fabBorder, focused && { borderColor: MINT_POP }]}>
+                  <View style={[styles.fab, focused && { backgroundColor: WHITE }]}>
+                    <Image
+                      source={require('./assets/Snippd-White-Cart .png')}
+                      style={[styles.fabLogo, { tintColor: focused ? GREEN : WHITE }]}
+                      resizeMode="contain"
+                    />
+                  </View>
                 </View>
               </View>
-            </View>
-          ),
-        }}
-      />
-
-      <Tab.Screen
-        name="StudioTab"
-        component={StudioStack}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Studio" iconName="video" />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStack}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Profile" iconName="user" />
-          ),
-        }}
-      />
+            ) : (
+              <TabIcon focused={focused} label={tab.label} iconName={tab.iconName} />
+            ),
+          }}
+        />
+      ))}
     </Tab.Navigator>
     </View>
   );
+}
+
+// ── USER STATUS GATE ─────────────────────────────────────────────────────────
+// Resolves the correct post-auth route based on user_persona.status
+// and the snippd_integrations is_beta_live flag.
+//
+// NEW        → ConciergeOnboarding (start the 7-step wizard)
+// WAITLIST   → Waitlist
+// PAID_BETA  + isBetaLive=false → Waitlist (holding screen)
+// PAID_BETA  + isBetaLive=true  → FounderDashboard
+// LAUNCHED   → MainApp
+async function resolveUserStatus(userId) {
+  try {
+    const [{ data: persona }, { data: betaFlag }] = await Promise.all([
+      supabase
+        .from('user_persona')
+        .select('status, forecast_completed, briefing_completed')
+        .eq('user_id', userId)
+        .single(),
+      supabase.from('snippd_integrations').select('value').eq('key', 'is_beta_live').single(),
+    ]);
+
+    const status             = persona?.status;
+    const forecastCompleted  = persona?.forecast_completed  ?? false;
+    const briefingCompleted  = persona?.briefing_completed  ?? false;
+    const isBetaLive         = betaFlag?.value === 'true';
+
+    // New user or no persona row → start the Forecast (waitlist capture)
+    if (!status || status === 'new') {
+      return forecastCompleted ? 'Waitlist' : 'WaitlistForecast';
+    }
+
+    // On waitlist → holding screen
+    if (status === 'waitlist') return 'Waitlist';
+
+    // Paid beta → Deep Brief if not done, otherwise dashboard
+    if (status === 'paid_beta') {
+      if (!isBetaLive) return 'Waitlist';
+      return briefingCompleted ? 'FounderDashboard' : 'ConciergeOnboarding';
+    }
+
+    // Launched → Deep Brief if not done, otherwise main app
+    if (status === 'launched') {
+      return briefingCompleted ? 'MainApp' : 'ConciergeOnboarding';
+    }
+
+    return 'MainApp';
+  } catch (_) {
+    // Table missing or query error → fall through to MainApp
+    return 'MainApp';
+  }
 }
 
 function RootNavigator() {
@@ -355,18 +448,74 @@ function RootNavigator() {
   });
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Absolute safety net: if the whole startup hasn't finished in 6 seconds,
+    // force-show the sign-in screen so the user never sees a blank page.
+    const safetyTimer = setTimeout(() => {
+      setInitialRoute('Auth');
+      setLoading(false);
+    }, 6000);
+
+    // ── Self-Healing Startup Sequence ────────────────────────────────────────
+    async function startup() {
+      // Give the health checks a maximum of 4 seconds — if they hang (e.g. on
+      // web where some native APIs are stubs), we proceed without them rather
+      // than leaving the app blank forever.
+      const healthPromise = Promise.race([
+        HealthMonitor.runStartupChecks(),
+        new Promise(resolve =>
+          setTimeout(() => resolve({ forcedSignOut: false, sessionId: null }), 4000)
+        ),
+      ]);
+
+      let session = null;
+      try {
+        const { data } = await supabase.auth.getSession();
+        session = data?.session ?? null;
+      } catch {
+        // getSession failed — proceed to Auth
+      }
+
+      // Await health result (already resolved or timed out)
+      const health = await healthPromise;
+
+      // If health monitor cleared a broken session, go straight to Auth
+      if (health.forcedSignOut) {
+        setInitialRoute('Auth');
+        setLoading(false);
+        return;
+      }
+
       if (session?.user) {
-        setInitialRoute('MainApp');
         tracker.setAccessToken(session.access_token);
         tracker.setDefaultUserId(session.user.id);
         tracker.setDefaultSessionId(session.access_token);
         tracker.trackAppOpened({ user_id: session.user.id, session_id: session.access_token });
+
+        // Phase 4: log persona health check (no redirect — resolveUserStatus owns routing)
+        await HealthMonitor.runAuthChecks(
+          session.user.id,
+          health.sessionId
+        );
+
+        const route = await resolveUserStatus(session.user.id);
+        setInitialRoute(route);
       } else {
-        setInitialRoute('Auth');
+        // No session — check if cold visitor has seen the intro slides
+        let introSeen = false;
+        try {
+          introSeen = (await AsyncStorage.getItem('@snippd_intro_seen')) === 'true';
+        } catch (_) {}
+        setInitialRoute(introSeen ? 'Auth' : 'SplashIntro');
       }
       setLoading(false);
-    });
+    }
+
+    startup()
+      .catch(() => {
+        setInitialRoute('Auth');
+        setLoading(false);
+      })
+      .finally(() => clearTimeout(safetyTimer));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -374,6 +523,10 @@ function RootNavigator() {
           tracker.setAccessToken(session.access_token);
           tracker.setDefaultUserId(session.user.id);
           tracker.setDefaultSessionId(session.access_token);
+          resolveUserStatus(session.user.id).then(route => {
+            setInitialRoute(route);
+            resetToScreen(route);
+          });
         }
         if (event === 'SIGNED_OUT') {
           tracker.setAccessToken('');
@@ -384,16 +537,43 @@ function RootNavigator() {
       }
     );
 
-    return () => subscription.unsubscribe();
+    // Deep-link listener — catches the OAuth redirect when the app is already open.
+    // WebBrowser.openAuthSessionAsync handles this on iOS automatically, but the
+    // Android fallback (system browser) fires a Linking event instead.
+    const handleDeepLink = ({ url }) => {
+      if (url && url.includes('auth/callback')) {
+        supabase.auth.exchangeCodeForSession(url).catch(() => {});
+      }
+    };
+    const linkingSub = Linking.addEventListener('url', handleDeepLink);
+    // Handle cold-start case (app was not open when the link fired)
+    Linking.getInitialURL().then(url => {
+      if (url && url.includes('auth/callback')) {
+        supabase.auth.exchangeCodeForSession(url).catch(() => {});
+      }
+    }).catch(() => {});
+
+    return () => {
+      subscription.unsubscribe();
+      linkingSub.remove();
+    };
   }, []);
 
-  const onLayoutRootView = useCallback(async () => {
-    if ((fontsLoaded || fontError) && !loading) {
-      await SplashScreen.hideAsync();
+  useEffect(() => {
+    if (!loading) {
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError, loading]);
 
-  if ((!fontsLoaded && !fontError) || loading) {
+  if (loading) {
+    // On web: show a visible loading state so we know React IS mounting
+    if (Platform.OS === 'web') {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0FBF0' }}>
+          <Text style={{ color: '#1A237E', fontSize: 16 }}>Loading Snippd…</Text>
+        </View>
+      );
+    }
     return null;
   }
 
@@ -403,21 +583,29 @@ function RootNavigator() {
     : initialRoute;
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView} {...sessionHandlers}>
+    <View style={{ flex: 1 }} {...sessionHandlers}>
       <Stack.Navigator
         id="root"
         initialRouteName={resolvedRoute}
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Auth"             component={SignInScreen} />
-        <Stack.Screen name="Onboarding"      component={OnboardingScreen} />
-        <Stack.Screen name="MainApp"         component={MainTabs} />
+        <Stack.Screen name="SplashIntro"           component={SplashIntroScreen} />
+        <Stack.Screen name="Auth"                  component={SignInScreen} />
+        <Stack.Screen name="Onboarding"           component={OnboardingScreen} />
+        <Stack.Screen name="WaitlistForecast"    component={WaitlistForecastScreen} />
+        <Stack.Screen name="ConciergeOnboarding"  component={OnboardingConciergeScreen} />
+        <Stack.Screen name="LogicScan"            component={LogicScanScreen} />
+        <Stack.Screen name="Waitlist"             component={WaitlistScreen} />
+        <Stack.Screen name="FounderDashboard"     component={FounderDashboardScreen} />
+        <Stack.Screen name="MainApp"              component={MainTabs} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
         <Stack.Screen name="TestAgent"       component={AppTestAgent} />
         <Stack.Screen name="MFAVerify"       component={MFAVerifyScreen} />
         <Stack.Screen name="MFASetup"        component={MFASetupScreen} />
         <Stack.Screen name="PrivacyPolicy"   component={PrivacyPolicyScreen} />
         <Stack.Screen name="NutritionProfile" component={NutritionProfileScreen} />
+        <Stack.Screen name="SnippdPro"       component={SnippdProScreen} options={{ presentation: 'modal' }} />
+        <Stack.Screen name="TermsOfUse"      component={TermsOfUseScreen} />
       </Stack.Navigator>
     </View>
   );
@@ -425,15 +613,19 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef}>
-          <TrialProvider>
-            <RootNavigator />
-          </TrialProvider>
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <AppErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <NavigationContainer ref={navigationRef}>
+            <BudgetProvider>
+              <TrialProvider>
+                <RootNavigator />
+              </TrialProvider>
+            </BudgetProvider>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </AppErrorBoundary>
   );
 }
 

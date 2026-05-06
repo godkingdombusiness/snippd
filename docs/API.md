@@ -17,6 +17,82 @@ Two auth methods are supported:
 
 ---
 
+## Deal Intelligence Layer (2026-04-29)
+
+### POST /functions/v1/deal-validator/validate
+Run full validation + confidence scoring on one offer.
+**Auth:** Bearer JWT or x-ingest-key
+```json
+{ "offer_id": "uuid" }
+```
+**Returns:** `{ confidence_score, validation_status, user_badge, reason_codes, is_blocked, needs_review }`
+
+### POST /functions/v1/deal-validator/publish
+Run publish gate on one offer. Auto-publishes if score ≥ 85. Queues review if blocked/needs-review.
+```json
+{ "offer_id": "uuid" }
+```
+
+### POST /functions/v1/deal-validator/feedback
+Submit user deal outcome — feeds back into scoring.
+```json
+{
+  "user_id": "uuid", "offer_id": "uuid",
+  "outcome": "worked|coupon_failed|out_of_stock|wrong_price|substituted|quantity_not_met|exclusion_hit|register_rejected",
+  "actual_cents": 350, "predicted_cents": 400,
+  "store_id": "publix_32828", "zip_code": "32828", "state": "FL"
+}
+```
+
+### POST /functions/v1/deal-validator/market
+Get market readiness score for state/zip. Used for demo routing.
+```json
+{ "state": "FL", "zip_code": "32828", "retailer": "publix" }
+```
+**Returns:** `{ market_readiness_score, status: "demo_ready|demo_with_caution|national_generic_only", active_offers, verified_offers, avg_confidence }`
+
+### POST /functions/v1/deal-validator/batch
+Validate up to 100 offers at once (for post-ingestion scoring).
+```json
+{ "offer_ids": ["uuid", "uuid", ...] }
+```
+
+### POST /functions/v1/deal-validator/active-offers
+Get display-ready offers filtered by state/retailer/confidence.
+```json
+{ "state": "FL", "retailer_key": "publix", "min_confidence": 70, "limit": 50 }
+```
+
+### POST /functions/v1/price-tracker/observe
+Log a price observation for a product at a store/location.
+```json
+{
+  "offer_source_id": "uuid", "retailer_key": "publix",
+  "normalized_key": "bounty_6ct", "product_name": "Bounty Paper Towels 6ct",
+  "observed_price_cents": 799, "zip_code": "32828", "state": "FL",
+  "source_type": "flyer"
+}
+```
+
+### POST /functions/v1/price-tracker/volatility
+Compute price volatility over a time window.
+```json
+{ "offer_id": "uuid", "window_days": 14 }
+```
+
+### POST /functions/v1/price-tracker/history
+Get price history trend for a product.
+```json
+{ "normalized_key": "bounty_6ct", "retailer_key": "publix", "limit": 30 }
+```
+
+### POST /functions/v1/run-deal-scoring
+Batch scoring worker — run manually or via pg_cron.
+**Auth:** x-ingest-key only
+Runs `flag_stale_prices()` then `publish_gate()` on all pending/needs_review offers (≤500 per run).
+
+---
+
 ## POST /functions/v1/ingest-event
 
 Ingests one or more behavioral events. Writes to `event_stream`. Optionally writes recommendation exposures.
@@ -318,7 +394,59 @@ Authorization: Bearer <jwt>
 | 500 | DB error |
 
 ---
+## GET /functions/v1/get-weekly-plan
+Returns a personalized Wednesday-Tuesday lifecycle manual for the authenticated user. Uses Supabase `home_payload_cache` for fast client rendering and falls back to rebuild the plan via the Edge Function on cache miss.
 
+**File:** `supabase/functions/get-weekly-plan/index.ts`
+**Auth:** Bearer JWT required.
+
+### Query parameters
+| Param | Required | Example | Notes |
+|---|---|---|---|
+| `refresh` | No | `true` | Skip cache and force rebuild |
+| `headcount` | No | `4` | Optional household size override |
+| `focus` | No | `savings` | Optional weekly focus override |
+
+### Response
+```json
+{
+  "ciphertext": "...",
+  "hmac": "...",
+  "_cache": "miss"
+}
+```
+
+The client decrypts `ciphertext` with `EXPO_PUBLIC_STACK_SECRET` and verifies `hmac` with `EXPO_PUBLIC_HMAC_SECRET`.
+
+### Lifecycle plan contract
+The decrypted payload is expected to match `WeeklyLifecyclePlan` from `src/services/lifecyclePlan.ts`.
+
+Hard-gate statuses:
+- `APPROVED` - one-store basket, current circular dates, profile constraints, budget, and 60%+ savings floor passed.
+- `LOW_YIELD_WEEK` - no honest 60% same-store stack exists after same-store fillers.
+- `NEEDS_SUBSTITUTION` - a basket item violates profile exclusions and needs deterministic replacement.
+- `DATA_STALE` - circular or coupon dates are outside the current validation window.
+- `NO_RETAILER_COVERAGE` - the user's market cannot be mapped to a supported retailer node.
+
+Circular metadata is part of the payload:
+- `circular_valid_from` / `circular_valid_until` - current circular window used to build the stack.
+- `next_circular_at` - next expected circular release for the retailer node.
+- `stack_expires_at` - earliest sale/coupon expiry in the accepted basket.
+
+### Cache behavior
+- Reads `profiles.cached_weekly_plan` and returns cached ciphertext when valid (<24h).
+- On rebuild, writes encrypted plan back to `profiles.cached_weekly_plan`.
+- Also writes raw `plan` payload into `home_payload_cache` with `cache_key = 'weekly_plan'`, `generated_at`, `expires_at`, and `source = 'get-weekly-plan'`.
+- Validator-approved payloads should also be upserted into `weekly_lifecycle_plans` with the same `plan_id` for receipt verification and learning hooks.
+
+### Error responses
+| Status | Condition |
+|---|---|
+| 401 | Missing or invalid JWT |
+| 405 | Non-GET method |
+| 500 | Server misconfiguration, DB error, or plan build failure |
+
+---
 ## POST /functions/v1/process-receipt
 
 Processes an uploaded receipt image. OCRs via Gemini Vision (fallback: GPT-4V), writes parsed line items, triggers WealthEngine computation, fires `purchase_completed` event.
@@ -780,3 +908,180 @@ PostgreSQL RPC function — called via `supabase.rpc('get_weekly_plan', params)`
 - `focus='none'`: sort score = `stack_rank_score`
 - Dinner slots: protein from `meat/seafood/deli`, side from `produce`, pantry from `pantry/bakery/frozen/dairy`
 - Household stack: top 8 from `household/health/personal_care` by `stack_rank_score`
+
+---
+
+## POST /functions/v1/initialize-agent
+
+Saves the 7-step Concierge onboarding answers to `user_persona`, calculates a mock Initial Savings projection, and returns the Economic DNA reveal to the client. Called by `LogicScanScreen` during the 5-second processing animation.
+
+**File:** `supabase/functions/initialize-agent/index.ts`
+**Auth:** Bearer JWT (authenticated user)
+
+### Request body
+```json
+{
+  "mission":               "rent_killer | save_goal | find_deals",
+  "monthly_budget_cents":  60000,
+  "power_level":           "notify_only | ask_first | full_auto",
+  "leak_category":         "amazon | food_apps | clothing",
+  "style_vibe":            "casual_minimal | trend_forward | investment",
+  "clothing_size":         "M",
+  "shoe_size":             "10.5",
+  "shop_frequency":        "daily | weekly | big_events"
+}
+```
+`clothing_size` and `shoe_size` are optional.
+
+### Response
+```json
+{
+  "ok": true,
+  "persona": { "...full user_persona row..." },
+  "reveal": {
+    "initial_savings_cents": 10800,
+    "leak_savings_cents":    4500,
+    "items_at_floor_price":  8,
+    "mission_label":         "Rent-Killer",
+    "leak_label":            "Amazon"
+  }
+}
+```
+
+### Savings calculation (mock)
+| Factor | Values |
+|---|---|
+| Mission base rate | `rent_killer` 18% · `save_goal` 15% · `find_deals` 22% |
+| Power multiplier | `notify_only` 0.70× · `ask_first` 1.00× · `full_auto` 1.35× |
+| Formula | `monthly_budget_cents × rate × multiplier` |
+
+### Error responses
+| Status | Condition |
+|---|---|
+| 400 | Missing required field |
+| 401 | Missing or invalid Bearer JWT |
+| 405 | Non-POST method |
+| 500 | DB upsert error |
+
+---
+
+## POST /functions/v1/slack-notify
+
+Picks up unnotified rows from `retailer_policy_change_log` and posts a Block Kit message to the configured Slack webhook. Marks posted rows `notified_at`. Called automatically by the `snippd-slack-policy-notify` pg_cron job every 5 minutes; can also be called manually.
+
+**File:** `supabase/functions/slack-notify/index.ts`
+
+### Auth
+
+| Method | Header | Used for |
+|---|---|---|
+| Cron secret | `x-cron-secret: <CRON_SECRET>` | pg_cron scheduled calls |
+| Service role | `Authorization: Bearer <service_role_key>` | Manual / internal calls |
+
+### Request body
+```json
+{ "source": "cron", "trigger": "policy_change_check" }
+```
+Body is informational only — the function always queries `retailer_policy_change_log` regardless of body content.
+
+### Response — changes found and posted
+```json
+{ "ok": true, "notified": 3 }
+```
+
+### Response — no action needed
+```json
+{ "skipped": true, "reason": "no pending notifications" }
+```
+```json
+{ "skipped": true, "reason": "slack webhook not configured — run scripts/setup-slack-webhook.sh" }
+```
+
+### Error responses
+| Status | Condition |
+|---|---|
+| 401 | Missing or invalid `x-cron-secret` / Bearer token |
+| 405 | Non-POST method |
+| 500 | DB read error |
+| 502 | Slack webhook returned non-200 |
+
+### Slack message format
+Uses Slack Block Kit. Groups changes by table. For UPDATE operations, shows field-level diffs (`old_value → new_value`). Capped at 5 change blocks per table per message, with a count of any additional changes.
+
+### Setup
+Configure the webhook URL by running:
+```bash
+bash scripts/setup-slack-webhook.sh "https://hooks.slack.com/services/..."
+```
+See [scripts/setup-slack-webhook.sh](../scripts/setup-slack-webhook.sh) for the full 5-step Slack app creation guide.
+
+---
+
+## POST /functions/v1/stripe-webhook
+
+Receives Stripe webhook events and assigns paid waitlist positions. Called by Stripe, not by the app.
+
+**File:** `supabase/functions/stripe-webhook/index.ts`
+
+**Auth:** Stripe HMAC-SHA256 webhook signature (not Bearer JWT). The `Stripe-Signature` header is verified against `STRIPE_WEBHOOK_SECRET`.
+
+### Setup (one-time, in Stripe Dashboard)
+
+1. Go to **Developers → Webhooks → Add endpoint**
+2. **URL:** `https://gsnbpfpekqqjlmkgvwvb.supabase.co/functions/v1/stripe-webhook`
+3. **Events to subscribe:** `checkout.session.completed`
+4. Copy the **Signing secret** (`whsec_...`) and add it to:
+   - `.env` as `STRIPE_WEBHOOK_SECRET`
+   - Supabase Dashboard → Project Settings → Edge Functions → Secrets as `STRIPE_WEBHOOK_SECRET`
+
+5. On each payment link (Beta Pro and Founder), add **Metadata:**
+   | Key | Value |
+   |---|---|
+   | `tier` | `beta_pro` (on the Beta Pro link) |
+   | `tier` | `founder` (on the Founder link) |
+
+### Event handled: `checkout.session.completed`
+
+Stripe fires this when a user completes a Checkout session (including via Payment Links).
+
+**Required fields from Stripe event:**
+| Field | Used for |
+|---|---|
+| `data.object.payment_status` | Skips if not `'paid'` |
+| `data.object.customer_details.email` | Looks up Snippd user by email |
+| `data.object.payment_intent` | Stored as `stripe_payment_id` |
+| `data.object.metadata.tier` | Stored as `stripe_tier` (`beta_pro` \| `founder`). Defaults to `beta_pro` if absent. |
+
+**What happens:**
+1. Verifies Stripe signature (rejects replays older than 5 minutes)
+2. Looks up the Snippd `auth.users` record by `customer_details.email`
+3. Calls `assign_paid_waitlist_position(user_id, payment_intent_id, stripe_tier)`
+   - Assigns paid lane position (1, 2, 3 … in payment order)
+   - Auto-approves if position ≤ 200 (`status = 'approved'`, `approved_at = now()`)
+   - Updates `user_persona.status` → `'paid_beta'` (if approved) or `'waitlist'`
+
+### Response behavior
+
+| Condition | HTTP status | Stripe retries? |
+|---|---|---|
+| Success | 200 | No |
+| `payment_status` ≠ `'paid'` | 200 | No |
+| User not found by email | 200 | No — log for manual follow-up |
+| DB error (assign_paid_waitlist_position) | 500 | Yes |
+| Invalid signature | 400 | No |
+| Missing env vars | 500 | Yes |
+
+### Success response
+```json
+{ "received": true, "user_id": "uuid", "stripe_tier": "beta_pro" }
+```
+
+### Skipped response
+```json
+{ "received": true, "skipped": "payment_status=no_payment_required" }
+```
+
+### User not found response
+```json
+{ "received": true, "warning": "user not found", "email": "user@example.com" }
+```

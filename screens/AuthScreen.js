@@ -284,6 +284,15 @@ export default function AuthScreen({ navigation }) {
               <Text style={styles.legalTxt}>
                 No credit card required. Secure 256-bit encryption.
               </Text>
+              <View style={styles.legalLinks}>
+                <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')}>
+                  <Text style={styles.legalLinkTxt}>Privacy Policy</Text>
+                </TouchableOpacity>
+                <Text style={styles.legalSep}>·</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('TermsOfUse')}>
+                  <Text style={styles.legalLinkTxt}>Terms of Use</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* STATUS PROTOCOL */}
@@ -330,6 +339,9 @@ const styles = StyleSheet.create({
   cta: { backgroundColor: GREEN, paddingVertical: 20, borderRadius: 20, alignItems: 'center', borderBottomWidth: 4, borderBottomColor: '#097d42', marginTop: 10 },
   ctaTxt: { color: WHITE, fontSize: 18, fontWeight: 'bold' },
   legalTxt: { fontSize: 11, color: PLACEHOLDER, textAlign: 'center', marginTop: 15, fontWeight: 'normal' },
+  legalLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 },
+  legalLinkTxt: { fontSize: 11, color: GREEN, fontWeight: '600' },
+  legalSep: { fontSize: 11, color: PLACEHOLDER },
   statusBar: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30 },
   statusItem: { flexDirection: 'row', alignItems: 'center' },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN, marginRight: 6 },

@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { AuditLogger } from '../lib/auditLogger';
+import { saveWeeklyBudgetEverywhere } from '../lib/weeklyBudget';
 
 const { width } = Dimensions.get('window');
 const GREEN = '#0C9E54';
@@ -271,6 +272,8 @@ export default function BudgetPreferencesScreen({ navigation }) {
         .eq('user_id', userId);
 
       if (error) throw error;
+
+      await saveWeeklyBudgetEverywhere(weeklyBudgetCentsToSave);
 
       // Audit log — triggers AI learning for future deal prioritization
       await AuditLogger.log(AuditLogger.events.BUDGET_UPDATE, {

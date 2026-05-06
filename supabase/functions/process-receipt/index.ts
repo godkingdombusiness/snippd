@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
   try {
     // ── Auth ──────────────────────────────────────────────────
     const authHeader = req.headers.get('authorization') ?? '';
-    if (!authHeader.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
+    if (!authHeader.toLowerCase().startsWith('bearer ')) return json({ error: 'Unauthorized' }, 401);
     const { data: userData, error: authErr } = await db.auth.getUser(authHeader.slice(7));
     if (authErr || !userData?.user) return json({ error: 'Unauthorized' }, 401);
     const user = userData.user;

@@ -60,7 +60,7 @@ export default function TrialGateScreen({ navigation }) {
           </View>
 
           {/* CTA */}
-          <TouchableOpacity style={styles.upgradeBtn} activeOpacity={0.88}>
+          <TouchableOpacity style={styles.upgradeBtn} activeOpacity={0.88} onPress={() => navigation.navigate('SnippdPro')}>
             <Text style={styles.upgradeBtnTxt}>Upgrade to Snippd Pro</Text>
             <Text style={styles.upgradeBtnSub}>Keep your savings streak going</Text>
           </TouchableOpacity>

@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get('authorization') ?? '';
-  if (!authHeader.startsWith('Bearer ')) {
+  if (!authHeader.toLowerCase().startsWith('bearer ')) {
     return json({ error: 'Unauthorized' }, 401);
   }
 

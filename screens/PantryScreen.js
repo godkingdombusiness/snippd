@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { FEATURE_IDS, isFeatureEnabled } from '../src/features/registry';
 
 const { width } = Dimensions.get('window');
 const GREEN = '#0C9E54';
@@ -74,6 +75,7 @@ const getExpiryStatus = (days) => {
 };
 
 export default function PantryScreen({ navigation }) {
+  const chefStashEnabled = isFeatureEnabled(FEATURE_IDS.CHEF_STASH);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -409,15 +411,17 @@ export default function PantryScreen({ navigation }) {
                         <Text style={styles.urgentQty}>{item.quantity}</Text>
                       </View>
                       <View style={styles.urgentActions}>
-                        <TouchableOpacity
-                          style={styles.urgentRecipeBtn}
-                          onPress={() => navigation.navigate('ChefStash', {
-                            stack: null,
-                            ingredients: [item],
-                          })}
-                        >
-                          <Text style={styles.urgentRecipeTxt}>Recipe</Text>
-                        </TouchableOpacity>
+                        {chefStashEnabled && (
+                          <TouchableOpacity
+                            style={styles.urgentRecipeBtn}
+                            onPress={() => navigation.navigate('ChefStash', {
+                              stack: null,
+                              ingredients: [item],
+                            })}
+                          >
+                            <Text style={styles.urgentRecipeTxt}>Recipe</Text>
+                          </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                           style={styles.urgentUsedBtn}
                           onPress={() => markUsed(item.id)}
@@ -433,6 +437,7 @@ export default function PantryScreen({ navigation }) {
           )}
 
           {/* ── COOK FROM PANTRY ────────────────────────────────────────── */}
+          {chefStashEnabled && (
           <View style={styles.pad}>
             <View style={[
               styles.cookCard,
@@ -482,6 +487,7 @@ export default function PantryScreen({ navigation }) {
               )}
             </View>
           </View>
+          )}
 
           {/* ── FILTER CHIPS ────────────────────────────────────────────── */}
           <ScrollView

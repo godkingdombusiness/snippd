@@ -2,10 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, ActivityIndicator, RefreshControl,
-  Dimensions, StatusBar,
+  Dimensions, StatusBar, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { AgenticLedger, DecisionType } from '../src/services/agenticLedger';
 
 const { width } = Dimensions.get('window');
 const BRAND = {
@@ -64,6 +67,35 @@ const getStoreStyle = (store) => {
   return STORE_COLORS[key] || STORE_COLORS.any;
 };
 
+function normalizeListName(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function mergePlanImport(prev, imported) {
+  const seen = new Set(prev.map(p => normalizeListName(p.name)));
+  const additions = [];
+  for (const row of imported) {
+    const k = normalizeListName(row.name);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    additions.push(row);
+  }
+  return { next: [...additions, ...prev], additions };
+}
+
+function suggestSnippdReplacement(item) {
+  const p = item.price_cents || 0;
+  const alt = Math.max(99, Math.round(p * 0.95));
+  const words = String(item.name || 'Item').trim().split(/\s+/).slice(0, 2).join(' ');
+  return {
+    name: `${words || 'Similar'} — Snippd swap (store brand)`,
+    price_cents: alt,
+  };
+}
+
 // Seed items so screen is never empty on first load
 const SEED_ITEMS = [
   { id: '1', name: 'Organic Milk', store: 'publix', price_cents: 349, checked: false, from_stack: true, category: 'dairy' },
@@ -74,6 +106,9 @@ const SEED_ITEMS = [
 ];
 
 export default function ListScreen({ navigation }) {
+  const route = useRoute();
+  const isMyList = route.name === 'MyList';
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -84,6 +119,7 @@ export default function ListScreen({ navigation }) {
   const [addingItem, setAddingItem] = useState(false);
   const [userId, setUserId] = useState(null);
   const [activeStoreFilter, setActiveStoreFilter] = useState('all');
+  const [stockModal, setStockModal] = useState(null);
 
   const fetchList = useCallback(async () => {
     try {
@@ -112,6 +148,40 @@ export default function ListScreen({ navigation }) {
   }, []);
 
   useEffect(() => { fetchList(); }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isMyList) return undefined;
+      let alive = true;
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem('snippd_my_list_import');
+          if (!raw || !alive) return;
+          const parsed = JSON.parse(raw);
+          const imported = parsed?.items;
+          if (!Array.isArray(imported) || imported.length === 0) return;
+
+          const { data: { user } } = await supabase.auth.getUser();
+          const uid = user?.id ?? null;
+
+          setItems((prev) => {
+            const { next, additions } = mergePlanImport(prev, imported);
+            if (uid && additions.length > 0) {
+              additions.forEach((row) => {
+                supabase
+                  .from('shopping_list_items')
+                  .insert([{ ...row, user_id: uid }])
+                  .then(() => {});
+              });
+            }
+            return next;
+          });
+          await AsyncStorage.removeItem('snippd_my_list_import');
+        } catch { /* ignore */ }
+      })();
+      return () => { alive = false; };
+    }, [isMyList]),
+  );
 
   const onRefresh = () => { setRefreshing(true); fetchList(); };
 
@@ -473,6 +543,17 @@ export default function ListScreen({ navigation }) {
                           {item.category && (
                             <Text style={styles.itemCat}>{item.category}</Text>
                           )}
+                          {isMyList && (
+                            <TouchableOpacity
+                              onPress={() => setStockModal({
+                                item,
+                                suggest: suggestSnippdReplacement(item),
+                              })}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                              <Text style={styles.stockLink}>Not in stock</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
 
                         <View style={styles.itemRight}>
@@ -585,7 +666,21 @@ export default function ListScreen({ navigation }) {
       </ScrollView>
 
       {/* ── STICKY CHECKOUT BAR ──────────────────────────────────────────── */}
-      {unchecked.length > 0 && (
+      {isMyList && items.length > 0 && unchecked.length === 0 && (
+        <View style={styles.checkoutBar}>
+          <View>
+            <Text style={styles.checkoutLabel}>Ready to wrap up?</Text>
+            <Text style={styles.checkoutTotal}>All items checked — head to pre-shop prep</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.checkoutBtn}
+            onPress={() => navigation.navigate('CouponClipping')}
+          >
+            <Text style={styles.checkoutBtnTxt}>Head to Checkout</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {(!isMyList || unchecked.length > 0) && unchecked.length > 0 && (
         <View style={styles.checkoutBar}>
           <View>
             <Text style={styles.checkoutLabel}>
@@ -603,6 +698,74 @@ export default function ListScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       )}
+
+      <Modal
+        visible={!!stockModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setStockModal(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Snippd replacement</Text>
+            <Text style={styles.modalBody}>
+              Protect your budget with a similar-cost swap for{' '}
+              <Text style={{ fontWeight: '700' }}>{stockModal?.item?.name}</Text>.
+            </Text>
+            {stockModal?.suggest && (
+              <View style={styles.modalSuggest}>
+                <Text style={styles.modalSuggestName}>{stockModal.suggest.name}</Text>
+                <Text style={styles.modalSuggestPrice}>{fmt(stockModal.suggest.price_cents)}</Text>
+              </View>
+            )}
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setStockModal(null)}>
+                <Text style={styles.modalCancelTxt}>Keep original</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirm}
+                onPress={async () => {
+                  if (!stockModal?.item || !stockModal?.suggest) {
+                    setStockModal(null);
+                    return;
+                  }
+                  const orig = stockModal.item;
+                  const sub = stockModal.suggest;
+                  const updated = {
+                    ...orig,
+                    name: sub.name,
+                    price_cents: sub.price_cents,
+                  };
+                  setItems((prev) => prev.map((i) => (i.id === orig.id ? updated : i)));
+                  if (userId) {
+                    await supabase
+                      .from('shopping_list_items')
+                      .update({ name: updated.name, price_cents: updated.price_cents })
+                      .eq('id', orig.id);
+                  }
+                  if (userId) {
+                    await AgenticLedger.log({
+                      user_id: userId,
+                      decision_type: DecisionType.CONCIERGE_LIST_STOCK_SWAP,
+                      actor: 'MyListScreen',
+                      result: 'approved',
+                      metadata: {
+                        from: orig.name,
+                        to: sub.name,
+                        price_cents: sub.price_cents,
+                        mirror_neo4j: true,
+                      },
+                    });
+                  }
+                  setStockModal(null);
+                }}
+              >
+                <Text style={styles.modalConfirmTxt}>Use swap</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
     </SafeAreaView>
   );
@@ -834,4 +997,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 12,
   },
   checkoutBtnTxt: { color: WHITE, fontSize: 14, fontWeight: 'bold' },
+
+  stockLink: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '700',
+    color: AMBER,
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: NAVY, marginBottom: 8 },
+  modalBody: { fontSize: 14, color: GRAY, lineHeight: 20, marginBottom: 14 },
+  modalSuggest: {
+    backgroundColor: LIGHT_GREEN,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  modalSuggestName: { fontSize: 14, fontWeight: '700', color: NAVY },
+  modalSuggestPrice: { fontSize: 16, fontWeight: '800', color: GREEN, marginTop: 4 },
+  modalActions: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end' },
+  modalCancel: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  modalCancelTxt: { fontSize: 14, fontWeight: '600', color: NAVY },
+  modalConfirm: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    backgroundColor: GREEN,
+  },
+  modalConfirmTxt: { fontSize: 14, fontWeight: '700', color: WHITE },
 });

@@ -7,6 +7,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { resetToScreen } from '../lib/navigationRef';
+import { clearEncryptionKeyCache } from '../lib/fieldEncryption';
+import { FEATURE_IDS, filterEnabledItems } from '../src/features/registry';
 
 const { width } = Dimensions.get('window');
 const GREEN = '#0C9E54';
@@ -51,7 +53,7 @@ const MENU_SECTIONS = [
     title: 'Community',
     items: [
       { label: 'Invite Friends',  screen: 'InviteFriends' },
-      { label: 'Creator Studio',  screen: 'Studio' },
+      { label: 'Creator Studio',  tab: 'StudioTab', featureId: FEATURE_IDS.STUDIO },
     ],
   },
   {
@@ -59,6 +61,7 @@ const MENU_SECTIONS = [
     items: [
       { label: 'Help and Support', screen: 'Help' },
       { label: 'Privacy Policy',   screen: 'PrivacyPolicy' },
+      { label: 'Terms of Use',     screen: 'TermsOfUse' },
     ],
   },
 ];
@@ -71,6 +74,10 @@ export default function ProfileScreen({ navigation }) {
   const [signingOut, setSigningOut] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [wealthData, setWealthData] = useState(null);
+  const menuSections = MENU_SECTIONS.map(section => ({
+    ...section,
+    items: filterEnabledItems(section.items),
+  })).filter(section => section.items.length > 0);
 
   const performGlobalReset = () => resetToScreen('Auth');
 
@@ -117,6 +124,7 @@ export default function ProfileScreen({ navigation }) {
 
   const handleSignOut = async () => {
     try {
+      clearEncryptionKeyCache();
       await supabase.auth.signOut({ scope: 'global' });
     } catch (e) {
       console.warn('signOut error', e);
@@ -132,22 +140,37 @@ export default function ProfileScreen({ navigation }) {
         {
           text: 'Delete Forever',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .rpc('delete_my_account');
-              if (error) throw error;
-              await supabase.auth.signOut({
-                scope: 'local'
-              });
-            } catch (e) {
-              Alert.alert(
-                'Error',
-                e?.message ?? 'Could not delete account. Try again.'
-              );
-            }
-          }
-        }
+          onPress: () => {
+            // Second confirmation — destructive action
+            Alert.alert(
+              'Are you sure?',
+              'Your savings history, waitlist position, and all data will be gone permanently.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Yes, delete everything',
+                  style: 'destructive',
+                  onPress: async () => {
+                    setDeleting(true);
+                    try {
+                      clearEncryptionKeyCache();
+                      const { data, error } = await supabase.functions.invoke('delete-account');
+                      if (error) throw error;
+                      if (data?.error) throw new Error(data.error);
+                      // Clear local session — auth state change will handle routing
+                      await supabase.auth.signOut({ scope: 'local' });
+                      // Belt-and-suspenders: force navigation to Auth
+                      performGlobalReset();
+                    } catch (e) {
+                      setDeleting(false);
+                      Alert.alert('Error', e?.message ?? 'Could not delete account. Try again.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
       ]
     );
   };
@@ -176,7 +199,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <View style={{marginTop: 15, alignItems: 'center'}}>
                 <Text style={styles.headerName}>{displayName}</Text>
-                <Text style={styles.headerEmail}>{profile?.email || authEmail}</Text>
+                <Text style={styles.headerEmail}>{profile?.email || authEmail || '—'}</Text>
             </View>
         </View>
 
@@ -208,7 +231,7 @@ export default function ProfileScreen({ navigation }) {
           </View>
         )}
 
-        {MENU_SECTIONS.map(section => (
+        {menuSections.map(section => (
           <View key={section.title} style={styles.menuSection}>
             <Text style={styles.menuSectionTitle}>{section.title}</Text>
             <View style={styles.menuCard}>
@@ -219,6 +242,8 @@ export default function ProfileScreen({ navigation }) {
                   onPress={() => {
                     if (item.action === 'alert') {
                       Alert.alert(item.label, 'Feature coming soon.');
+                    } else if (item.tab) {
+                      navigation.getParent?.()?.navigate(item.tab);
                     } else if (item.screen) {
                       navigation.navigate(item.screen);
                     }

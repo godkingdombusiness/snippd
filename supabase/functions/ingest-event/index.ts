@@ -202,7 +202,7 @@ Deno.serve(async (req: Request) => {
 
   if (ingestKey && headerKey === ingestKey) {
     authType = 'key';
-  } else if (authHeader.startsWith('Bearer ')) {
+  } else if (authHeader.toLowerCase().startsWith('bearer ')) {
     const jwt = authHeader.slice(7);
     const { data: userData, error: authError } = await db.auth.getUser(jwt);
     if (authError || !userData?.user) return json({ error: 'Unauthorized' }, 401);
@@ -382,6 +382,17 @@ Deno.serve(async (req: Request) => {
         return json({ error: error.message }, 500);
       }
       insertedEvents.push(data?.[0] ?? {});
+
+      // ── Side effect: assign free waitlist position on forecast_completed ──
+      // assign_free_waitlist_position is idempotent (ON CONFLICT DO NOTHING),
+      // so duplicate events are safe. Failure is non-fatal.
+      if (eventName === 'forecast_completed') {
+        try {
+          await db.rpc('assign_free_waitlist_position', { p_user_id: userId });
+        } catch {
+          // Non-fatal — position can be assigned on retry or via admin
+        }
+      }
     } catch (err) {
       await logRequest(db, {
         retailerKey,
