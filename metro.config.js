@@ -4,15 +4,12 @@ const path = require('path');
 const config = getDefaultConfig(__dirname);
 
 // ── Block large non-RN directories from Metro's file crawler ─────────────────
-// Use full absolute paths so we ONLY block root-level dirs, not nested ones
-// (e.g. we must NOT block src/services/ — only the root services/ dir).
+// Anchored to absolute paths so src/services/ is never accidentally blocked.
 function escRx(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
 function rootDirPattern(dirName) {
   const abs = path.resolve(__dirname, dirName);
-  // Match the dir itself or anything inside it
   return new RegExp('^' + escRx(abs) + '([/\\\\]|$)');
 }
 
@@ -23,12 +20,24 @@ config.resolver.blockList = [
   /node_modules[/\\]neo4j-driver-bolt-connection[/\\]/,
   /node_modules[/\\]neo4j-driver-lite[/\\]/,
 
-  // Root-level dirs that are NOT React Native source
-  rootDirPattern('web'),        // Next.js app
-  rootDirPattern('services'),   // Cloud Run Python services (NOT src/services)
-  rootDirPattern('agent'),      // Python ADK agent
-  rootDirPattern('infra'),      // Terraform
-  rootDirPattern('e2e'),        // Playwright tests
+  // Next.js web app (contains its own node_modules — very large)
+  rootDirPattern('web'),
+
+  // Python Cloud Run service subdirs only — NOT the whole services/ dir
+  // because services/WealthEngine.ts and services/preferenceUpdater.ts are RN imports
+  rootDirPattern('services/checkout_math'),
+  rootDirPattern('services/generate_stacks'),
+
+  // Python ADK agent
+  rootDirPattern('agent'),
+
+  // Terraform (contains large provider .exe)
+  rootDirPattern('infra'),
+
+  // Playwright e2e tests
+  rootDirPattern('e2e'),
+
+  // Build artifacts and backups
   rootDirPattern('dist-run-check'),
   rootDirPattern('snippd-backup'),
 ];
