@@ -1,0 +1,52 @@
+name: Expo Dependency Update
+
+on:
+  schedule:
+    # Runs daily at 08:00 UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-expo-deps:
+    name: Update Expo dependency versions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Expo dependency updater
+        run: npm run update:expo-dependencies
+
+      - name: Sync package-lock.json
+        run: npm install
+
+      - name: Open PR if anything changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update Expo dependency versions'
+          branch: 'expo-dependency-updates-${{ github.run_id }}'
+          title: 'chore: automated Expo dependency updates'
+          body: |
+            Automated patch updates detected by `npx expo install --check`.
+
+            Expo's own resolver chose the versions — no manual semver guessing.
+
+            **Review checklist**
+            - [ ] `package.json` diff looks correct
+            - [ ] `package-lock.json` updated
+            - [ ] CI passes
+          labels: dependencies, automation
+          add-paths: |
+            package.json
+            package-lock.json

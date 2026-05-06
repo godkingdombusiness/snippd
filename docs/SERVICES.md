@@ -6,6 +6,214 @@
 
 ---
 
+## ChefStash Decision Engine (added 2026-05-03)
+Files: `screens/ChefStashScreen.js`, `src/lib/bundleBuilder.ts`, `supabase/functions/enrich-nutrition/index.ts`
+
+Screen that answers "What should I buy and cook this week based on my budget?" Reads `normalized_offers` + `user_preferences`. No writes to any table.
+
+### bundleBuilder.ts
+- `buildBundles(offers, opts)` — Pure function. Groups offers by retailer, scores by savings + category preference + experience type. Preferred stores go first. Budget gate trims or skips bundles over `budgetCents`. Returns up to 3 `MealBundle` objects with `totalCents`, `savingsCents` (null if no savings data), `confidence` label.
+- `findSwaps(offers, max)` — Groups offers by 3-token product key, finds cheapest vs priciest pair across different retailers. Only surfaces swaps where saving > $0.25.
+
+### enrich-nutrition Edge Function
+**Endpoint:** `POST /functions/v1/enrich-nutrition`  
+**Auth:** Bearer JWT (user)  
+**Body:** `{ "products": ["Tide Pods", "Campbell's Soup", ...] }` (max 10)  
+**Returns:** `{ "nutrition": { "product name": { fdcId, calories, protein, carbs, fat, sodium, servingSize, description } } }`  
+**Security:** `USDA_API_KEY` is a Supabase secret. Set with: `supabase secrets set USDA_API_KEY=your_key`  
+Get a free key at: https://fdc.nal.usda.gov/api-guide.html  
+Always returns HTTP 200. Nutrition is optional — missing key or low-confidence USDA matches return `{}`.
+
+---
+
+## Normalized Offer Engine (added 2026-05-02)
+Files: `src/lib/offerNormalization.ts`, `src/lib/productMatching.ts`, `src/services/normalizedOffersService.ts`
+
+Pure TypeScript helpers + a safe Supabase service layer for normalizing arbitrary grocery offers into a canonical form. Additive only — does not touch any existing table.
+
+### normalizeOffer(raw: RawOffer): NormalizedOffer
+Entry point. Parses `price_text` → `NormalizedPrice`, `size_text` → `NormalizedSize`, computes `calculateSavings()`, blends confidence scores. All zero-dep pure functions — safe to call anywhere.
+
+### normalizeAndSaveOffers(rawOffers) → Promise<{ saved, errors }>
+Batch ingest. Calls `normalizeOffer()` on each raw offer, then either upserts (if `source_offer_id` present) or inserts into `normalized_offers`. Never throws. Returns counts.
+
+### getBestSavingsOffers(limit = 10) → Promise<StoredOffer[]>
+Reads `normalized_offers` filtered to `confidence_score >= 0.5` + `savings_cents NOT NULL`, ordered by savings DESC. Used by `BestSavingsPreview` component. Safe fallback `[]`.
+
+### matchProducts(a, b) → MatchResult
+Cross-retailer product deduplication. Jaccard similarity on meaningful name tokens (50%) + brand exact/partial/token (30%) + size proximity ±10% with cross-unit conversion (20%). Returns `{ matched, match_score, reasons }`.
+
+**Test runner:** `npx ts-node --project tsconfig.test.json src/lib/__tests__/offerNormalization.examples.ts`
+
+---
+
+## genius-activate Edge Function (added 2026-04-30)
+File: `supabase/functions/genius-activate/index.ts`
+Runtime: Deno Edge Function
+
+Orchestrates the full deal intelligence pipeline. Call this to populate `app_home_feed` and `stack_candidates` with fresh, scored deals. Run after uploading a new retailer PDF flyer, or call from the HomeScreen "Activate Genius Mode" button.
+
+**Endpoint:** `POST /functions/v1/genius-activate`
+**Auth:** Bearer JWT (user) or `x-ingest-key` header (server-to-server)
+**Body:**
+```json
+{ "region": "Orlando, FL", "mode": "crawl" | "score" | "full" }
+```
+
+**Modes:**
+- `crawl` — triggers vertex-agent AI deal crawl for region → inserts into app_home_feed
+- `score` — runs run-deal-scoring, publishes validated deals, promotes to stack_candidates
+- `full` (default) — all of the above + rebuilds home_payload_cache
+
+**Returns:**
+```json
+{
+  "ok": true,
+  "region": "Orlando, FL",
+  "mode": "full",
+  "steps": ["expired_stale:3", "crawl:inserted=18", "scoring:processed=40", "promoted:12", "cache:rebuilt_inline:30_deals"],
+  "deals_active": 30,
+  "stack_candidates_active": 42,
+  "elapsed_ms": 8400
+}
+```
+
+---
+
+## pushNotificationService (added 2026-04-30)
+File: `src/services/pushNotificationService.ts`
+
+Manages Expo push token registration and local notification dispatch.
+
+**Exports:**
+- `registerPushToken(userId)` — Requests notification permission, creates Android channels (`snippd-default`, `snippd-geofence`), stores token in `profiles.expo_push_token`. Call once on sign-in.
+- `scheduleLocalNotification(title, body, data, channelId?)` — Fires immediate local notification. Used by GeofenceService.
+- `sendGeofenceAlert(storeName, savingsCents, itemCount, retailerKey)` — High-priority store entry alert.
+- `addNotificationResponseListener(navigate)` — Wires tapped notification `data.screen` to navigation. Returns cleanup function for `useEffect`.
+
+---
+
+## GeofenceService (added 2026-04-30)
+File: `src/services/GeofenceService.ts`
+
+GPS-based store proximity detection. Foreground (not background task) for cross-platform reliability.
+
+**Exports:**
+- `createGeofenceWatcher(userId)` — Returns `{ start(onCard), stop() }`. Call `start(card => setLiveCard(card))` to begin watching. Call `stop()` on cleanup.
+- `loadStoreLocations(state?)` — Fetches active store_locations from DB.
+- `loadLiveCardItems(userId, retailerKey)` — Returns top 6 stack_candidates for a store as `LiveCardItem[]`.
+
+**Flow:** `watchPositionAsync` (15s/20m) → Haversine check vs all stores → 30-min cooldown per store → `sendGeofenceAlert()` + `onCard(LiveCardData)`.
+
+---
+
+## wealthMomentumEngine (added 2026-04-30)
+File: `src/services/wealthMomentumEngine.ts`
+
+Pure math — no DB access. Converts savings to projected investment value.
+
+**Exports:**
+- `buildMomentumTicker(savingsCents)` — Returns `MomentumTicker { tagline, projection5y, projection10y, projection20y, annualizedCents }`. Uses S&P 500 10% annual rate, weekly compounding annuity formula.
+- `projectSavingsGrowth(savingsCents, horizons[])` — Returns `GrowthProjection[]` for custom horizons.
+- `futureValueAnnuity(weeklyContributionCents, rate, years)` — Core FV formula.
+- `formatCents(cents)` — `"$1.5K"`, `"$150K"`, `"$2.3M"`.
+
+**Used by:** `HomeScreen` Wealth Momentum Ticker card.
+
+---
+
+## CouponClippingService (added 2026-04-29)
+File: `src/services/CouponClippingService.ts`
+
+Background service for the Auto-Clip Agent. Matches the user's current cart against verified live digital coupon evidence and surfaces potential savings.
+
+**Exports:**
+- `runCouponClip(userId, forceRefresh?)` — Main entry point. Returns `CouponClipResult { coupons, savingsCents, matchedCount, fromCache, generatedAt }`. Results cached in AsyncStorage for 5 minutes (`snippd_digital_coupons_{userId}`). Forces a DB call on first run or if `forceRefresh = true`.
+- `clearCouponCache(userId)` — Evicts the cache for a user (call after cart changes).
+- `fmtSavings(cents)` — Formats cents to `"$8.50"` display string.
+
+**Flow:**
+1. Reads cart from `AsyncStorage` (`snippd_cart_{userId}`)
+2. Normalizes each product name to a `normalized_key` slug
+3. Calls `get_verified_clippable_coupons()` + `calculate_verified_digital_savings()` RPCs in parallel
+4. Writes result to AsyncStorage cache (5-min TTL)
+5. Returns `ClippableCoupon[]` with retailer, savings label, exact coupon URL, source page URL, evidence hash, and verified timestamp
+
+Hard rule: user-facing coupons must come from `v_live_verified_digital_coupons`. Legacy `digital_coupons` rows are internal only unless backed by `digital_coupon_evidence`.
+
+**Used by:** `CartScreen` (Checkout Shield), `HomeScreen` (hero digital savings pill).
+
+---
+
+## Coupon Accuracy Ops (added 2026-05-05)
+Files: `supabase/functions/run-coupon-refresh/index.ts`, `supabase/functions/coupon-accuracy-health/index.ts`, `supabase/migrations/20260505_coupon_accuracy_ops.sql`
+
+Operational layer for keeping the verified coupon gate honest.
+
+### Legal coupon activation links
+Snippd can generate Dollar General and Publix stacks without scraping or copying retailer coupon catalogs. Stack items may include:
+
+- `official_coupon_url`: exact official coupon URL when provided as evidence, otherwise the official retailer coupon hub.
+- `retailer_coupon_hub_url`: official retailer coupon landing page.
+- `coupon_link_status`: `evidence_exact`, `official_hub`, or `unsupported`.
+- `coupon_status`: `needs_user_verification` for official-hub links until a receipt or authorized feed verifies the exact coupon.
+
+Current official hubs:
+
+- Dollar General: `https://www.dollargeneral.com/deals/coupons?sort=0&sortOrder=2&type=0`
+- Publix: `https://www.publix.com/savings/digital-coupons`
+
+Receipt upload remains the proof path: completed trips can upgrade stack confidence based on what actually appeared on the user's receipt.
+
+### run-coupon-refresh
+**Endpoint:** `POST /functions/v1/run-coupon-refresh`  
+**Auth:** `x-cron-secret` or service-role Bearer JWT  
+**Schedule:** hourly via `snippd-coupon-refresh` pg_cron job when `app.supabase_functions_url` and `snippd_cron_secret` are configured.
+
+What it does:
+- Creates a `coupon_refresh_runs` row for every attempt.
+- Ingests strict manual evidence payloads or active `retailer_coupon_sources` with `source_type` of `json_coupon_feed` / `retailer_api_json`.
+- Rejects coupons without exact HTTP URLs, generic homepage URLs, missing titles, or same source/exact URLs.
+- Upserts verified rows into `digital_coupon_evidence` by `evidence_hash`.
+- Calls `mark_stale_coupons_for_run()` so coupons missing from the latest refresh stop showing.
+- Logs generic HTML pages as `adapter_required`; those need retailer-specific parsers before they can feed user-facing coupons.
+
+Manual evidence body:
+```json
+{
+  "retailer_key": "publix",
+  "coupons": [
+    {
+      "coupon_external_id": "abc123",
+      "exact_coupon_url": "https://www.publix.com/savings/digital-coupons/coupon/abc123",
+      "source_page_url": "https://www.publix.com/savings/digital-coupons/grocery",
+      "product_name": "Dawn Dish Soap",
+      "brand": "Dawn",
+      "coupon_title": "$1 off Dawn Dish Soap",
+      "coupon_value_cents": 100,
+      "expiration_date": "2026-05-12"
+    }
+  ]
+}
+```
+
+### coupon-accuracy-health
+**Endpoint:** `GET|POST /functions/v1/coupon-accuracy-health`  
+**Auth:** `x-cron-secret` or service-role Bearer JWT  
+**Returns:** `v_coupon_accuracy_health` with live verified count, latest verification time, failed run count, last run error, and status.
+
+Status values:
+- `healthy`
+- `no_active_sources`
+- `coupon_adapters_required`
+- `no_live_verified_coupons`
+- `verified_coupon_evidence_stale`
+- `recent_refresh_failures`
+
+Use this first when the app appears to have no coupons. If health is not `healthy`, the UI is probably protecting users from stale or unverified data.
+
+---
+
 ## Agentic Loop — Full Lifecycle (2026-04-29)
 
 The full lifecycle loop is now wired end-to-end:
@@ -127,6 +335,7 @@ ShoppingHaul(
 | `NEO4J_URI` | e.g. `neo4j+s://xxx.databases.neo4j.io` |
 | `NEO4J_USER` | Neo4j username (default: `neo4j`) |
 | `NEO4J_PASSWORD` | Neo4j password |
+| `NEO4J_DATABASE` | (Optional) Database name — **required on AuraDB Free** where the instance ID differs from `'neo4j'`. Defaults to `'neo4j'`. Mirrors the Node.js `NEO4J_DATABASE` convention. |
 | `GEMINI_MODEL` | (Optional) Override model, default `gemini-2.5-flash` |
 
 ### How to run (quick test)

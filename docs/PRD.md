@@ -82,7 +82,7 @@ Items are picked from live stacks, sorted by best savings, within the user's wee
 | MFA | TOTP two-factor (setup + verify screens) |
 | Session Security | Tokens stored via `expo-secure-store` (never in AsyncStorage) |
 | Sign Out | Resets navigation to Auth screen via `navigation.getParent('root')` |
-| Delete Account | Removes `profiles` row then signs out |
+| Delete Account | Calls `supabase.functions.invoke('delete-account')` Edge Function (service-role, server-side), which cleans up user-owned rows then deletes the Supabase auth account. Client signs out after `{ ok: true }` response. |
 
 **Auth Screen Design (v1.2.0 — simplified):**
 - Canvas: Mint `#C5FFBC`
@@ -102,7 +102,7 @@ Items are picked from live stacks, sorted by best savings, within the user's wee
 
 | Section | Requirement |
 |---|---|
-| Budget Tracker | Shows "Ready to Spend", progress bar, spent vs. goal. Pulls from `profiles.weekly_budget` + `profiles.weekly_spent` |
+| Budget Tracker | Shows "Ready to Spend", progress bar, spent vs. goal. Pulls `weekly_budget` from `profiles`. Weekly-spent value is derived from `checkout_math_snapshots` (status=`APPROVED`) or tracked in client-side state — `profiles.weekly_spent` does not exist. |
 | This Week's Stacks | Horizontal scroll of live `app_home_feed` stacks ordered by savings. Refreshes on every focus (`useFocusEffect`). Each card shows store brand color chip |
 | Quick Actions | My List · Deals · Wins · Studio |
 | Plan Your Trip | Meal Prep · Best Deals · Fast Route · Share List |
@@ -281,7 +281,7 @@ PNG assets replace the colored dot system for category card accents:
 - Dietary preferences
 - Budget dashboard link
 - Sign Out → resets to Auth screen
-- Delete Account → removes profile row from Supabase, then signs out
+- Delete Account → calls `delete-account` Edge Function (server-side cleanup + auth deletion), then signs out
 
 ---
 
@@ -421,7 +421,7 @@ curl ... -d '{"validate_all":true,"limit":5,"offset":5}'
 | `pay_price` | numeric | **Dollars** (not cents). Must be > 0 (DB check constraint). |
 | `save_price` | numeric | **Dollars** (not cents) |
 | `breakdown_list` | jsonb | Array of line-item objects |
-| `confidence_score` | numeric | 0–1 from validator. Below 0.5 → show EST. prefix on prices |
+| `confidence_score` | numeric | 0–1 from validator. Below 0.5 → show EST. prefix on prices. (`confidence_pct` is an older, deprecated term.) |
 | `verification_status` | text | `verified_live` to display |
 | `dietary_tags` | text[] | Optional tags |
 | `status` | text | Must be `active` to display |
@@ -439,11 +439,11 @@ curl ... -d '{"validate_all":true,"limit":5,"offset":5}'
   "savings": "number — instant saving in dollars",
   "coupon": "number — coupon value in dollars",
   "coupon_url": "string | null — direct product URL",
-  "deal_type": "string — SALE | MFR_COUPON | STORE_COUPON | BOGO | B1G1 | DIGITAL | REBATE | CLEARANCE",
-  "type": "string — legacy field, same values as deal_type",
+  "deal_type": "string — SALE | BOGO | MFR_COUPON | STORE_COUPON | DIGITAL | REBATE | CLEARANCE",
+  "type": "string — legacy field, same values as deal_type (Deprecated: use `deal_type`)",
   "qty": "number — quantity to buy (BOGO defaults to 2 if not set)",
   "confidence": "number — 0–1 per-item confidence from validator",
-  "_category": "string — vegetable | fruit | protein | pantry | treat (5-4-3-2-1 only)"
+  "_category": "string — vegetable | fruit | protein | pantry | treat (Used for 5-4-3-2-1 grouping only)"
 }
 ```
 

@@ -6,13 +6,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import { tracker } from '../lib/eventTracker';
+import { tracker } from '../src/lib/eventTracker';
 // NEW IMPORTS FOR PRODUCTION & SHARING
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { FEATURE_IDS, isFeatureEnabled } from '../src/features/registry';
 
 const GREEN = '#0C9E54';
 const NAVY = '#0D1B4B';
@@ -103,8 +102,21 @@ function categoriseItem(name) {
   return 'other';
 }
 
+// ── Ghost match helpers (self-correcting OCR) ─────────────────
+// Fuzzy match an OCR token against the user's essentials list.
+// Returns true if any word (>3 chars) in the essential name
+// appears in the OCR text (or vice versa).
+function ghostMatchScore(ocrName, essentialName) {
+  const a = (ocrName || '').toLowerCase();
+  const b = (essentialName || '').toLowerCase();
+  const wordsA = a.split(/\W+/).filter(w => w.length > 3);
+  const wordsB = b.split(/\W+/).filter(w => w.length > 3);
+  const hits = wordsA.filter(w => wordsB.includes(w)).length
+             + wordsB.filter(w => wordsA.includes(w)).length;
+  return hits;
+}
+
 export default function ReceiptUploadScreen({ navigation }) {
-  const studioEnabled = isFeatureEnabled(FEATURE_IDS.STUDIO);
   const [step, setStep] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -116,8 +128,11 @@ export default function ReceiptUploadScreen({ navigation }) {
   const [manualTotal, setManualTotal] = useState('');
   const [manualStore, setManualStore] = useState('');
   const [creditsEarned, setCreditsEarned] = useState(0);
-  // NEW: State to hold receipt image URI for sharing
   const [receiptImageUri, setReceiptImageUri] = useState(null);
+  // Self-correcting OCR: ghost matches shown when Gemini returns no/partial items
+  const [ghostMatches, setGhostMatches] = useState([]);  // [{ essentialName, priceCents, confirmed: null }]
+  const [showGhostReview, setShowGhostReview] = useState(false);
+  const [outcomeData, setOutcomeData] = useState(null);
 
   const stackItems = parsedItems.filter(i => i.onStack);
   const unplannedItems = parsedItems.filter(i => !i.onStack);
@@ -245,9 +260,37 @@ export default function ReceiptUploadScreen({ navigation }) {
 
     } catch (e) {
       console.error('[Receipt OCR]', e.message);
+
+      // ── Self-Correcting OCR: Ghost Match Fallback ─────────────
+      // Instead of a dead-end error, we cross-reference the user's
+      // household essentials and propose matches for them to confirm.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: essentials } = await supabase
+            .from('household_cart_items')
+            .select('item_name, save_cents')
+            .eq('user_id', user.id)
+            .eq('status', 'pending')
+            .limit(10);
+
+          if (essentials?.length) {
+            const matches = essentials.map(e => ({
+              essentialName: e.item_name,
+              priceCents:    e.save_cents > 0 ? e.save_cents : 399,  // fallback $3.99
+              confirmed:     null,   // null = pending user action
+            }));
+            setGhostMatches(matches);
+            setShowGhostReview(true);
+            setStep(2); // advance to the ghost review step
+            return;
+          }
+        }
+      } catch { /* ghost match is best-effort */ }
+
       Alert.alert(
         'Could Not Read Receipt',
-        'Make sure the receipt is well-lit and the text is clear, then try again. You can also enter the total manually.',
+        "We couldn't read the image clearly. Check your plan items below and confirm what you bought.",
         [{ text: 'OK' }]
       );
     } finally {
@@ -286,37 +329,23 @@ export default function ReceiptUploadScreen({ navigation }) {
 
       const now = new Date().toISOString();
 
-      // 1. Insert receipt_summary row
+      // 1. Insert trip_results row (canonical receipt record)
       const { data: summary, error: summaryErr } = await supabase
-        .from('receipt_summaries')
+        .from('trip_results')
         .insert({
-          user_id:      user.id,
-          store_name:   storeName,
-          total_cents:  totalAmount,
-          created_at:   now,
+          user_id:             user.id,
+          store_name:          storeName,
+          total_spent_cents:   totalAmount,
+          total_savings_cents: totalSaved,
+          items_count:         parsedItems.length,
+          verified:            true,
         })
         .select('id')
         .single();
 
-      if (summaryErr) console.warn('[Receipt] summary insert:', summaryErr.message);
+      if (summaryErr) console.warn('[Receipt] trip_results insert:', summaryErr.message);
 
       const receiptId = summary?.id ?? null;
-
-      // 2. Insert individual receipt_items
-      if (parsedItems.length > 0) {
-        const itemRows = parsedItems.map(item => ({
-          user_id:      user.id,
-          receipt_id:   receiptId,
-          name:         item.name,
-          amount_cents: item.price,
-          quantity:     item.quantity || 1,
-          category:     item.category || 'other',
-          store_name:   storeName,
-          purchased_at: now,
-        }));
-        const { error: itemsErr } = await supabase.from('receipt_items').insert(itemRows);
-        if (itemsErr) console.warn('[Receipt] items insert:', itemsErr.message);
-      }
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
@@ -340,17 +369,7 @@ export default function ReceiptUploadScreen({ navigation }) {
         });
       }
 
-      // 3. Insert trip_result row
-      const { error: tripErr } = await supabase.from('trip_results').insert({
-        user_id:              user.id,
-        store_name:           storeName,
-        total_spent_cents:    totalAmount,
-        total_savings_cents:  totalSaved,
-        items_on_stack:       stackItems.length,
-        items_unplanned:      unplannedItems.length,
-        verified_at:          now,
-      });
-      if (tripErr) console.warn('[Receipt] trip insert:', tripErr.message);
+      // trip_results row already inserted above (step 1) — no duplicate needed
 
       // 4. Award Stash Credits via RPC (uses issue_credits SECURITY DEFINER)
       //    Base 25 + 5 per stack item, capped at 75
@@ -369,36 +388,17 @@ export default function ReceiptUploadScreen({ navigation }) {
         p_issued_by:    'system',
       });
 
-      // Fallback: direct update if RPC not yet deployed
+      // Fallback: direct credits update if RPC not yet deployed
       if (creditErr) {
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('stash_credits, total_savings_cents')
+          .select('credits_balance')
           .eq('user_id', user.id)
           .single();
 
         await supabase.from('profiles').update({
-          stash_credits:        (profileData?.stash_credits || 0) + credits,
-          total_savings_cents:  (profileData?.total_savings_cents || 0) + totalSaved,
+          credits_balance: (profileData?.credits_balance || 0) + credits,
         }).eq('user_id', user.id);
-      } else {
-        // Update total_savings_cents separately (issue_credits only handles stash_credits)
-        await supabase.rpc('increment_savings', {
-          p_user_id: user.id,
-          p_amount:  totalSaved,
-        }).catch(() => {
-          // Fallback: direct update
-          supabase
-            .from('profiles')
-            .select('total_savings_cents')
-            .eq('user_id', user.id)
-            .single()
-            .then(({ data }) => {
-              supabase.from('profiles').update({
-                total_savings_cents: (data?.total_savings_cents || 0) + totalSaved,
-              }).eq('user_id', user.id);
-            });
-        });
       }
 
       // 5. Pick smart prompt based on actual trip data
@@ -412,6 +412,27 @@ export default function ReceiptUploadScreen({ navigation }) {
         setSmartPrompt(SMART_PROMPTS[2]);   // New store detected
       }
 
+      // Compare receipt to weekly plan in background — populates OutcomeScreen
+      try {
+        const planId = await AsyncStorage.getItem('snippd_weekly_plan_id').catch(() => null);
+        const { data: { session: sess } } = await supabase.auth.getSession();
+        if (sess?.access_token) {
+          supabase.functions.invoke('compare-receipt-to-plan', {
+            body: {
+              weekly_plan_id:      planId || null,
+              receipt_total_cents: totalAmount,
+              store:               storeName,
+              parsed_items:        parsedItems,
+              stack_items_count:   stackItems.length,
+              total_saved_cents:   totalSaved,
+            },
+            headers: { Authorization: `Bearer ${sess.access_token}` },
+          }).then(({ data: od }) => {
+            if (od?.outcome_id) setOutcomeData(od);
+          }).catch(() => {});
+        }
+      } catch { /* outcome comparison is non-blocking */ }
+
       setStep(3);
     } catch (e) {
       console.error('[confirmReceipt]', e.message);
@@ -422,7 +443,12 @@ export default function ReceiptUploadScreen({ navigation }) {
   };
 
   const handleSmartPrompt = () => {
-    setStep(4);
+    // If outcome comparison is ready, go to OutcomeScreen; otherwise keep existing step 4
+    if (outcomeData?.outcome_id) {
+      navigation.navigate('OutcomeScreen', { outcome: outcomeData });
+    } else {
+      setStep(4);
+    }
   };
 
   return (
@@ -609,6 +635,41 @@ export default function ReceiptUploadScreen({ navigation }) {
                   ? `We found ${parsedItems.length} items from ${storeName}. Review and confirm to complete verification.`
                   : `Manual entry for ${storeName}. Confirm to complete verification.`}
               </Text>
+
+              {/* ── Ghost Match Review (Self-Correcting OCR) ───────── */}
+              {showGhostReview && ghostMatches.length > 0 && (
+                <View style={styles.ghostCard}>
+                  <View style={styles.ghostHeader}>
+                    <Text style={styles.ghostIcon}>👻</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.ghostTitle}>I matched your essentials</Text>
+                      <Text style={styles.ghostSub}>The photo was unclear — I cross-referenced your household list. Correct me if I'm wrong.</Text>
+                    </View>
+                  </View>
+                  {ghostMatches.map((match, i) => (
+                    <View key={i} style={styles.ghostRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.ghostItemName}>{match.essentialName}</Text>
+                        <Text style={styles.ghostPrice}>Plan price: {fmt(match.priceCents)}</Text>
+                      </View>
+                      <View style={styles.ghostActions}>
+                        <TouchableOpacity
+                          style={[styles.ghostBtn, match.confirmed === true && styles.ghostBtnActive]}
+                          onPress={() => setGhostMatches(prev => prev.map((m, j) => j === i ? { ...m, confirmed: true } : m))}
+                        >
+                          <Text style={[styles.ghostBtnTxt, match.confirmed === true && { color: '#fff' }]}>✓ Yes</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.ghostBtn, match.confirmed === false && styles.ghostBtnReject]}
+                          onPress={() => setGhostMatches(prev => prev.map((m, j) => j === i ? { ...m, confirmed: false } : m))}
+                        >
+                          <Text style={[styles.ghostBtnTxt, match.confirmed === false && { color: '#fff' }]}>✗ No</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               {/* Summary boxes */}
               <View style={styles.summaryRow}>
@@ -851,14 +912,6 @@ export default function ReceiptUploadScreen({ navigation }) {
                   <Text style={styles.primaryBtnTxt}>See Your Win</Text>
                 </TouchableOpacity>
 
-                {studioEnabled && (
-                  <TouchableOpacity
-                    style={styles.secondaryBtn}
-                    onPress={() => navigation.navigate('StudioTab')}
-                  >
-                    <Text style={styles.secondaryBtnTxt}>Share Your Savings Story</Text>
-                  </TouchableOpacity>
-                )}
               </View>
             </View>
           )}
@@ -874,6 +927,32 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: OFF_WHITE },
   scroll: { paddingBottom: 40 },
   pad: { paddingHorizontal: 16, marginTop: 16 },
+
+  // Ghost Match (Self-Correcting OCR)
+  ghostCard: {
+    backgroundColor: '#F0F9FF', borderRadius: 16,
+    borderWidth: 1.5, borderColor: '#BAE6FD',
+    padding: 16, marginBottom: 16, gap: 12,
+  },
+  ghostHeader:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  ghostIcon:     { fontSize: 24, marginTop: 2 },
+  ghostTitle:    { fontSize: 14, fontWeight: '800', color: NAVY, marginBottom: 2 },
+  ghostSub:      { fontSize: 12, color: '#0369A1', lineHeight: 17 },
+  ghostRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#E0F2FE',
+  },
+  ghostItemName: { fontSize: 13, fontWeight: '700', color: NAVY },
+  ghostPrice:    { fontSize: 11, color: '#0284C7', marginTop: 2 },
+  ghostActions:  { flexDirection: 'row', gap: 8 },
+  ghostBtn: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 8, borderWidth: 1.5, borderColor: '#0EA5E9',
+    backgroundColor: '#fff',
+  },
+  ghostBtnActive:  { backgroundColor: '#0C9E54', borderColor: '#0C9E54' },
+  ghostBtnReject:  { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+  ghostBtnTxt:     { fontSize: 12, fontWeight: '700', color: '#0EA5E9' },
 
   // HEADER
   header: {

@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import { tracker } from '../lib/eventTracker';
+import { tracker } from '../src/lib/eventTracker';
 import { MFA } from '../lib/mfa';
 import { Feather } from '@expo/vector-icons';
 

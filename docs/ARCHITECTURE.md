@@ -38,7 +38,16 @@
 │  │  retailer_rules       offer_matches   stack_results        │   │
 │  │  smart_alerts         profiles  households  budgets        │   │
 │  │  receipt_uploads  receipt_items  retailers  stores         │   │
-│  │  trips  trip_items                                         │   │
+│  │  trips  trip_items  trip_results  user_trips               │   │
+│  │  stack_candidates  offer_sources  digital_coupons          │   │
+│  │  weekly_lifecycle_plans  checkout_math_snapshots           │   │
+│  │  authoritative_funding_ledger  household_cart_items        │   │
+│  │  geo_auth_logs  honey_token_skus  healing_events           │   │
+│  │  agent_initialization  agentic_ledger                      │   │
+│  │  ── Deal Intelligence ──  price_observations               │   │
+│  │  validation_events  user_deal_feedback  source_reliability │   │
+│  │  retailer_coverage  deal_review_queue  validation_rules    │   │
+│  │  ── Waitlist ──  waitlist_positions  waitlist_actions      │   │
 │  └─────────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────────┘
           │
@@ -179,10 +188,75 @@ Background (scheduled or on-demand):
 
 ---
 
+## Deal Intelligence Layer (v0.4.0)
+
+Added 2026-04-29. Sits between raw deal ingestion and `stack_candidates`. Runs 33 validation rules, confidence scoring 0–100, publish gating, regional pricing, and a user feedback loop.
+
+### New Tables
+
+| Table | Purpose |
+|---|---|
+| `price_observations` | Time-series price tracking per SKU/retailer — feeds accuracy engine |
+| `validation_events` | Audit log of every validation rule execution (rule name, pass/fail, delta) |
+| `user_deal_feedback` | User thumbs-up/down on deals; drives source reliability scores |
+| `source_reliability` | Per-source accuracy rating (0–1); updated by validation outcomes |
+| `retailer_coverage` | Regional availability flags (retailer × state × zip × store_id) |
+| `deal_review_queue` | Deals flagged for human review (low confidence or failed validation) |
+| `validation_rules` | Seeded table of 31 active validation rules with thresholds and weights |
+
+### Key Edge Functions
+
+| Function | Trigger | What it does |
+|---|---|---|
+| `deal-validator` | On demand / cron | Runs 33 validation rules against `offer_sources`; writes to `validation_events`; gates publish via `publish_gate` flag |
+| `price-tracker` | On deal insert | Upserts `price_observations`; computes accuracy delta vs. historical median |
+
+### Data Flow
+
+```
+offer_sources (raw ingestion)
+  → deal-validator Edge Function
+      runs 33 validation rules
+      computes confidence_score 0–100
+      sets publish_gate = true/false
+      writes validation_events audit rows
+      flags low-confidence rows to deal_review_queue
+  → price-tracker Edge Function
+      writes price_observations (time-series)
+      updates source_reliability for the source
+  → stack_candidates (only publish_gate = true rows promoted)
+```
+
+---
+
+## Three-Lane Waitlist System (v0.4.0)
+
+### Tables
+
+| Table | Purpose |
+|---|---|
+| `waitlist_positions` | One row per waitlisted user: lane (paid/gifted/free), position number, gamified action status |
+| `waitlist_actions` | Log of every completed gamified action (share, referral, forecast) per user |
+
+### Lanes
+
+| Lane | How assigned | Priority |
+|---|---|---|
+| `paid` | User completes subscription purchase before launch | 1 — first to convert |
+| `gifted` | Admin manually assigns (influencer, partner, press) | 2 — second cohort |
+| `free` | Default — position determined by waitlist action score | 3 — general queue |
+
+### Stored Functions
+
+- `assign_free_waitlist_position(user_id)` — atomically assigns next available free-lane position; idempotent (no-op if already assigned).
+- `assign_paid_waitlist_position(user_id)` — moves user to paid lane and adjusts queue ordering.
+
+---
+
 ## Key Constraints
 
 - **All writes go to Supabase.** The React Native client never writes directly to the DB — always through Edge Functions.
-- **No dark mode.** Brand palette is fixed: Mint canvas, Navy text, White cards, Green CTA, Coral accent.
+- **No dark mode.** Brand palette migrating to Sovereign (`#050805` bg, `#0C9E54` green); see `docs/DESIGN.md`.
 - **No hardcoded weights.** Event weights live in `event_weight_config`. Read from DB.
 - **No hardcoded retailer rules.** Stacking rules live in `retailer_coupon_parameters` + `retailer_rules`. Never in code.
 - **Deno for Edge Functions.** Use `https://esm.sh/` imports. No npm in Edge Functions.

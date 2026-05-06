@@ -12,7 +12,7 @@
  * Strategy:
  *   1. Resolve user_id from JWT
  *   2. Load user state + preferences + budget in parallel
- *   3. Load stack_candidates (limit 40)
+ *   3. Load v_coupon_verified_stack_candidates (limit 40)
  *   4. Run inline stacking engine on each candidate
  *   5. Score each candidate by preferences (category 40%, retailer 30%, brand 20%, deal_type 10%)
  *   6. Build 3 cart options using selection strategies
@@ -435,7 +435,7 @@ Deno.serve(async (req: Request) => {
 
     // ── 3. Load stack candidates ───────────────────────────────
     const { data: candidateData, error: candidateErr } = await db
-      .from('stack_candidates')
+      .from('v_coupon_verified_stack_candidates')
       .select('id, retailer_key, week_of, stack_rank_score, items, primary_category, primary_brand')
       .eq('retailer_key', retailerKey)
       .eq('week_of', weekOf)

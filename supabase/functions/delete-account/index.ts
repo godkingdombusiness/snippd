@@ -58,7 +58,6 @@ Deno.serve(async (req: Request) => {
     'household_cart_items',
     'trip_results',
     'receipt_items',
-    'receipt_summaries',
     'cron_audit_log',
   ];
 

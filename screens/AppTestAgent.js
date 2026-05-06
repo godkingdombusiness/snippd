@@ -177,13 +177,13 @@ const TESTS = [
     run: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { status: STATUS.FAIL, detail: 'No user signed in' };
-      const { data } = await supabase.from('profiles').select('full_name, weekly_budget, email, stash_credits').eq('user_id', user.id).single();
+      const { data } = await supabase.from('profiles').select('full_name, weekly_budget, email, credits_balance').eq('user_id', user.id).single();
       const missing = [];
       if (!data?.full_name) missing.push('full_name');
       if (!data?.email) missing.push('email');
       if (!data?.weekly_budget) missing.push('weekly_budget');
       if (missing.length > 0) return { status: STATUS.WARN, detail: `Missing: ${missing.join(', ')}` };
-      return { status: STATUS.PASS, detail: `Name: ${data.full_name} | Budget: $${(data.weekly_budget / 100).toFixed(0)}/wk | Credits: ${data.stash_credits}` };
+      return { status: STATUS.PASS, detail: `Name: ${data.full_name} | Budget: $${(data.weekly_budget / 100).toFixed(0)}/wk | Credits: ${data.credits_balance || 0}` };
     },
   },
   {

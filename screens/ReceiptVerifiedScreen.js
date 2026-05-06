@@ -20,16 +20,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
-import { applyReceiptVerifyCredits } from '../src/services/creditRewards';
 import { AgenticLedger, DecisionType } from '../src/services/agenticLedger';
 import {
   authorizedTotalsForRoute,
   fetchAuthorizedCheckoutMath,
 } from '../src/services/authoritativeCheckoutMath';
-
-const CART_KEY = 'snippd_cart';
+import { readActiveCart } from '../src/services/cartStorage';
 
 const FOREST = '#0C7A3D';
 const GREEN = '#0C9E54';
@@ -45,6 +44,26 @@ const fmt = (cents) => (typeof cents === 'number' ? '$' + (cents / 100).toFixed(
 
 function normName(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+const BADGE_LABELS = {
+  STREAK_4:  '🏅 4-Week Champion',
+  STREAK_8:  '🥈 8-Week Builder',
+  STREAK_26: '🥇 Half-Year Saver',
+  STREAK_52: '🏆 Annual Legend',
+};
+
+function triggerReceiptHaptics(vr) {
+  if (!vr?.ok) return;
+  if (vr.badges_earned?.length > 0) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      .then(() => { setTimeout(() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}); }, 200); })
+      .catch(() => {});
+  } else if (vr.bonus_credits > 0) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  } else {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  }
 }
 
 function SparkleRow() {
@@ -84,6 +103,7 @@ export default function ReceiptVerifiedScreen({ route, navigation }) {
   const [loading, setLoading] = useState(!params.cartItems?.length && !params.totals);
   const [creditNote, setCreditNote] = useState(null);
   const [planNameList, setPlanNameList] = useState([]);
+  const [streakResult, setStreakResult] = useState(null); // StreakResult from streakService
 
   useEffect(() => {
     async function loadFallbackAuthority() {
@@ -93,9 +113,7 @@ export default function ReceiptVerifiedScreen({ route, navigation }) {
       }
 
       try {
-        const raw = await AsyncStorage.getItem(CART_KEY);
-        const items = raw ? JSON.parse(raw) : [];
-        const normalized = Array.isArray(items) ? items : [];
+        const { items: normalized } = await readActiveCart();
         setCartItems(normalized);
         setCheckoutAuthority(normalized.length ? await fetchAuthorizedCheckoutMath({ items: normalized }) : null);
       } catch {
@@ -142,8 +160,30 @@ export default function ReceiptVerifiedScreen({ route, navigation }) {
           cart_value_cents: authority.you_pay_cents,
           item_count: cartItems.length,
         });
-        applyReceiptVerifyCredits(supabase, session.user.id).then((added) => {
-          if (added > 0) setCreditNote(`+${added} early access credits added to your balance.`);
+        // ── Logic Lock — single atomic server-side call ─────────────────
+        // verify-receipt handles: dedup, velocity check, credits, streak,
+        // badges — all in one SELECT FOR UPDATE transaction.
+        supabase.functions.invoke('verify-receipt', {
+          body: {
+            receipt_upload_id: params.receiptUploadId ?? `fallback-${session.user.id}-${Date.now()}`,
+          },
+        }).then(({ data: vr }) => {
+          if (!vr) return;
+          const total = (vr.credits_earned ?? 0) + (vr.bonus_credits ?? 0);
+          if (total > 0) {
+            const bonusTxt = vr.bonus_credits > 0 ? ` (${vr.bonus_credits} bonus!)` : '';
+            setCreditNote(`+${total} credits earned${bonusTxt}`);
+          }
+          // Map verify-receipt response → StreakResult shape
+          setStreakResult({
+            streakWeeks:           vr.streak_weeks       ?? 0,
+            longestStreak:         vr.longest_streak     ?? 0,
+            wasExtended:           vr.was_extended       ?? false,
+            shieldUsed:            vr.shield_used        ?? false,
+            badgesEarned:          vr.badges_earned      ?? [],
+            alreadyCountedThisWeek: vr.already_counted_this_week ?? false,
+          });
+          triggerReceiptHaptics(vr);
         }).catch(() => {});
         AgenticLedger.log({
           user_id: session.user.id,
@@ -274,6 +314,36 @@ export default function ReceiptVerifiedScreen({ route, navigation }) {
             {authority?.signature ? 'Signed math recorded' : 'Signature missing'}
           </Text>
           {!!creditNote && <Text style={s.creditBanner}>{creditNote}</Text>}
+
+          {!!streakResult && !streakResult.alreadyCountedThisWeek && (
+            <View style={s.streakWrap}>
+              <View style={s.streakRow}>
+                <Text style={s.streakFire}>🔥</Text>
+                <Text style={s.streakCount}>{streakResult.streakWeeks}</Text>
+                <Text style={s.streakLabel}>week streak</Text>
+                {streakResult.wasExtended && streakResult.streakWeeks > 1 && (
+                  <View style={s.streakBadge}>
+                    <Text style={s.streakBadgeTxt}>+1</Text>
+                  </View>
+                )}
+              </View>
+              {streakResult.shieldUsed && (
+                <Text style={s.shieldUsedTxt}>🛡 Streak shield used — streak protected</Text>
+              )}
+              {!streakResult.shieldUsed && streakResult.wasExtended && streakResult.streakWeeks > 1 && (
+                <Text style={s.streakExtTxt}>Streak extended — keep it going!</Text>
+              )}
+              {streakResult.badgesEarned.length > 0 && (
+                <View style={s.badgeEarnedWrap}>
+                  {streakResult.badgesEarned.map((key) => (
+                    <View key={key} style={s.badgePill}>
+                      <Text style={s.badgePillTxt}>{BADGE_LABELS[key] ?? key}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {planNameList.length > 0 && cartItems.length > 0 && (
@@ -415,4 +485,17 @@ const s = StyleSheet.create({
   feedbackRow: { flexDirection: 'row', gap: 8 },
   feedbackBtn: { flex: 1, flexDirection: 'column', alignItems: 'center', gap: 4, borderWidth: 1.5, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 4 },
   feedbackBtnTxt: { fontSize: 10, fontWeight: '800', textAlign: 'center' },
+  // Streak display
+  streakWrap: { marginTop: 14, alignItems: 'center', width: '100%', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)', paddingTop: 14 },
+  streakRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  streakFire: { fontSize: 22 },
+  streakCount: { color: WHITE, fontSize: 32, fontWeight: '900' },
+  streakLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: '700' },
+  streakBadge: { backgroundColor: '#1ED870', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  streakBadgeTxt: { color: '#050805', fontSize: 11, fontWeight: '900' },
+  streakExtTxt: { color: '#A7F3D0', fontSize: 12, fontWeight: '700', marginTop: 6 },
+  shieldUsedTxt: { color: '#FCD34D', fontSize: 12, fontWeight: '700', marginTop: 6 },
+  badgeEarnedWrap: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
+  badgePill: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  badgePillTxt: { color: WHITE, fontSize: 11, fontWeight: '800' },
 });

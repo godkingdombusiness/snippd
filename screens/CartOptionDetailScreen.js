@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
-import { tracker } from '../lib/eventTracker';
+import { tracker } from '../src/lib/eventTracker';
 
 const GREEN      = '#0C9E54';
 const NAVY       = '#0D1B4B';

@@ -23,7 +23,7 @@ describe('SQL Migration: 001_behavioral_intelligence.sql', () => {
   });
 
   test('migration creates event_stream table', () => {
-    expect(migrationContent).toContain('CREATE TABLE public.event_stream');
+    expect(migrationContent).toMatch(/CREATE TABLE(?: IF NOT EXISTS)? public\.event_stream/);
     expect(migrationContent).toContain('user_id uuid REFERENCES auth.users NOT NULL');
     expect(migrationContent).toContain('event_name text NOT NULL');
     expect(migrationContent).toContain('session_id uuid NOT NULL');
@@ -56,7 +56,7 @@ describe('SQL Migration: 001_behavioral_intelligence.sql', () => {
   });
 
   test('migration creates recommendation_exposures table', () => {
-    expect(migrationContent).toContain('CREATE TABLE public.recommendation_exposures');
+    expect(migrationContent).toMatch(/CREATE TABLE(?: IF NOT EXISTS)? public\.recommendation_exposures/);
     expect(migrationContent).toContain('recommendation_type text NOT NULL');
     expect(migrationContent).toContain('outcome_status text DEFAULT');
   });
@@ -69,14 +69,14 @@ describe('SQL Migration: 001_behavioral_intelligence.sql', () => {
   });
 
   test('migration creates model_predictions table', () => {
-    expect(migrationContent).toContain('CREATE TABLE public.model_predictions');
+    expect(migrationContent).toMatch(/CREATE TABLE(?: IF NOT EXISTS)? public\.model_predictions/);
     expect(migrationContent).toContain('prediction_type text NOT NULL');
     expect(migrationContent).toContain('score numeric NOT NULL');
     expect(migrationContent).toContain('model_version text NOT NULL');
   });
 
   test('migration creates wealth_momentum_snapshots table', () => {
-    expect(migrationContent).toContain('CREATE TABLE public.wealth_momentum_snapshots');
+    expect(migrationContent).toMatch(/CREATE TABLE(?: IF NOT EXISTS)? public\.wealth_momentum_snapshots/);
     expect(migrationContent).toContain('realized_savings numeric(12,2)');
     expect(migrationContent).toContain('inflation_offset numeric(12,2)');
     expect(migrationContent).toContain('waste_reduction_score numeric(5,2)');
@@ -85,9 +85,9 @@ describe('SQL Migration: 001_behavioral_intelligence.sql', () => {
   });
 
   test('migration creates performance indexes', () => {
-    expect(migrationContent).toContain('CREATE INDEX idx_es_user_time');
+    expect(migrationContent).toMatch(/CREATE INDEX(?: IF NOT EXISTS)? idx_es_user_time/);
     expect(migrationContent).toContain('event_stream(user_id, timestamp DESC)');
-    expect(migrationContent).toContain('CREATE INDEX idx_wealth_user_time');
+    expect(migrationContent).toMatch(/CREATE INDEX(?: IF NOT EXISTS)? idx_wealth_user_time/);
     expect(migrationContent).toContain('wealth_momentum_snapshots(user_id, timestamp DESC)');
   });
 });

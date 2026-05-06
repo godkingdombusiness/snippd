@@ -17,6 +17,332 @@ Two auth methods are supported:
 
 ---
 
+## Barcode Lookup (added 2026-05-03)
+
+### POST /lookup-barcode
+**Auth:** None (public endpoint)
+**Body:** `{ "barcode": "012345678905" }`
+
+Flow: `scanned_products` cache → Open Food Facts API → save to cache → fire `usda-search-food` in background.
+
+**Response (found):**
+```json
+{
+  "found": true,
+  "source": "off",
+  "product": {
+    "name": "Cheerios",
+    "brand": "General Mills",
+    "image": "https://images.openfoodfacts.org/...",
+    "ingredients": "Whole grain oats...",
+    "allergens": ["gluten", "oats"],
+    "nutrition": {
+      "calories": 375,
+      "protein": 12.5,
+      "carbs": 67,
+      "fat": 6.5,
+      "fiber": 8,
+      "sugar": 4,
+      "sodium": 490
+    },
+    "barcode": "012345678905"
+  }
+}
+```
+**Response (not found):** `{ "found": false, "barcode": "012345678905" }`
+Nutrition values are per 100g. `allergens` is a plain-English array (e.g. `["gluten", "milk"]`).
+
+---
+
+## Savings Loop Endpoints (added 2026-05-04)
+
+### POST /generate-weekly-plan
+**Auth:** Bearer JWT (required)
+**Body:**
+```json
+{
+  "meals": [{ "name": "Chicken Dinner", "ingredients": [...], "coupon": "...", "cal": 490 }],
+  "projected_total_cents": 14382,
+  "baseline_without_snippd_cents": 18240,
+  "budget_target_cents": 15000,
+  "household_size": 2,
+  "preferred_stores": ["Publix"],
+  "week_start": "2026-05-04"
+}
+```
+Upserts `weekly_plans` (idempotent by user_id + week_start), inserts `weekly_plan_days` (7 rows), inserts `coupon_checklist` rows for meals with coupons.
+
+**Response 200:**
+```json
+{
+  "ok": true,
+  "weekly_plan_id": "uuid",
+  "projected_total": 143.82,
+  "baseline_without_snippd_total": 182.40,
+  "estimated_snippd_savings": 38.58,
+  "budget_target": 150.00
+}
+```
+
+---
+
+### POST /compare-receipt-to-plan
+**Auth:** Bearer JWT (required)
+**Body:**
+```json
+{
+  "weekly_plan_id": "uuid",
+  "receipt_total_cents": 14000,
+  "store": "Publix",
+  "parsed_items": [...],
+  "stack_items_count": 12,
+  "total_saved_cents": 2200
+}
+```
+`weekly_plan_id` is optional. When missing, baseline is estimated at 1.35× actual and labeled `baseline_is_estimated: true`. Saves to `receipt_outcomes` and returns full comparison.
+
+**Response 200:**
+```json
+{
+  "ok": true,
+  "outcome_id": "uuid",
+  "planned_total": 143.82,
+  "actual_total": 140.00,
+  "baseline_without_snippd_total": 182.40,
+  "baseline_is_estimated": false,
+  "planned_savings": 38.58,
+  "actual_savings": 42.40,
+  "plan_accuracy_percent": 97,
+  "budget_target": 150.00,
+  "budget_result": 10.00,
+  "was_under_budget": true,
+  "matched_items_count": 12,
+  "missing_items_count": 3,
+  "coupons_expected": 4,
+  "coupons_confirmed": 3,
+  "meals_covered": 6
+}
+```
+
+---
+
+## Adaptive Memory Endpoints (added 2026-05-03)
+
+### POST /record-memory-event
+**Auth:** Bearer JWT (required)
+**Body:**
+```json
+{
+  "event_type": "survey_completed",
+  "survey_response": { "saved_money": "yes", "matched_store": "mostly", "use_again": "yes" },
+  "savings": 1450,
+  "store_id": "publix-123",
+  "metadata": { "store": "Publix", "rating": "good" }
+}
+```
+Allowed `event_type` values: `product_viewed`, `product_added_to_cart`, `product_removed_from_cart`, `barcode_scanned`, `cart_completed`, `receipt_confirmed`, `survey_completed`, `deal_clipped`, `deal_dismissed`, `store_selected`, `onboarding_completed`.
+
+**Response 200:**
+```json
+{ "ok": true, "neo4j_synced": true, "profile": { "savings_priority": 0.72, "nutrition_priority": 0.45, ... } }
+```
+Always HTTP 200. Neo4j write is non-blocking — `neo4j_synced: false` means Supabase insert succeeded but Neo4j was unreachable.
+
+---
+
+### POST /get-dynamic-home-layout
+**Auth:** Bearer JWT (required)
+**Body:** `{}` (no body required)
+
+**Response 200:**
+```json
+{
+  "status": "ok",
+  "source": "profile",
+  "sections": ["weekly_budget", "hottest_deals", "plan_my_week", "scan_item", "cart_summary", "receipt", "buying_power", "feature_grid"],
+  "alerts": [{ "type": "store_accuracy", "message": "Your store prices may be off. Re-scan next trip.", "severity": "warning" }],
+  "emphasized_actions": ["scan_item"],
+  "hidden_sections": [],
+  "fallback": false
+}
+```
+Returns `fallback: true` when no profile exists yet — `sections` is the default static order. Always HTTP 200.
+
+---
+
+### POST /sync-memory-events
+**Auth:** Optional `Memory-Sync-Key` header (checked against `MEMORY_SYNC_KEY` secret if set)
+**Body:** `{}` (no body required)
+
+Fetches up to 100 `memory_events` where `neo4j_synced = false`, replays each to Neo4j, marks synced or records error. Returns `{ synced, failed, errors[] }`. Intended for cron or manual backfill.
+
+---
+
+## Nutrition Intelligence Endpoints (added 2026-05-03)
+
+### POST /usda-search-food
+**Auth:** None required (public; USDA_API_KEY stays server-side)
+**Body:**
+```json
+{ "query": "whole milk", "product_name": "Great Value Whole Milk", "retailer": "Walmart" }
+```
+- `query` — required; sent to USDA FoodData Central
+- `product_name` — optional; used for cache lookup key (falls back to `query`)
+- `retailer` — optional; used to scope `product_nutrition_map` entry
+
+**Response (hit):**
+```json
+{
+  "hit": true,
+  "source": "cache",
+  "data": {
+    "usda_food_id": 746782,
+    "description": "Milk, whole, 3.25% milkfat",
+    "calories": 61,
+    "protein": 3.2,
+    "carbs": 4.8,
+    "fat": 3.3,
+    "fiber": 0,
+    "sugar": 5.1,
+    "sodium": 44,
+    "serving_size": 244,
+    "serving_unit": "g",
+    "last_updated": "2026-05-03T..."
+  }
+}
+```
+**Response (miss):** `{ "hit": false, "data": null }`
+**Response (no key):** `{ "hit": false, "data": null, "warning": "USDA_API_KEY not configured" }`
+Always HTTP 200. Cache-first: `product_nutrition_map` → `nutrition_cache` → USDA API. Requires ≥30% word overlap to accept match.
+
+---
+
+### POST /score-deals
+**Auth:** Bearer JWT (user must be authenticated)
+**Body:**
+```json
+{
+  "stores": ["Publix", "Walmart"],
+  "preferences": ["vegetarian", "budget"],
+  "nutrition": {
+    "min_protein": 10,
+    "max_carbs": null,
+    "max_calories": 300,
+    "max_sodium": null
+  },
+  "limit": 30
+}
+```
+All fields optional. `limit` capped at 60.
+
+**Response 200:**
+```json
+{
+  "deals": [
+    {
+      "id": "uuid",
+      "product_name": "Chicken Breast",
+      "retailer": "Publix",
+      "price_cents": 599,
+      "savings_cents": 200,
+      "deal_type": "sale",
+      "calories": 165,
+      "protein": 31,
+      "carbs": 0,
+      "fat": 3.6,
+      "composite_score": 0.7823,
+      "score_breakdown": {
+        "savings_score": 0.4,
+        "nutrition_score": 0.9,
+        "preference_score": 0.7,
+        "novelty_score": 1.0,
+        "composite": 0.7823
+      }
+    }
+  ],
+  "nutrition_summary": {
+    "avg_calories": 165,
+    "avg_protein": 31,
+    "avg_carbs": 12,
+    "avg_fat": 5.2,
+    "enriched_count": 18,
+    "total_count": 30
+  },
+  "total_returned": 30,
+  "filters_applied": { "stores": ["Publix"], "preferences": ["vegetarian"], "nutrition": {...} }
+}
+```
+Scoring weights: savings=0.45, nutrition=0.25, preference=0.20, novelty=0.10.
+Updates `user_variation_state.last_seen_deals` (ring buffer, max 40 IDs) on every call.
+
+---
+
+## SOC2 Fortress Endpoints (2026-04-29)
+
+### POST /verify-receipt — The Logic Lock
+**Auth:** Bearer JWT
+**Body:** `{ "receipt_upload_id": string, "content_hash"?: string }`
+
+Single authoritative gatekeeper for receipt credit awards. Replaces client-side `applyReceiptVerifyCredits()` + `updateStreakOnVerify()`.
+
+Security controls applied server-side:
+1. JWT ownership check — upload must belong to the calling user (RLS enforced)
+2. Duplicate detection — `receipt_upload_id` already claimed → `{ ok: false, error: "already_claimed" }` (HTTP 200, idempotent)
+3. Content hash dedup — same physical receipt re-uploaded → `{ ok: false, error: "duplicate_receipt_content" }` (HTTP 422)
+4. Velocity check — ≥3 receipts in 5 min → fraud flag + `{ ok: false, error: "velocity_limit_exceeded" }` (HTTP 429)
+5. Atomic DB transaction — `process_receipt_verification()` RPC uses `SELECT FOR UPDATE`, ToCTOU impossible
+
+**Response (success):**
+```json
+{
+  "ok": true,
+  "credits_earned": 10,
+  "bonus_credits": 0,
+  "total_credits_earned": 10,
+  "streak_weeks": 7,
+  "longest_streak": 7,
+  "was_extended": true,
+  "shield_used": false,
+  "already_counted_this_week": false,
+  "badges_earned": ["STREAK_4"]
+}
+```
+
+**Variable reward:** `bonus_credits` is 25 (10% chance), 10 (30% chance), or 0 (60% chance) — computed server-side.
+
+---
+
+### POST /reflexion-agent — Self-Healing Reflexion Loop
+**Auth:** `x-ingest-key` header
+**Body:** empty (or `{}`)
+**Trigger:** pg_cron every 6h, or on-demand from AdminPulseScreen
+
+Scans `healing_events` for unanalyzed critical/warning events in the last 24h. Groups by `check_name`. For chronic patterns (≥2 failures), calls Gemini 1.5 Flash for root-cause + fix recommendation. Applies automated fixes where safe.
+
+**Automated fix actions:**
+| `auto_fix_action` | What it does |
+|---|---|
+| `flag_retailer_coverage` | Sets `market_readiness_score = 0` for the affected retailer |
+| `update_user_preference` | Writes a preference key for all affected users |
+| `clear_stale_cache` | Deletes `home_payload_cache` rows for affected users |
+| `notify_admin` | Inserts a `REFLEXION_ADMIN_ALERT` healing event (surfaces in AdminPulseScreen) |
+
+**Response:**
+```json
+{
+  "ok": true,
+  "events_scanned": 47,
+  "patterns_found": 3,
+  "patterns_analyzed": 2,
+  "outcomes": [
+    { "check_name": "session_integrity", "analysis": { ... }, "fix_result": "notify_admin" }
+  ],
+  "elapsed_ms": 1240
+}
+```
+
+---
+
 ## Deal Intelligence Layer (2026-04-29)
 
 ### POST /functions/v1/deal-validator/validate

@@ -1,0 +1,10 @@
+› web bundles (2):
+_expo/static/js/web/InAppPurchases-c623cf47ab92bb50432f6f2b734422ad.js (3.7KB)
+_expo/static/js/web/index-c6724adc474d0df62e7bbe9a4d2a2ac9.js (3.5MB)
+
+› Files (3):
+favicon.ico (15KB)
+index.html (1.2KB)
+metadata.json (49B)
+
+Exported: dist

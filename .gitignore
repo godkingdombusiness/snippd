@@ -60,3 +60,19 @@ supabase/.temp/
 *.out.log
 .static-run.*
 .expo-start.*
+
+# Next.js build output
+web/.next/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Terraform provider downloads
+infra/vpc-sc/.terraform/
+
+# Local build / backup artifacts
+dist-run-check/
+snippd-backup/
+"Bash tool output*.txt"
+AGENTS.md

@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
-import { tracker } from '../lib/eventTracker';
+import { tracker } from '../src/lib/eventTracker';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 

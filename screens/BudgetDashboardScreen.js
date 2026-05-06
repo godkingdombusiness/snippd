@@ -68,14 +68,14 @@ export default function BudgetDashboardScreen({ navigation }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch profile: stash_credits, weekly_budget (user-set during onboarding), preferences
+      // Fetch profile: credits_balance, weekly_budget (user-set during onboarding), preferences
       const { data: profile } = await supabase
         .from('profiles')
-        .select('stash_credits, weekly_budget, preferences')
+        .select('credits_balance, weekly_budget, preferences')
         .eq('user_id', user.id)
         .single();
 
-      setStashCredits(profile?.stash_credits || 0);
+      setStashCredits(profile?.credits_balance || 0);
       setAm(profile?.preferences?.accessibility_mode === true);
 
       // weekly_budget is stored in cents in the profiles table (set during onboarding)
@@ -114,27 +114,30 @@ export default function BudgetDashboardScreen({ navigation }) {
         .maybeSingle();
 
       // Savings Mission: aggregate save_cents from household cart items
+      // household_cart_items table created via LAUNCH_apply_all.sql migration
       if (membership?.household_id) {
-        const { data: cartItems } = await supabase
-          .from('household_cart_items')
-          .select('save_cents, quantity')
-          .eq('household_id', membership.household_id)
-          .eq('status', 'purchased');
-        const totalSaved = (cartItems || []).reduce(
-          (s, i) => s + (i.save_cents || 0) * (i.quantity || 1), 0
-        );
-        setSavingsMission({ earned: totalSaved, goal: 5000 });
+        try {
+          const { data: cartItems } = await supabase
+            .from('household_cart_items')
+            .select('save_cents, quantity')
+            .eq('household_id', membership.household_id)
+            .eq('status', 'purchased');
+          const totalSaved = (cartItems || []).reduce(
+            (s, i) => s + (i.save_cents || 0) * (i.quantity || 1), 0
+          );
+          setSavingsMission({ earned: totalSaved, goal: 5000 });
+        } catch { /* table pending migration — show zero until applied */ }
       }
 
-      // Fetch spend from receipt_summaries for the selected window
+      // Fetch spend from trip_results for the selected window
       const { data: receipts } = await supabase
-        .from('receipt_summaries')
-        .select('total_cents, created_at')
+        .from('trip_results')
+        .select('total_spent_cents, created_at')
         .eq('user_id', user.id)
         .gte('created_at', start)
         .lte('created_at', end);
 
-      const periodTotal = (receipts || []).reduce((s, r) => s + (r.total_cents || 0), 0);
+      const periodTotal = (receipts || []).reduce((s, r) => s + (r.total_spent_cents || 0), 0);
       setMonthlySpend(periodTotal);
 
       // Previous period for trend comparison
@@ -146,12 +149,12 @@ export default function BudgetDashboardScreen({ navigation }) {
         : new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
 
       const { data: prevReceipts } = await supabase
-        .from('receipt_summaries')
-        .select('total_cents')
+        .from('trip_results')
+        .select('total_spent_cents')
         .eq('user_id', user.id)
         .gte('created_at', prevStart)
         .lte('created_at', prevEnd);
-      const prevTotal = (prevReceipts || []).reduce((s, r) => s + (r.total_cents || 0), 0);
+      const prevTotal = (prevReceipts || []).reduce((s, r) => s + (r.total_spent_cents || 0), 0);
       setTrendUp(periodTotal > prevTotal);
 
       // Budget score: (budget - spend) / budget, clamped 0–1

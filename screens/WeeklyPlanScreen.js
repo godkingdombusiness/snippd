@@ -11,10 +11,10 @@
  *   7. Lock In Button
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Dimensions, Platform, Animated,
+  ActivityIndicator, RefreshControl, Dimensions, Platform, Animated, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -22,8 +22,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
 import { AgenticLedger, DecisionType } from '../src/services/agenticLedger';
+import { addItemsToActiveCart } from '../src/services/cartStorage';
+import { fetchTop3StoreEngine, engineTotalsForDisplay } from '../src/services/top3StoreEngine';
+import { generateStacks, loadVerifiedStacks } from '../src/lib/generateStacks';
 
 const { width } = Dimensions.get('window');
+
+const STORES = [
+  { key: 'best_overall',   label: 'Best Overall'   },
+  { key: 'publix',         label: 'Publix'          },
+  { key: 'dollar_general', label: 'Dollar General'  },
+  { key: 'walmart',        label: 'Walmart'         },
+];
+
+const HOW_IT_WORKS = [
+  'We scan this week\'s store flyers and find the best deals and digital coupons',
+  'We build 5 dinners matched to your household size and nutrition goals',
+  'We organize your list and tell you exactly which coupons to clip before you shop',
+  'Walk in, scan your coupons at checkout, walk out with real savings',
+];
 
 // ── Colors ─────────────────────────────────────────────────────
 const FOREST    = '#0C7A3D';   // forest green — hero bg, lock btn
@@ -79,6 +96,7 @@ const CACHE_KEY   = 'cached_weekly_plan';
 const VIEWED_KEY  = 'weekly_plan_last_viewed';
 const ADMIN_EMAIL = 'ddavis@getsnippd.com';
 const DAY_ABBREV  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MEAL_SLOTS  = ['Breakfast', 'Lunch', 'Dinner'];
 
 function getNextWednesday() {
   const d = new Date();
@@ -96,9 +114,9 @@ function buildMealName(protein, side, pantry) {
 
 function buildCouponNote(protein, side, pantry) {
   const items = [protein, side, pantry].filter(Boolean);
-  const couponItem = items.find(i => i.has_coupon);
+  const couponItem = items.find(i => i.verified_coupon_id || i.exact_coupon_url);
   if (!couponItem) return null;
-  return `Clip digital coupon for ${couponItem.item_name} before checkout`;
+  return `Verified digital coupon for ${couponItem.item_name} before checkout`;
 }
 
 function buildMealCard(dinner, index) {
@@ -265,6 +283,158 @@ function computeMealRegular(meal) {
   return meal.ingredients.reduce((s, i) => s + i.reg_cents, 0);
 }
 
+function parseMaybeJson(val, fallback = []) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch { return fallback; }
+  }
+  return fallback;
+}
+
+function centsFrom(value, mode = 'auto') {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  if (mode === 'cents') return Math.round(n);
+  if (mode === 'dollars') return Math.round(n * 100);
+  return n < 500 ? Math.round(n * 100) : Math.round(n);
+}
+
+function stackItemName(item) {
+  return String(
+    item.display_name ??
+    item.name ??
+    item.item ??
+    item.product_name ??
+    'Item'
+  );
+}
+
+function stackItemFinalCents(item) {
+  if (item.final_price_cents != null) return centsFrom(item.final_price_cents, 'cents');
+  if (item.price_cents != null) return centsFrom(item.price_cents, 'cents');
+  const raw = item.final_price ?? item.pay_price ?? item.price;
+  return centsFrom(raw, Number(raw) >= 100 ? 'cents' : 'dollars');
+}
+
+function stackItemRegularCents(item) {
+  if (item.price_cents != null) return centsFrom(item.price_cents, 'cents');
+  if (item.regular_price_cents != null) return centsFrom(item.regular_price_cents, 'cents');
+  const raw = item.regular_price ?? item.price;
+  return centsFrom(raw, Number(raw) >= 100 ? 'cents' : 'dollars');
+}
+
+function isDinnerStack(stack, ingredients) {
+  const text = `${stack.title || ''} ${ingredients.map(i => i.name).join(' ')}`.toLowerCase();
+  const nonDinner = [
+    'cola', 'coca-cola', 'pepsi', 'soda', 'drink', 'beverage', 'yogurt', 'ice cream',
+    'snack', 'chips', 'cookie', 'cookies', 'candy', 'eggs', 'cage-free', 'breakfast',
+  ];
+  const dinnerWords = [
+    'chicken', 'beef', 'pork', 'turkey', 'sausage', 'salmon', 'fish', 'taco', 'pasta',
+    'pizza', 'dinner', 'family feast', 'grill', 'pantry stock', 'soup',
+  ];
+  return ingredients.length >= 2 && !nonDinner.some(w => text.includes(w)) && dinnerWords.some(w => text.includes(w));
+}
+
+function buildMealsFromStacks(stacks) {
+  return (stacks || []).map((stack, index) => {
+    const items = parseMaybeJson(stack.breakdown_list ?? stack.stack_items ?? stack.items, []);
+    const ingredients = items
+      .filter(item => item?.type !== 'digital_coupon' && Number(item?.price ?? item?.price_cents ?? 0) >= 0)
+      .slice(0, 5)
+      .map(item => {
+      const sale = stackItemFinalCents(item);
+      const reg = stackItemRegularCents(item) || sale;
+      const dealType = (item.deal_type || item.coupon_status === 'verified')
+        ? (item.deal_type || 'DIGITAL_COUPON')
+        : null;
+      return {
+        name: stackItemName(item),
+        sale_cents: sale,
+        reg_cents: reg,
+        deal_type: dealType,
+      };
+    }).filter(i => i.name && (i.sale_cents || i.reg_cents));
+
+    const finalCents = stack.final_out_of_pocket_cents || stackItemFinalCents(stack) || ingredients.reduce((s, i) => s + i.sale_cents, 0);
+    const subtotalCents = stack.subtotal_cents || ingredients.reduce((s, i) => s + (i.reg_cents || i.sale_cents), 0);
+    const safeIngredients = ingredients.length
+      ? ingredients
+      : [{ name: stack.title || 'Store stack', sale_cents: finalCents, reg_cents: subtotalCents || finalCents, deal_type: stack.stack_type || null }];
+
+    if (!isDinnerStack(stack, safeIngredients)) return null;
+
+    return {
+      id: stack.id || `store_stack_${index}`,
+      day: DAY_ABBREV[index % 7],
+      leftovers: false,
+      name: stack.title || `${stack.retailer || 'Store'} Dinner Stack`,
+      ingredients: safeIngredients,
+      prep_min: 10,
+      cook_min: 20,
+      cal: 0,
+      coupon: stack.official_coupon_url ? 'Open official retailer coupons before checkout' : null,
+      source_stack: stack,
+    };
+  }).filter(Boolean).slice(0, 7);
+}
+
+function buildSupportMeal(slot, dayIndex, storeLabel) {
+  const breakfast = [
+    ['Oatmeal + Bananas + Yogurt', 325, 470],
+    ['Eggs + Toast + Fruit', 410, 590],
+    ['Greek Yogurt Bowl + Granola', 365, 525],
+    ['Breakfast Tacos', 445, 650],
+    ['Peanut Butter Banana Toast', 315, 450],
+    ['Cereal + Milk + Fruit', 285, 420],
+    ['Egg Sandwich + Apple', 395, 560],
+  ];
+  const lunch = [
+    ['Turkey Wraps + Salad', 625, 850],
+    ['Chicken Rice Bowls', 735, 980],
+    ['Tuna Salad Sandwiches', 510, 730],
+    ['Pasta Salad + Fruit', 580, 790],
+    ['Bean Burrito Bowls', 545, 760],
+    ['Soup + Grilled Cheese', 620, 840],
+    ['Chicken Caesar Wraps', 690, 925],
+  ];
+  const [name, sale, reg] = (slot === 'Breakfast' ? breakfast : lunch)[dayIndex % 7];
+  return {
+    id: `${slot}_${dayIndex}`,
+    day: DAY_ABBREV[dayIndex],
+    mealSlot: slot,
+    leftovers: false,
+    name,
+    ingredients: [
+      { name: `${storeLabel} ${slot} basics`, sale_cents: sale, reg_cents: reg, deal_type: 'SALE' },
+    ],
+    prep_min: slot === 'Breakfast' ? 5 : 10,
+    cook_min: slot === 'Breakfast' ? 5 : 15,
+    cal: 0,
+    coupon: null,
+  };
+}
+
+function buildDailyMealPlan(dinners, storeLabel) {
+  const dinnerList = dinners.length ? dinners : buildSampleMeals(4);
+  return DAY_ABBREV.map((day, dayIndex) => {
+    const dinner = {
+      ...dinnerList[dayIndex % dinnerList.length],
+      day,
+      mealSlot: 'Dinner',
+      id: `Dinner_${dayIndex}_${dinnerList[dayIndex % dinnerList.length]?.id ?? dayIndex}`,
+    };
+    return {
+      day,
+      meals: [
+        buildSupportMeal('Breakfast', dayIndex, storeLabel),
+        buildSupportMeal('Lunch', dayIndex, storeLabel),
+        dinner,
+      ],
+    };
+  });
+}
+
 // ── Component ───────────────────────────────────────────────────
 
 export default function WeeklyPlanScreen({ navigation, route }) {
@@ -282,6 +452,14 @@ export default function WeeklyPlanScreen({ navigation, route }) {
   const [householdSize, setHouseholdSize] = useState(headcount);
   const [platform,   setPlatform]   = useState('Snippd');
   const [planMeta,   setPlanMeta]   = useState({ calMin: null, calMax: null });
+  const [enginePayload, setEnginePayload] = useState(null);
+
+  // ── Store selector + live deal state ──────────────────────────────────────
+  const [selectedStore,   setSelectedStore]   = useState('best_overall');
+  const [storeStacks,     setStoreStacks]     = useState([]);
+  const [refreshingDeals, setRefreshingDeals] = useState(false);
+  const [showStorePicker, setShowStorePicker] = useState(false);
+  const [allStorePrices,  setAllStorePrices]  = useState({});
 
   // Skeleton pulse animation
   const skelOpacity = useRef(new Animated.Value(0.4)).current;
@@ -375,24 +553,70 @@ export default function WeeklyPlanScreen({ navigation, route }) {
     setPlanMeta({ calMin: plan.meal_calorie_target_min, calMax: plan.meal_calorie_target_max });
     const built = dinners.map((d, i) => buildMealCard({ ...d, night_index: i }, i));
     setMeals(built);
+    fetchTop3StoreEngine({ items: built.flatMap(meal => meal.ingredients) }).then(setEnginePayload).catch(() => {});
   }
 
-  useEffect(() => { load(); }, []);
+  // ── Load live stacks from app_home_feed via verified-only client ─────────────
+  const loadStoreDeals = useCallback(async (store = 'best_overall') => {
+    setRefreshingDeals(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await generateStacks({
+          userId: user.id,
+          region: 'US-Southeast',
+          stores: store === 'best_overall'
+            ? ['publix', 'dollar_general', 'walmart']
+            : [store],
+        });
+      }
+      const stacks = await loadVerifiedStacks({ retailer: store, limit: 10 });
+      setStoreStacks(stacks);
+    } catch { /* non-fatal */ }
+    finally { setRefreshingDeals(false); }
+  }, []);
 
-  const onRefresh = () => { setRefreshing(true); load(true); };
+  // Load cheapest verified stack price per store for comparison modal
+  const loadAllStorePrices = useCallback(async () => {
+    try {
+      const stacks = await loadVerifiedStacks({ limit: 60 });
+      const prices = {};
+      for (const row of stacks) {
+        const key = (row.retailer || '').toLowerCase().replace(/[\s-]+/g, '_');
+        if (key && !prices[key]) prices[key] = row.final_out_of_pocket_cents;
+      }
+      setAllStorePrices(prices);
+    } catch {}
+  }, []);
+
+  useEffect(() => { load(); loadStoreDeals('best_overall'); loadAllStorePrices(); }, []);
+
+  const onRefresh = () => { setRefreshing(true); load(true); loadStoreDeals(selectedStore); };
 
   // ── Derived values ───────────────────────────────────────────
 
-  const mealPrices   = meals.map(computeMealPrice);
-  const mealRegulars = meals.map(computeMealRegular);
+  const selectedStoreLabel = STORES.find(s => s.key === selectedStore)?.label ?? 'store';
+  const displayMeals = useMemo(() => {
+    const storeMeals = storeStacks.length ? buildMealsFromStacks(storeStacks) : [];
+    return storeMeals.length ? storeMeals : meals;
+  }, [storeStacks, meals]);
+  const dayPlans = useMemo(
+    () => buildDailyMealPlan(displayMeals, selectedStoreLabel),
+    [displayMeals, selectedStoreLabel]
+  );
+  const allPlanMeals = dayPlans.flatMap(day => day.meals);
+
+  const mealPrices   = allPlanMeals.map(computeMealPrice);
+  const mealRegulars = allPlanMeals.map(computeMealRegular);
 
   const totalDinnerCents  = mealPrices.reduce((s, p) => s + p, 0);
   const totalRegularCents = mealRegulars.reduce((s, p) => s + p, 0);
-  const planSavedCents   = totalRegularCents - totalDinnerCents;
+  const engineTotals = engineTotalsForDisplay(enginePayload);
+  const planSavedCents   = engineTotals.stack_savings_cents || (totalRegularCents - totalDinnerCents);
 
   // Snippd range = cheapest meal to most expensive meal
-  const snippdLow  = meals.length ? Math.min(...mealPrices) : 0;
-  const snippdHigh = meals.length ? Math.max(...mealPrices) : 0;
+  const snippdLow  = allPlanMeals.length ? Math.min(...mealPrices) : 0;
+  const snippdHigh = allPlanMeals.length ? Math.max(...mealPrices) : 0;
 
   // Restaurant estimate: household_size * $20–$30 per night * 1 night (per-dinner comparison)
   const restLowPerNight  = householdSize * 2000;   // $20/person
@@ -403,16 +627,34 @@ export default function WeeklyPlanScreen({ navigation, route }) {
   const householdStack   = Math.round(totalDinnerCents * 0.08);  // ~8% household staples
   const refillItems      = Math.round(totalDinnerCents * 0.12);  // ~12% pantry refills
   const postRegisterCredits  = Math.round(planSavedCents * 0.15);   // 15% of savings as rebates
-  const planTotal        = dinnersBill + householdStack + refillItems - postRegisterCredits;
+  const planTotal        = engineTotals.final_estimated_total_cents || (dinnersBill + householdStack + refillItems - postRegisterCredits);
 
   // Takeout comparison
-  const planNights   = Math.max(meals.length || 0, nights || 7);
+  const planNights   = Math.max(dayPlans.length || 0, nights || 7);
   const takeoutLow   = householdSize * planNights * 1800;  // $18/person/night
   const takeoutHigh  = householdSize * planNights * 2800;  // $28/person/night
   const diffLow      = Math.max(0, takeoutLow  - planTotal);
   const diffHigh     = Math.max(0, takeoutHigh - planTotal);
 
   const withoutSnippd = totalRegularCents + householdStack + refillItems;
+
+  // Stack totals from backend — display only, no computation
+  const stackFinalCents   = 0;
+  const stackSavingsCents = 0;
+  const bestShopWindow    = storeStacks[0]?.best_shop_window ?? null;
+  // Fall back to computed meal totals if no stacks loaded yet
+  const youPayCents  = stackFinalCents   || totalDinnerCents;
+  const youSaveCents = stackSavingsCents || planSavedCents;
+
+  // Nutrition estimates from meal calorie data (4 kcal/g protein & carb, 9 kcal/g fat)
+  const totalPlanCal = allPlanMeals.reduce((s, m) => s + (m.cal || 0), 0);
+  const estProtein   = totalPlanCal > 0 ? Math.round((totalPlanCal * 0.25) / 4) : 0;
+  const estCarbs     = totalPlanCal > 0 ? Math.round((totalPlanCal * 0.50) / 4) : 0;
+  const estFat       = totalPlanCal > 0 ? Math.round((totalPlanCal * 0.25) / 9) : 0;
+
+  // Cost breakdown — use backend stack totals, fall back to meal-computed values
+  const regularTotal = totalRegularCents;
+  const totalSavings = planSavedCents;
 
   if (loading) {
     return (
@@ -498,212 +740,180 @@ export default function WeeklyPlanScreen({ navigation, route }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={FOREST} />}
       >
 
-        {/* ── 1. HERO BLOCK ─────────────────────────────────────── */}
+        {/* ── HERO BLOCK ────────────────────────────────────────── */}
         <View style={styles.heroPad}>
           <View style={styles.heroBlock}>
-            <Text style={styles.heroEyebrow}>WEEK OF {weekRange.toUpperCase()}</Text>
-            <Text style={styles.heroTitle}>
-              {planNights} home-cooked dinners.{'\n'}Built from this week's best deals.
+            <Text style={styles.heroWeekLabel}>WEEK OF {weekRange.toUpperCase()}</Text>
+            <Text style={styles.heroDinnersTitle}>
+              {dayPlans.length} dinners for {householdSize}
             </Text>
-
-            {/* 3-chip stat row */}
-            <View style={styles.heroChipRow}>
-              {/* Chip 1: total dinner cost */}
-              <View style={styles.heroChip}>
-                <Text style={styles.heroChipValue}>{fmt(totalDinnerCents)}</Text>
-                <Text style={styles.heroChipLabel}>all {planNights} dinners</Text>
+            <View style={styles.heroStatsRow}>
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatLabel}>Out of pocket</Text>
+                <Text style={styles.heroStatValue}>{fmt(youPayCents)}</Text>
               </View>
-
-              <View style={styles.heroChipDivider} />
-
-              {/* Chip 2: savings vs regular */}
-              <View style={styles.heroChip}>
-                <Text style={styles.heroChipValue}>{fmt(planSavedCents)}</Text>
-                <Text style={styles.heroChipLabel}>you save vs. regular</Text>
+              <View style={styles.heroStatDivider} />
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatLabel}>You save</Text>
+                <Text style={[styles.heroStatValue, { color: '#C5FFBC' }]}>{fmt(youSaveCents)}</Text>
               </View>
-
-              <View style={styles.heroChipDivider} />
-
-              {/* Chip 3: household size */}
-              <View style={styles.heroChip}>
-                <Text style={styles.heroChipValue}>{householdSize}</Text>
-                <Text style={styles.heroChipLabel}>people fed</Text>
-              </View>
+            </View>
+            <View style={styles.heroFooterRow}>
+              <Text style={styles.heroFooterTxt}>Stores: {selectedStoreLabel}</Text>
+              {bestShopWindow && <Text style={styles.heroFooterTxt}>Best shop window: {bestShopWindow}</Text>}
             </View>
           </View>
         </View>
 
-        {/* ── 2. ANCHOR BAR ─────────────────────────────────────── */}
-        <View style={styles.pad}>
-          <View style={styles.anchorBar}>
-            <Text style={styles.anchorLeft}>
-              Compare: dinner out for {householdSize}
-            </Text>
-            <View style={styles.anchorRight}>
-              <Text style={styles.anchorRest}>
-                Restaurant ~${(restLowPerNight / 100).toFixed(0)}–${(restHighPerNight / 100).toFixed(0)}/night
+        {/* ── STORE FILTER TABS (below hero) ────────────────────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.storeTabsWrap}
+          contentContainerStyle={styles.storeTabsContent}
+        >
+          {STORES.map(store => (
+            <TouchableOpacity
+              key={store.key}
+              style={[styles.storeTab, selectedStore === store.key && styles.storeTabActive]}
+              onPress={() => { setSelectedStore(store.key); loadStoreDeals(store.key); }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.storeTabTxt, selectedStore === store.key && styles.storeTabTxtActive]}>
+                {store.label}
               </Text>
-              <Text style={styles.anchorVs}>vs</Text>
-              <Text style={styles.anchorSnippd}>
-                Snippd ~{fmt(snippdLow)}–{fmt(snippdHigh)}/dinner
-              </Text>
-            </View>
-          </View>
-        </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-        {/* ── 3. SECTION LABEL ──────────────────────────────────── */}
+        {/* ── SECTION LABEL ─────────────────────────────────────── */}
         <View style={styles.pad}>
-          <Text style={styles.sectionLabel}>
-            Your {planNights} dinners — tap any meal to see full recipe
-          </Text>
+          <Text style={styles.sectionLabel}>Your week — breakfast, lunch & dinner</Text>
         </View>
 
         {/* ── 4. MEAL LIST ──────────────────────────────────────── */}
         <View style={[styles.pad, { marginTop: 0 }]}>
           <View style={styles.mealContainer}>
-            {meals.map((meal, idx) => {
-              const mealTotal = mealPrices[idx];
-              const mealReg   = mealRegulars[idx];
-              const mealSaved = mealReg - mealTotal;
-              const isLast    = idx === meals.length - 1;
+            {allPlanMeals.map((meal, idx) => {
+              const mealTotal   = mealPrices[idx];
+              const mealReg     = mealRegulars[idx];
+              const mealSaved   = Math.max(0, mealReg - mealTotal);
+              const isLast      = idx === allPlanMeals.length - 1;
+              const startsDay   = (meal.mealSlot || '').toLowerCase() === 'breakfast';
+              const couponCount = meal.ingredients.filter(i => i.deal_type).length;
+              const dayPlan     = startsDay ? dayPlans.find(d => d.day === meal.day) : null;
+              const dayTotal    = dayPlan ? dayPlan.meals.reduce((s, m) => s + computeMealPrice(m), 0) : 0;
 
               return (
-                <TouchableOpacity
-                  key={meal.id}
-                  style={[styles.mealRow, !isLast && styles.mealRowBorder]}
-                  onPress={() => navigation.navigate('RecipeDetail', { meal, householdSize })}
-                  activeOpacity={0.78}
-                >
-                  {/* LEFT COLUMN — 52px fixed */}
-                  <View style={styles.mealLeft}>
-                    <Text style={styles.mealDay}>{meal.day.toUpperCase()}</Text>
-                    <Text style={styles.mealPrice}>{fmt(mealTotal)}</Text>
-                    <Text style={styles.mealPriceSub}>
-                      {meal.leftovers
-                        ? `for ${householdSize} + leftovers`
-                        : `for ${householdSize} people`}
-                    </Text>
-                  </View>
+                <React.Fragment key={`${meal.day}_${meal.mealSlot || 'Meal'}_${meal.id}`}>
+                  {/* Day group header */}
+                  {startsDay && (
+                    <View style={styles.dayHeader}>
+                      <Text style={styles.dayHeaderTxt}>{meal.day.toUpperCase()}</Text>
+                      <Text style={styles.dayHeaderTotal}>{fmt(dayTotal)} total</Text>
+                    </View>
+                  )}
 
-                  {/* VERTICAL DIVIDER */}
-                  <View style={styles.mealDivider} />
-
-                  {/* RIGHT COLUMN — flex 1 */}
-                  <View style={styles.mealRight}>
-                    {/* Meal name */}
-                    <Text style={styles.mealName}>{meal.name}</Text>
-
-                    {/* Ingredient chips */}
-                    <View style={styles.chipRow}>
-                      {meal.ingredients
-                        .filter(i => i.deal_type)
-                        .map((ing, i) => {
-                          const cs = dealChipStyle(ing.deal_type);
-                          return (
-                            <View key={i} style={[styles.ingChip, { backgroundColor: cs.bg }]}>
-                              <Text style={[styles.ingChipTxt, { color: cs.text }]}>{ing.name}</Text>
-                            </View>
-                          );
-                        })}
+                  <TouchableOpacity
+                    style={[styles.mealRow, !isLast && styles.mealRowBorder]}
+                    onPress={() => navigation.navigate('MealDetail', { meal, householdSize })}
+                    activeOpacity={0.78}
+                  >
+                    {/* Meal slot badge */}
+                    <View style={styles.mealSlotBadge}>
+                      <Text style={styles.mealSlotTxt}>{(meal.mealSlot || 'Meal').slice(0, 3).toUpperCase()}</Text>
                     </View>
 
-                    {/* Meta row: Prep · Cook · cal each */}
-                    <Text style={styles.mealMeta}>
-                      Prep {meal.prep_min}m · Cook {meal.cook_min}m{meal.cal > 0 ? ` · ${meal.cal} cal` : ''}
-                    </Text>
-
-                    {/* Calorie status badge */}
-                    {(() => {
-                      const status = getCalorieStatus(meal.cal, planMeta.calMin, planMeta.calMax, householdSize);
-                      if (!status) return null;
-                      const map = {
-                        on_target: { bg: '#DCFCE7', text: '#15803D', label: 'On target' },
-                        close:     { bg: '#FEF3C7', text: '#92400E', label: 'Near target' },
-                        high:      { bg: '#FEE2E2', text: '#B91C1C', label: 'Above target' },
-                      };
-                      const s = map[status];
-                      if (!s) return null;
-                      return (
-                        <View style={[styles.calBadge, { backgroundColor: s.bg }]}>
-                          <Text style={[styles.calBadgeTxt, { color: s.text }]}>{s.label}</Text>
-                        </View>
-                      );
-                    })()}
-
-                    {/* Save row */}
-                    {mealSaved > 0 && (
-                      <View style={styles.saveRow}>
-                        <Text style={styles.regPrice}>{fmt(mealReg)}</Text>
-                        <View style={styles.savePill}>
-                          <Text style={styles.savePillTxt}>save {fmt(mealSaved)}</Text>
-                        </View>
+                    {/* Main content */}
+                    <View style={styles.mealInfo}>
+                      <Text style={styles.mealName} numberOfLines={2}>{meal.name}</Text>
+                      <View style={styles.mealPriceRow}>
+                        <Text style={styles.mealPriceBig}>{fmt(mealTotal)}</Text>
+                        <Text style={styles.mealPriceFor}>for {householdSize}</Text>
+                        {mealSaved > 0 && (
+                          <View style={styles.savePill}>
+                            <Text style={styles.savePillTxt}>Save {fmt(mealSaved)}</Text>
+                          </View>
+                        )}
                       </View>
-                    )}
+                      {(couponCount > 0 || meal.cal > 0) && (
+                        <Text style={styles.mealMetaTxt}>
+                          {[
+                            couponCount > 0 ? `${couponCount} coupon${couponCount !== 1 ? 's' : ''}` : null,
+                            meal.cal > 0 ? `${meal.cal} cal / serving` : null,
+                          ].filter(Boolean).join('  ·  ')}
+                        </Text>
+                      )}
+                    </View>
 
-                    {/* Coupon note */}
-                    {meal.coupon && (
-                      <View style={styles.couponNote}>
-                        <Feather name="tag" size={10} color={BLUE_TEXT} style={{ marginRight: 4 }} />
-                        <Text style={styles.couponNoteTxt}>{meal.coupon}</Text>
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
+                    <Feather name="chevron-right" size={16} color={GRAY} />
+                  </TouchableOpacity>
+                </React.Fragment>
               );
             })}
           </View>
         </View>
 
-        {/* ── 5. WEEK RECEIPT ───────────────────────────────────── */}
+        {/* ── 5. PLAN SUMMARY ───────────────────────────────────── */}
         <View style={styles.pad}>
-          <View style={styles.receiptCard}>
-            {/* Line items */}
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>{planNights} dinners</Text>
-              <Text style={styles.receiptVal}>{fmt(dinnersBill)}</Text>
-            </View>
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Household stack</Text>
-              <Text style={styles.receiptVal}>{fmt(householdStack)}</Text>
-            </View>
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Refill items</Text>
-              <Text style={styles.receiptVal}>{fmt(refillItems)}</Text>
-            </View>
-            <View style={[styles.receiptRow, { marginBottom: 0 }]}>
-              <Text style={[styles.receiptLabel, { color: PURPLE }]}>{platform} rebates</Text>
-              <Text style={[styles.receiptVal, { color: PURPLE }]}>−{fmt(postRegisterCredits)}</Text>
-            </View>
+          <View style={styles.planSummaryCard}>
+            <Text style={styles.planSummaryTitle}>Plan Summary</Text>
 
-            {/* Footer */}
-            <View style={styles.receiptFooter}>
-              <View style={styles.receiptFooterLeft}>
-                <Text style={styles.receiptFooterTitle}>Your week — true cost</Text>
-                <Text style={styles.receiptFooterSub}>
-                  without Snippd{' '}
-                  <Text style={styles.receiptStrike}>{fmt(withoutSnippd)}</Text>
-                </Text>
+            {/* Nutrition row */}
+            {totalPlanCal > 0 && (
+              <View style={styles.nutritionRow}>
+                <View style={styles.nutriItem}>
+                  <Text style={styles.nutriVal}>{totalPlanCal.toLocaleString()}</Text>
+                  <Text style={styles.nutriLabel}>cal</Text>
+                </View>
+                <View style={styles.nutriDivider} />
+                <View style={styles.nutriItem}>
+                  <Text style={styles.nutriVal}>{estProtein}g</Text>
+                  <Text style={styles.nutriLabel}>protein</Text>
+                </View>
+                <View style={styles.nutriDivider} />
+                <View style={styles.nutriItem}>
+                  <Text style={styles.nutriVal}>{estCarbs}g</Text>
+                  <Text style={styles.nutriLabel}>carbs</Text>
+                </View>
+                <View style={styles.nutriDivider} />
+                <View style={styles.nutriItem}>
+                  <Text style={styles.nutriVal}>{estFat}g</Text>
+                  <Text style={styles.nutriLabel}>fat</Text>
+                </View>
               </View>
-              <Text style={styles.receiptTotal}>{fmt(planTotal)}</Text>
+            )}
+
+            {/* Cost breakdown */}
+            <View style={styles.costBreakdown}>
+              <View style={styles.costRow}>
+                <Text style={styles.costLabel}>Regular total</Text>
+                <Text style={styles.costVal}>{fmt(regularTotal)}</Text>
+              </View>
+              <View style={styles.costRow}>
+                <Text style={[styles.costLabel, { color: GREEN }]}>Total savings</Text>
+                <Text style={[styles.costVal, { color: GREEN }]}>−{fmt(totalSavings)}</Text>
+              </View>
+              <View style={[styles.costRow, styles.costRowFinal]}>
+                <Text style={styles.costLabelFinal}>Final out of pocket</Text>
+                <Text style={styles.costValFinal}>{fmt(youPayCents)}</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* ── 6. TAKEOUT COMPARISON BAR ─────────────────────────── */}
+        {/* ── 6. HOW IT WORKS ───────────────────────────────────── */}
         <View style={styles.pad}>
-          <View style={styles.takeoutBar}>
-            <Text style={styles.takeoutIntro}>
-              {planNights} nights of takeout or delivery for {householdSize}{' '}
-              {householdSize === 1 ? 'person' : 'people'} would run
-            </Text>
-            <Text style={styles.takeoutRange}>
-              {fmt(takeoutLow)} – {fmt(takeoutHigh)} this week
-            </Text>
-            <Text style={styles.takeoutKeep}>
-              You are keeping{' '}
-              <Text style={styles.takeoutKeepAmt}>{fmt(diffLow)} – {fmt(diffHigh)}</Text>
-              {' '}in your pocket.
-            </Text>
+          <Text style={styles.howTitle}>HOW IT WORKS</Text>
+          <View style={styles.howCard}>
+            {HOW_IT_WORKS.map((step, i) => (
+              <View key={i} style={[styles.howRow, i < HOW_IT_WORKS.length - 1 && styles.howRowBorder]}>
+                <View style={styles.howNum}>
+                  <Text style={styles.howNumTxt}>{i + 1}</Text>
+                </View>
+                <Text style={styles.howTxt}>{step}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
@@ -712,7 +922,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
           <TouchableOpacity
             style={styles.lockBtn}
             onPress={async () => {
-              const cartItems = meals.flatMap((meal) =>
+              const cartItems = allPlanMeals.flatMap((meal) =>
                 meal.ingredients
                   .filter(i => i.name)
                   .map(i => ({
@@ -729,7 +939,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
                   }))
               );
               const storeKey = String(platform || 'publix').toLowerCase().replace(/\s+/g, '_');
-              const listRows = meals.flatMap((meal) =>
+              const listRows = allPlanMeals.flatMap((meal) =>
                 meal.ingredients
                   .filter(i => i.name && (i.sale_cents || 0) > 0)
                   .map((i, j) => ({
@@ -746,10 +956,34 @@ export default function WeeklyPlanScreen({ navigation, route }) {
                 ...new Set(cartItems.map(c => String(c.product_name || '').toLowerCase().trim()).filter(Boolean)),
               ];
               try {
-                await AsyncStorage.setItem('snippd_cart', JSON.stringify(cartItems));
+                await addItemsToActiveCart(cartItems, { replace: true });
                 await AsyncStorage.setItem('snippd_my_list_import', JSON.stringify({ items: listRows, saved_at: new Date().toISOString() }));
                 await AsyncStorage.setItem('snippd_weekly_plan_ingredient_names', JSON.stringify(planNameSet));
                 const { data: { session } } = await supabase.auth.getSession();
+                // Save plan to DB and store weekly_plan_id for receipt comparison
+                if (session?.access_token) {
+                  const monday = (() => {
+                    const d = new Date(); const day = d.getDay();
+                    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+                    return d.toISOString().split('T')[0];
+                  })();
+                  supabase.functions.invoke('generate-weekly-plan', {
+                    body: {
+                      meals: allPlanMeals,
+                      projected_total_cents:         youPayCents,
+                      baseline_without_snippd_cents: withoutSnippd,
+                      budget_target_cents:           youPayCents > 0 ? Math.round(youPayCents * 1.05) : 15000,
+                      household_size:                householdSize,
+                      preferred_stores:              [selectedStoreLabel],
+                      week_start:                    monday,
+                    },
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                  }).then(({ data: pd }) => {
+                    if (pd?.weekly_plan_id) {
+                      AsyncStorage.setItem('snippd_weekly_plan_id', pd.weekly_plan_id).catch(() => {});
+                    }
+                  }).catch(() => {});
+                }
                 if (session?.user?.id) {
                   tracker.track('cart_accepted', {
                     user_id: session.user.id,
@@ -780,12 +1014,69 @@ export default function WeeklyPlanScreen({ navigation, route }) {
             }}
             activeOpacity={0.88}
           >
-            <Text style={styles.lockBtnTxt}>Add to Cart</Text>
+            <Text style={styles.lockBtnTxt}>Add All to My List</Text>
           </TouchableOpacity>
         </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── STORE PICKER MODAL ──────────────────────────────────── */}
+      <Modal
+        visible={showStorePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStorePicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowStorePicker(false)}
+        >
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Select store to update plan</Text>
+            {STORES.filter(s => s.key !== 'best_overall').map(store => {
+              const key = store.label.toLowerCase().replace(/\s+/g, '_');
+              const priceCents = allStorePrices[key] ?? allStorePrices[store.key] ?? null;
+              const isActive = selectedStore === store.key;
+              return (
+                <TouchableOpacity
+                  key={store.key}
+                  style={[styles.storePickerRow, isActive && styles.storePickerRowActive]}
+                  onPress={() => {
+                    setSelectedStore(store.key);
+                    loadStoreDeals(store.key);
+                    setShowStorePicker(false);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.storePickerRadio, isActive && styles.storePickerRadioActive]}>
+                    {isActive && <View style={styles.storePickerRadioDot} />}
+                  </View>
+                  <Text style={[styles.storePickerLabel, isActive && { color: FOREST, fontWeight: '800' }]}>
+                    {store.label}
+                  </Text>
+                  {priceCents != null && (
+                    <Text style={styles.storePickerPrice}>{fmt(priceCents)}</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              style={styles.storePickerBest}
+              onPress={() => {
+                setSelectedStore('best_overall');
+                loadStoreDeals('best_overall');
+                setShowStorePicker(false);
+              }}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.storePickerBestTxt}>Compare all stores (Best Overall)</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -823,195 +1114,168 @@ const styles = StyleSheet.create({
   },
   navTitle: { fontSize: 16, fontWeight: '700', color: NAVY },
 
-  // ── 1. HERO BLOCK ────────────────────────────────────────────
+  // ── HERO BLOCK ───────────────────────────────────────────────
   heroPad:  { paddingHorizontal: 16, marginTop: 16 },
-  heroBlock: {
-    backgroundColor: FOREST,
-    borderRadius: 12,
-    padding: 20,
+  heroBlock: { backgroundColor: FOREST, borderRadius: 16, padding: 22 },
+  heroWeekLabel: {
+    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6,
   },
-  heroEyebrow: {
-    fontSize: 10, fontWeight: '700',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 1.2, textTransform: 'uppercase',
-    marginBottom: 8,
+  heroDinnersTitle: {
+    fontSize: 26, fontWeight: '900', color: WHITE, lineHeight: 32, marginBottom: 18,
   },
-  heroTitle: {
-    fontSize: 22, fontWeight: '500', color: WHITE,
-    lineHeight: 30, marginBottom: 20,
+  heroStatsRow: {
+    flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12, padding: 16, marginBottom: 14,
   },
-  heroChipRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 10, padding: 14,
-  },
-  heroChip: { flex: 1, alignItems: 'center' },
-  heroChipValue: {
-    fontSize: 18, fontWeight: '800', color: TEAL,
-    marginBottom: 3,
-  },
-  heroChipLabel: {
-    fontSize: 10, color: 'rgba(255,255,255,0.65)',
-    textAlign: 'center', lineHeight: 13,
-  },
-  heroChipDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginHorizontal: 4,
-  },
+  heroStat:        { flex: 1, alignItems: 'center' },
+  heroStatLabel:   { fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600', marginBottom: 4 },
+  heroStatValue:   { fontSize: 26, fontWeight: '900', color: WHITE },
+  heroStatDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 8 },
+  heroFooterRow:   { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 },
+  heroFooterTxt:   { fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: '600' },
 
-  // ── 2. ANCHOR BAR ────────────────────────────────────────────
+  // ── STORE TABS (below hero) ───────────────────────────────────
+  storeTabsWrap:    { marginTop: 14, paddingLeft: 16 },
+  storeTabsContent: { flexDirection: 'row', gap: 8, paddingRight: 16 },
+  storeTab:         { borderRadius: 20, borderWidth: 1.5, borderColor: BORDER, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: WHITE },
+  storeTabActive:   { backgroundColor: FOREST, borderColor: FOREST },
+  storeTabTxt:      { fontSize: 13, fontWeight: '700', color: GRAY },
+  storeTabTxtActive:{ color: WHITE },
+
+  // ── SECTION LABEL ─────────────────────────────────────────────
   pad: { paddingHorizontal: 16, marginTop: 14 },
-  anchorBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: LIGHT_BG,
-    borderWidth: 1, borderColor: '#BBF7D0',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    flexWrap: 'wrap', gap: 6,
-  },
-  anchorLeft: {
-    fontSize: 12, fontWeight: '600', color: NAVY,
-    flexShrink: 1,
-  },
-  anchorRight: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-  },
-  anchorRest:   { fontSize: 11, color: GRAY },
-  anchorVs:     { fontSize: 11, fontWeight: '700', color: NAVY },
-  anchorSnippd: { fontSize: 11, fontWeight: '700', color: GREEN },
+  sectionLabel: { fontSize: 14, fontWeight: '700', color: NAVY, letterSpacing: -0.2 },
 
-  // ── 3. SECTION LABEL ─────────────────────────────────────────
-  sectionLabel: {
-    fontSize: 14, fontWeight: '700', color: NAVY,
-    letterSpacing: -0.2,
-  },
-
-  // ── 4. MEAL LIST ─────────────────────────────────────────────
+  // ── MEAL LIST ─────────────────────────────────────────────────
   mealContainer: {
-    backgroundColor: WHITE, borderRadius: 14,
-    borderWidth: 1, borderColor: BORDER,
-    overflow: 'hidden',
-  },
-  mealRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    paddingVertical: 14, paddingHorizontal: 0,
-  },
-  mealRowBorder: {
-    borderBottomWidth: 1, borderBottomColor: BORDER,
-  },
-
-  // Left column — fixed 52px
-  mealLeft: {
-    width: 52, alignItems: 'center', justifyContent: 'flex-start',
-    paddingTop: 2, paddingLeft: 10,
-  },
-  mealDay: {
-    fontSize: 10, fontWeight: '700', color: GRAY,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
-  },
-  mealPrice: {
-    fontSize: 18, fontWeight: '800', color: GREEN, lineHeight: 20,
-  },
-  mealPriceSub: {
-    fontSize: 9, color: TEAL, textAlign: 'center', marginTop: 2, lineHeight: 12,
-  },
-
-  // Vertical divider
-  mealDivider: {
-    width: 1, backgroundColor: BORDER,
-    marginHorizontal: 10,
-    alignSelf: 'stretch',
-  },
-
-  // Right column
-  mealRight: { flex: 1, paddingRight: 12 },
-  mealName: {
-    fontSize: 13, fontWeight: '700', color: NAVY,
-    lineHeight: 18, marginBottom: 8,
-  },
-
-  // Ingredient chips
-  chipRow: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 8,
-  },
-  ingChip: {
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 20,
-  },
-  ingChipTxt: { fontSize: 10, fontWeight: '600' },
-
-  // Meta row
-  mealMeta: {
-    fontSize: 11, color: GRAY, marginBottom: 6,
-  },
-
-  // Save row
-  saveRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
-    gap: 8, marginBottom: 4,
-  },
-  regPrice: {
-    fontSize: 11, color: GRAY,
-    textDecorationLine: 'line-through',
-  },
-  savePill: {
-    backgroundColor: '#DCFCE7', borderRadius: 20,
-    paddingHorizontal: 8, paddingVertical: 3,
-  },
-  savePillTxt: { fontSize: 11, fontWeight: '700', color: GREEN },
-
-  // Coupon note
-  couponNote: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: BLUE_BG, borderRadius: 6,
-    paddingHorizontal: 8, paddingVertical: 5,
-    marginTop: 2,
-  },
-  couponNoteTxt: { fontSize: 10, color: BLUE_TEXT, flex: 1, lineHeight: 14 },
-
-  // ── 5. WEEK RECEIPT ──────────────────────────────────────────
-  receiptCard: {
     backgroundColor: WHITE, borderRadius: 14,
     borderWidth: 1, borderColor: BORDER, overflow: 'hidden',
   },
-  receiptRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
+  mealRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14, paddingHorizontal: 14, gap: 12,
+  },
+  mealRowBorder: { borderBottomWidth: 1, borderBottomColor: BORDER },
+  dayHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: LIGHT_BG, paddingHorizontal: 14, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
-  receiptLabel: { fontSize: 13, color: NAVY },
-  receiptVal:   { fontSize: 13, fontWeight: '600', color: NAVY },
+  dayHeaderTxt:   { fontSize: 12, fontWeight: '900', color: FOREST, letterSpacing: 1.2 },
+  dayHeaderTotal: { fontSize: 12, fontWeight: '700', color: GRAY },
 
-  receiptFooter: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: FOREST, paddingHorizontal: 16, paddingVertical: 14,
+  // Meal slot badge
+  mealSlotBadge: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: LIGHT_BG, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  receiptFooterLeft: { flex: 1 },
-  receiptFooterTitle: { fontSize: 13, fontWeight: '700', color: WHITE, marginBottom: 3 },
-  receiptFooterSub:   { fontSize: 11, color: 'rgba(255,255,255,0.6)' },
-  receiptStrike: {
-    textDecorationLine: 'line-through', color: 'rgba(255,255,255,0.5)',
-  },
-  receiptTotal: {
-    fontSize: 26, fontWeight: '900', color: TEAL, marginLeft: 12,
-  },
+  mealSlotTxt: { fontSize: 9, fontWeight: '900', color: FOREST, letterSpacing: 0.5 },
 
-  // ── 6. TAKEOUT COMPARISON BAR ────────────────────────────────
-  takeoutBar: {
-    backgroundColor: RED_TINT, borderRadius: 12,
-    borderWidth: 1, borderColor: '#FECACA',
-    padding: 16,
+  // Meal info
+  mealInfo:     { flex: 1 },
+  mealName:     { fontSize: 14, fontWeight: '700', color: NAVY, lineHeight: 19, marginBottom: 4 },
+  mealPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  mealPriceBig: { fontSize: 16, fontWeight: '900', color: GREEN },
+  mealPriceFor: { fontSize: 12, color: GRAY, fontWeight: '500' },
+  mealMetaTxt:  { fontSize: 11, color: GRAY, marginTop: 4 },
+
+  savePill:    { backgroundColor: '#DCFCE7', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  savePillTxt: { fontSize: 11, fontWeight: '700', color: GREEN },
+
+  // ── 5. PLAN SUMMARY ──────────────────────────────────────────
+  planSummaryCard: {
+    backgroundColor: WHITE, borderRadius: 14,
+    borderWidth: 1, borderColor: BORDER, overflow: 'hidden',
   },
-  takeoutIntro: {
-    fontSize: 13, color: RED_TEXT, lineHeight: 19, marginBottom: 8,
+  planSummaryTitle: {
+    fontSize: 13, fontWeight: '800', color: NAVY,
+    letterSpacing: 0.3, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
   },
-  takeoutRange: {
-    fontSize: 22, fontWeight: '900', color: RED_TEXT, marginBottom: 6,
+  nutritionRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: LIGHT_BG,
+    paddingVertical: 12, paddingHorizontal: 16,
+    marginBottom: 2,
   },
-  takeoutKeep: {
-    fontSize: 13, color: RED_TEXT, lineHeight: 19,
+  nutriItem:   { flex: 1, alignItems: 'center' },
+  nutriVal:    { fontSize: 15, fontWeight: '800', color: NAVY },
+  nutriLabel:  { fontSize: 10, color: GRAY, marginTop: 2 },
+  nutriDivider:{ width: 1, height: 28, backgroundColor: BORDER, marginHorizontal: 4 },
+  costBreakdown: { paddingHorizontal: 16, paddingBottom: 4 },
+  costRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
   },
-  takeoutKeepAmt: { fontWeight: '800' },
+  costRowFinal: {
+    borderBottomWidth: 0, paddingBottom: 14,
+  },
+  costLabel:     { fontSize: 13, color: GRAY },
+  costVal:       { fontSize: 13, fontWeight: '600', color: NAVY },
+  costLabelFinal:{ fontSize: 14, fontWeight: '800', color: NAVY },
+  costValFinal:  { fontSize: 18, fontWeight: '900', color: FOREST },
+
+  // ── 6. HOW IT WORKS ──────────────────────────────────────────
+  howTitle: {
+    fontSize: 11, fontWeight: '800', color: GRAY,
+    letterSpacing: 1.2, textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  howCard: {
+    backgroundColor: WHITE, borderRadius: 14,
+    borderWidth: 1, borderColor: BORDER, overflow: 'hidden',
+  },
+  howRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingHorizontal: 16, paddingVertical: 13, gap: 12,
+  },
+  howRowBorder: { borderBottomWidth: 1, borderBottomColor: BORDER },
+  howNum: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: FOREST, alignItems: 'center', justifyContent: 'center',
+    marginTop: 1, flexShrink: 0,
+  },
+  howNumTxt: { fontSize: 11, fontWeight: '900', color: WHITE },
+  howTxt:    { flex: 1, fontSize: 13, color: NAVY, lineHeight: 19 },
+
+  // ── STORE PICKER MODAL ───────────────────────────────────────
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: WHITE, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingBottom: 36, paddingHorizontal: 16,
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2, backgroundColor: BORDER,
+    alignSelf: 'center', marginTop: 12, marginBottom: 18,
+  },
+  modalTitle: {
+    fontSize: 15, fontWeight: '800', color: NAVY, marginBottom: 14,
+  },
+  storePickerRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: BORDER, gap: 12,
+  },
+  storePickerRowActive: { backgroundColor: LIGHT_BG },
+  storePickerRadio: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: BORDER,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  storePickerRadioActive: { borderColor: FOREST },
+  storePickerRadioDot: {
+    width: 10, height: 10, borderRadius: 5, backgroundColor: FOREST,
+  },
+  storePickerLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: NAVY },
+  storePickerPrice: { fontSize: 14, fontWeight: '800', color: FOREST },
+  storePickerBest: {
+    marginTop: 14, alignItems: 'center', paddingVertical: 12,
+    backgroundColor: LIGHT_BG, borderRadius: 10,
+  },
+  storePickerBestTxt: { fontSize: 13, fontWeight: '700', color: FOREST },
 
   // ── 7. LOCK IN BUTTON ────────────────────────────────────────
   lockBtn: {
@@ -1024,4 +1288,3 @@ const styles = StyleSheet.create({
   },
   lockBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '800' },
 });
-

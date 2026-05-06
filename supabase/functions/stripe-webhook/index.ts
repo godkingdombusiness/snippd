@@ -25,6 +25,9 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const ACCEPTED_TIERS = new Set(['beta_pro', 'founder']);
+const DEFAULT_TIER   = 'beta_pro';
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -44,7 +47,6 @@ async function verifyStripeSignature(
   header: string,
   secret: string,
 ): Promise<boolean> {
-  // Parse the Stripe-Signature header
   let timestamp = '';
   const v1Sigs: string[] = [];
   for (const part of header.split(',')) {
@@ -52,7 +54,7 @@ async function verifyStripeSignature(
     if (eqIdx === -1) continue;
     const k = part.slice(0, eqIdx).trim();
     const v = part.slice(eqIdx + 1).trim();
-    if (k === 't') timestamp = v;
+    if (k === 't')  timestamp = v;
     if (k === 'v1') v1Sigs.push(v);
   }
 
@@ -62,7 +64,7 @@ async function verifyStripeSignature(
   const ageSeconds = Math.abs(Date.now() / 1000 - parseInt(timestamp, 10));
   if (ageSeconds > 300) return false;
 
-  // Compute expected HMAC-SHA256 signature
+  // Compute expected HMAC-SHA256
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -104,7 +106,7 @@ async function findUserByEmail(
   );
 
   if (!res.ok) {
-    console.error('stripe-webhook: GoTrue admin fetch failed', res.status, await res.text());
+    console.error('[stripe-webhook] GoTrue admin fetch failed:', res.status, await res.text());
     return null;
   }
 
@@ -119,6 +121,8 @@ async function findUserByEmail(
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+  console.log('[stripe-webhook] request received:', req.method, req.url);
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
@@ -127,21 +131,22 @@ Deno.serve(async (req: Request) => {
   const serviceKey    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
   if (!webhookSecret || !supabaseUrl || !serviceKey) {
-    console.error('stripe-webhook: missing required env vars');
+    console.error('[stripe-webhook] FATAL: missing required env vars — STRIPE_WEBHOOK_SECRET, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY not set in Supabase secrets');
     return json({ error: 'Webhook not configured' }, 500);
   }
 
-  // Read raw body first — Stripe signature verification requires the exact bytes
+  // Read raw body — signature verification requires the exact bytes Stripe sent
   const rawBody = await req.text();
   const stripeSignature = req.headers.get('stripe-signature') ?? '';
 
   if (!stripeSignature) {
+    console.error('[stripe-webhook] rejected: missing Stripe-Signature header');
     return json({ error: 'Missing Stripe-Signature header' }, 400);
   }
 
   const valid = await verifyStripeSignature(rawBody, stripeSignature, webhookSecret);
   if (!valid) {
-    console.error('stripe-webhook: invalid signature');
+    console.error('[stripe-webhook] rejected: invalid signature');
     return json({ error: 'Invalid signature' }, 400);
   }
 
@@ -150,36 +155,51 @@ Deno.serve(async (req: Request) => {
   try {
     event = JSON.parse(rawBody);
   } catch {
+    console.error('[stripe-webhook] rejected: invalid JSON body');
     return json({ error: 'Invalid JSON' }, 400);
   }
 
   const eventType = event.type as string;
-  console.log('stripe-webhook: received', eventType);
+  console.log('[stripe-webhook] event type:', eventType);
 
   // ── checkout.session.completed ────────────────────────────────────────────
   if (eventType === 'checkout.session.completed') {
     const session = (event.data as Record<string, unknown>)?.object as Record<string, unknown>;
+    const sessionId = session.id as string ?? 'unknown';
 
-    // Only process fully paid sessions (skip free trials, $0 sessions, etc.)
+    console.log('[stripe-webhook] checkout.session.completed — session id:', sessionId);
+    console.log('[stripe-webhook] payment_status:', session.payment_status);
+
+    // Only process fully paid sessions (skip $0 sessions, free trials, etc.)
     if (session.payment_status !== 'paid') {
-      console.log('stripe-webhook: skipping — payment_status:', session.payment_status);
+      console.log('[stripe-webhook] skipping — payment_status is not "paid":', session.payment_status);
       return json({ received: true, skipped: `payment_status=${session.payment_status}` });
     }
 
     const customerDetails = session.customer_details as Record<string, string> | null;
-    const email           = customerDetails?.email ?? '';
-    const paymentIntentId = (session.payment_intent as string) ?? (session.id as string);
-    const metadata        = (session.metadata as Record<string, string>) ?? {};
+    const email           = (customerDetails?.email ?? '').trim().toLowerCase();
+    // Subscriptions (mode=subscription) set payment_intent=null and use invoice+subscription instead.
+    // Use subscription ID if available, fall back to payment_intent, then session ID.
+    const subscriptionId  = (session.subscription as string) ?? null;
+    const paymentIntentId = (session.payment_intent as string) ?? subscriptionId ?? sessionId;
+    const rawMetadata     = (session.metadata as Record<string, string>) ?? {};
+    const sessionMode     = (session.mode as string) ?? 'payment';
 
-    // stripe_tier comes from the payment link's metadata field.
-    // Set this in the Stripe Dashboard: Payment Link → Edit → Metadata
-    //   key: tier   value: beta_pro   (or: founder)
-    const stripeTier = metadata.tier ?? 'beta_pro';
+    console.log('[stripe-webhook] session mode:', sessionMode, '— payment_intent:', session.payment_intent ?? 'null (subscription)', '— subscription:', subscriptionId ?? 'none');
+
+    console.log('[stripe-webhook] customer email:', email || '(none)');
+
+    // Defensively trim metadata.tier — Stripe dashboard entries can have leading/trailing spaces
+    const rawTier    = rawMetadata.tier ?? '';
+    const cleanedTier = rawTier.trim().toLowerCase();
+    const stripeTier  = ACCEPTED_TIERS.has(cleanedTier) ? cleanedTier : DEFAULT_TIER;
+
+    console.log('[stripe-webhook] metadata.tier raw:', JSON.stringify(rawTier), '→ cleaned:', stripeTier);
 
     if (!email) {
-      console.error('stripe-webhook: no customer email in session', session.id);
-      // Return 200 — Stripe must not retry; log for manual follow-up
-      return json({ received: true, warning: 'no customer email' });
+      console.error('[stripe-webhook] WARNING: no customer email in session', sessionId, '— returning 200, manual follow-up required');
+      // Return 200 — Stripe must not retry; requires manual reconciliation
+      return json({ received: true, warning: 'no_customer_email', session_id: sessionId });
     }
 
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
@@ -188,28 +208,44 @@ Deno.serve(async (req: Request) => {
     const user = await findUserByEmail(supabaseUrl, serviceKey, email);
 
     if (!user) {
-      console.error('stripe-webhook: no Snippd account for email', email);
-      // Return 200 — Stripe must not retry; log for manual follow-up
-      return json({ received: true, warning: 'user not found', email });
+      console.error('[stripe-webhook] WARNING: no Snippd account for email:', email, '— returning 200, manual follow-up required');
+      // Return 200 — Stripe must not retry; user may have signed up with a different email
+      return json({ received: true, warning: 'user_not_found', email });
     }
 
+    console.log('[stripe-webhook] found user:', user.id, '— calling assign_paid_waitlist_position with tier:', stripeTier);
+
     // Assign paid waitlist position (auto-approves if position ≤ 200)
-    const { error: rpcError } = await db.rpc('assign_paid_waitlist_position', {
+    const { data: rpcData, error: rpcError } = await db.rpc('assign_paid_waitlist_position', {
       p_user_id:           user.id,
       p_stripe_payment_id: paymentIntentId,
       p_stripe_tier:       stripeTier,
     });
 
     if (rpcError) {
-      console.error('stripe-webhook: assign_paid_waitlist_position error', rpcError);
-      // Return 500 so Stripe retries — this is a recoverable error
+      console.error('[stripe-webhook] FATAL: assign_paid_waitlist_position RPC failed:', JSON.stringify(rpcError));
+      // Return 500 — Stripe retries on 5xx; this is a recoverable database error
       return json({ received: true, error: rpcError.message }, 500);
     }
 
-    console.log('stripe-webhook: paid position assigned', { user_id: user.id, tier: stripeTier });
-    return json({ received: true, user_id: user.id, stripe_tier: stripeTier });
+    const position = rpcData as number;
+    console.log('[stripe-webhook] SUCCESS — paid position assigned:', {
+      user_id:     user.id,
+      email,
+      tier:        stripeTier,
+      position,
+      auto_approved: position <= 200,
+    });
+
+    return json({
+      received:    true,
+      user_id:     user.id,
+      stripe_tier: stripeTier,
+      position,
+    });
   }
 
   // All other event types — acknowledge to prevent Stripe retries
+  console.log('[stripe-webhook] unhandled event type acknowledged:', eventType);
   return json({ received: true, type: eventType });
 });

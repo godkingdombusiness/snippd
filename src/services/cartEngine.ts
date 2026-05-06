@@ -3,7 +3,7 @@
  *
  * buildCartOptions(userId, retailerKey, weekOf, db)
  *   1. Loads user state snapshot (budget, shopping_mode, responsiveness)
- *   2. Loads stack_candidates for retailerKey × weekOf (limit 40)
+ *   2. Loads coupon-gated stack candidates for retailerKey × weekOf (limit 40)
  *   3. Runs CouponStackingEngine.compute() on each candidate
  *   4. Scores each candidate against user preference scores
  *      (category 40%, retailer 30%, brand 20%, deal_type 10%)
@@ -484,7 +484,7 @@ export async function buildCartOptions(
 
   // ── 2. Load stack candidates ──────────────────────────────────
   const { data: candidateRows, error: candidateErr } = await db
-    .from('stack_candidates')
+    .from('v_coupon_verified_stack_candidates')
     .select('id, retailer_key, week_of, stack_rank_score, items, primary_category, primary_brand')
     .eq('retailer_key', retailerKey)
     .eq('week_of', weekOf)

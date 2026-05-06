@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { resetToScreen } from '../lib/navigationRef';
 import { clearEncryptionKeyCache } from '../lib/fieldEncryption';
-import { FEATURE_IDS, filterEnabledItems } from '../src/features/registry';
+import { filterEnabledItems } from '../src/features/registry';
 
 const { width } = Dimensions.get('window');
 const GREEN = '#0C9E54';
@@ -46,14 +46,14 @@ const MENU_SECTIONS = [
   {
     title: 'Savings',
     items: [
-      { label: 'Wealth Momentum', screen: 'WealthMomentum' },
+      { label: 'Wealth Momentum',    screen: 'WealthMomentum' },
+      { label: 'Stash Credits Store', screen: 'CreditsStore' },
     ],
   },
   {
     title: 'Community',
     items: [
       { label: 'Invite Friends',  screen: 'InviteFriends' },
-      { label: 'Creator Studio',  tab: 'StudioTab', featureId: FEATURE_IDS.STUDIO },
     ],
   },
   {

@@ -134,7 +134,7 @@ export default function TripResultsScreen({ route, navigation }) {
           </View>
           <View style={s.heroStatDivider} />
           <View style={s.heroStat}>
-            <Text style={s.heroStatVal}>{trip.items?.length || trip.items_on_stack || 0}</Text>
+            <Text style={s.heroStatVal}>{trip.items?.length || trip.items_count || 0}</Text>
             <Text style={s.heroStatLabel}>ITEMS</Text>
           </View>
         </View>

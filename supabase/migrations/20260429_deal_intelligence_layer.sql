@@ -140,7 +140,7 @@ ALTER TABLE public.flyer_deal_staging
   ADD COLUMN IF NOT EXISTS expires_on          date;
 
 CREATE INDEX IF NOT EXISTS idx_fds_validation
-  ON public.flyer_deal_staging (validation_status, needs_review);
+  ON public.flyer_deal_staging (validation_status);
 CREATE INDEX IF NOT EXISTS idx_fds_expires
   ON public.flyer_deal_staging (expires_on);
 
@@ -232,13 +232,15 @@ CREATE INDEX IF NOT EXISTS idx_price_obs_state_retailer
   ON public.price_observations (state, retailer_key, observed_at DESC);
 
 ALTER TABLE public.price_observations ENABLE ROW LEVEL SECURITY;
-CREATE POLICY price_obs_admin_all
-  ON public.price_observations FOR ALL
-  USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
-CREATE POLICY price_obs_system_insert
-  ON public.price_observations FOR INSERT WITH CHECK (true);
-CREATE POLICY price_obs_public_read
-  ON public.price_observations FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY price_obs_admin_all ON public.price_observations FOR ALL USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY price_obs_system_insert ON public.price_observations FOR INSERT WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY price_obs_public_read ON public.price_observations FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ─────────────────────────────────────────────────────────────
 -- PHASE 7: NEW TABLE — validation_events
@@ -276,13 +278,15 @@ CREATE INDEX IF NOT EXISTS idx_val_events_event_type
   ON public.validation_events (event_type, created_at DESC);
 
 ALTER TABLE public.validation_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY val_events_admin
-  ON public.validation_events FOR ALL
-  USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
-CREATE POLICY val_events_system_insert
-  ON public.validation_events FOR INSERT WITH CHECK (true);
-CREATE POLICY val_events_public_read
-  ON public.validation_events FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY val_events_admin ON public.validation_events FOR ALL USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY val_events_system_insert ON public.validation_events FOR INSERT WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY val_events_public_read ON public.validation_events FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ─────────────────────────────────────────────────────────────
 -- PHASE 8: NEW TABLE — user_deal_feedback
@@ -318,12 +322,12 @@ CREATE INDEX IF NOT EXISTS idx_deal_feedback_user
   ON public.user_deal_feedback (user_id, submitted_at DESC);
 
 ALTER TABLE public.user_deal_feedback ENABLE ROW LEVEL SECURITY;
-CREATE POLICY deal_feedback_own
-  ON public.user_deal_feedback FOR ALL
-  USING (auth.uid() = user_id);
-CREATE POLICY deal_feedback_admin
-  ON public.user_deal_feedback FOR SELECT
-  USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
+DO $$ BEGIN
+  CREATE POLICY deal_feedback_own ON public.user_deal_feedback FOR ALL USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY deal_feedback_admin ON public.user_deal_feedback FOR SELECT USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ─────────────────────────────────────────────────────────────
 -- PHASE 9: NEW TABLE — source_reliability
@@ -356,13 +360,15 @@ CREATE INDEX IF NOT EXISTS idx_source_reliability_type_score
   ON public.source_reliability (source_type, reliability_score DESC);
 
 ALTER TABLE public.source_reliability ENABLE ROW LEVEL SECURITY;
-CREATE POLICY source_rel_admin
-  ON public.source_reliability FOR ALL
-  USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
-CREATE POLICY source_rel_system_upsert
-  ON public.source_reliability FOR INSERT WITH CHECK (true);
-CREATE POLICY source_rel_public_read
-  ON public.source_reliability FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY source_rel_admin ON public.source_reliability FOR ALL USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY source_rel_system_upsert ON public.source_reliability FOR INSERT WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY source_rel_public_read ON public.source_reliability FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Seed known source types
 INSERT INTO public.source_reliability (source_type, source_key, reliability_score, accuracy_score, freshness_score)
@@ -405,9 +411,11 @@ CREATE TABLE IF NOT EXISTS public.retailer_coverage (
   last_ingested_at      timestamptz,
   last_verified_at      timestamptz,
   created_at            timestamptz NOT NULL DEFAULT now(),
-  updated_at            timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (retailer_key, state, COALESCE(zip_code, ''), COALESCE(store_id, ''))
+  updated_at            timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_retailer_coverage_unique
+  ON public.retailer_coverage (retailer_key, COALESCE(state,''), COALESCE(zip_code,''), COALESCE(store_id,''));
 
 CREATE INDEX IF NOT EXISTS idx_retailer_coverage_state
   ON public.retailer_coverage (state, retailer_key, market_readiness_score DESC);
@@ -415,13 +423,15 @@ CREATE INDEX IF NOT EXISTS idx_retailer_coverage_zip
   ON public.retailer_coverage (zip_code, retailer_key);
 
 ALTER TABLE public.retailer_coverage ENABLE ROW LEVEL SECURITY;
-CREATE POLICY retailer_cov_admin
-  ON public.retailer_coverage FOR ALL
-  USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
-CREATE POLICY retailer_cov_system
-  ON public.retailer_coverage FOR INSERT WITH CHECK (true);
-CREATE POLICY retailer_cov_public_read
-  ON public.retailer_coverage FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY retailer_cov_admin ON public.retailer_coverage FOR ALL USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY retailer_cov_system ON public.retailer_coverage FOR INSERT WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY retailer_cov_public_read ON public.retailer_coverage FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Seed Florida demo markets
 INSERT INTO public.retailer_coverage
@@ -475,11 +485,12 @@ CREATE INDEX IF NOT EXISTS idx_review_queue_offer
   ON public.deal_review_queue (offer_source_id);
 
 ALTER TABLE public.deal_review_queue ENABLE ROW LEVEL SECURITY;
-CREATE POLICY review_queue_admin
-  ON public.deal_review_queue FOR ALL
-  USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
-CREATE POLICY review_queue_system_insert
-  ON public.deal_review_queue FOR INSERT WITH CHECK (true);
+DO $$ BEGIN
+  CREATE POLICY review_queue_admin ON public.deal_review_queue FOR ALL USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY review_queue_system_insert ON public.deal_review_queue FOR INSERT WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ─────────────────────────────────────────────────────────────
 -- PHASE 12: NEW TABLE — validation_rules
@@ -503,11 +514,12 @@ CREATE TABLE IF NOT EXISTS public.validation_rules (
 );
 
 ALTER TABLE public.validation_rules ENABLE ROW LEVEL SECURITY;
-CREATE POLICY val_rules_admin
-  ON public.validation_rules FOR ALL
-  USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
-CREATE POLICY val_rules_public_read
-  ON public.validation_rules FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY val_rules_admin ON public.validation_rules FOR ALL USING (auth.jwt()->>'email' = 'ddavis@getsnippd.com');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY val_rules_public_read ON public.validation_rules FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Seed validation rules
 INSERT INTO public.validation_rules (rule_code, category, rule_name, is_blocking, sends_to_review, score_penalty, applies_to)
@@ -988,7 +1000,7 @@ CREATE OR REPLACE FUNCTION public.compute_market_readiness(
 )
 RETURNS jsonb
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 AS $$
 DECLARE
   v_offer_count   int;
@@ -1162,7 +1174,12 @@ $$;
 
 -- ─────────────────────────────────────────────────────────────
 -- PHASE 19: VIEWS
+-- Drop first so CREATE OR REPLACE can redefine column lists cleanly
 -- ─────────────────────────────────────────────────────────────
+
+DROP VIEW IF EXISTS public.v_deal_review_dashboard CASCADE;
+DROP VIEW IF EXISTS public.v_offer_price_history CASCADE;
+DROP VIEW IF EXISTS public.v_active_offers CASCADE;
 
 -- v_active_offers: display-ready, scored, filtered offers
 CREATE OR REPLACE VIEW public.v_active_offers AS

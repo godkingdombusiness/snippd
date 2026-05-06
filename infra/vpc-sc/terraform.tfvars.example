@@ -1,0 +1,14 @@
+project_id       = "gen-lang-client-0848527535"
+project_number   = "271214323449"
+access_policy_id = "185059188280"
+
+allowed_ip_cidrs = [
+  "67.8.231.248/32",
+]
+
+# Strongly recommended before enforce_perimeter=true:
+# allowed_members = ["user:you@example.com"]
+allowed_members = []
+
+# Start in dry-run mode. Flip to true only after terraform plan is reviewed.
+enforce_perimeter = false

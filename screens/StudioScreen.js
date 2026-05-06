@@ -96,14 +96,14 @@ export default function StudioScreen({ navigation, route }) {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, stash_credits, posts_count, preferences, receipt_credit_award_count')
+        .select('full_name, credits_balance, preferences, receipt_credit_award_count')
         .eq('user_id', user.id)
         .single();
 
       if (profile) {
         setUserProfile(profile);
-        setVideosSubmitted(profile.posts_count || 0);
-        setCreditsEarned(profile.stash_credits || 0);
+        setVideosSubmitted(0); // posts_count removed — tracked via creator_content table
+        setCreditsEarned(profile.credits_balance || 0);
         setReceiptAwards(Number(profile.receipt_credit_award_count) || 0);
       }
 
@@ -172,13 +172,12 @@ export default function StudioScreen({ navigation, route }) {
         // Award 100 Stash Credits
         const { data: profile } = await supabase
           .from('profiles')
-          .select('stash_credits, posts_count')
+          .select('credits_balance')
           .eq('user_id', userId)
           .single();
 
         await supabase.from('profiles').update({
-          stash_credits: (profile?.stash_credits || 0) + 100,
-          posts_count: (profile?.posts_count || 0) + 1,
+          credits_balance: (profile?.credits_balance || 0) + 100,
         }).eq('user_id', userId);
 
         setVideosSubmitted(v => v + 1);

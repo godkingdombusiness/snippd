@@ -6,6 +6,578 @@
 
 ---
 
+## Quick Start Flow Columns (added 2026-05-05)
+Migration: `supabase/migrations/20260504_quick_start_flow.sql`
+**Status: Pending — apply in Supabase Dashboard → SQL Editor**
+
+### user_persona additions
+
+| Column | Type | Default | Notes |
+|---|---|---|---|
+| `quick_start_completed` | boolean | `false` | Set true after 3-question QuickStartScreen |
+| `quick_start_budget_range` | text | null | `'<75'` \| `'75-125'` \| `'125-200'` \| `'200+'` |
+| `quick_start_goal` | text | null | `'save_money'` \| `'eat_healthier'` \| `'save_time'` \| `'manage_allergies'` \| `'nutrition_program'` \| `'athletic_fuel'` |
+| `quick_start_household` | smallint | null | 1 / 2 / 4 / 6 (representative household size) |
+| `beta_unlocked` | boolean | `false` | Set true on valid promo code or after Stripe payment confirmed |
+| `promo_unlocked` | boolean | `false` | Set true specifically for promo code path |
+| `unlock_source` | text | null | `'promo'` \| `'stripe_beta_pro'` \| `'stripe_founder'` |
+
+### profiles additions
+
+| Column | Type | Default | Notes |
+|---|---|---|---|
+| `profile_completion_percent` | numeric | `0` | Computed client-side from 8 key fields; stored for persistence |
+| `progressive_profile` | jsonb | `'{}'` | Stores progressive prompt completion flags (e.g. `soft_personalization_done`) |
+| `last_profile_prompt_at` | timestamptz | null | When the last profile prompt was shown |
+| `next_profile_prompt_key` | text | null | Which profile module to ask next (e.g. `'safety'`, `'store'`, `'meal'`) |
+
+---
+
+## Barcode Scanning Cache (added 2026-05-03)
+Migration: `supabase/migrations/20260503_scanned_products.sql`
+**Status: Pending — apply in Supabase Dashboard → SQL Editor**
+
+### scanned_products
+Barcode lookup cache. Populated by `lookup-barcode` Edge Function. No RLS — server-side only (barcode data is not user-specific).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `barcode` | text NOT NULL UNIQUE | UPC-A, UPC-E, EAN-13, EAN-8 |
+| `name` | text NOT NULL | Product name from Open Food Facts |
+| `brand` | text | |
+| `image_url` | text | Front product image |
+| `ingredients_text` | text | Raw ingredients list |
+| `allergens` | text[] NOT NULL DEFAULT '{}' | Plain-English allergen list (e.g. `['gluten', 'milk']`) |
+| `nutrition_json` | jsonb | `{ calories, protein, carbs, fat, fiber, sugar, sodium }` per 100g |
+| `source` | text CHECK | `'OFF'` (Open Food Facts) \| `'USDA'` \| `'manual'` |
+| `created_at` | timestamptz | |
+| `updated_at` | timestamptz | |
+
+Indexes: `idx_scanned_products_barcode` on `(barcode)`, `idx_scanned_products_source` on `(source)`
+
+### user_preferences additions (2026-05-03)
+New columns added via `20260503_scanned_products.sql`:
+
+| Column | Type | Default | Notes |
+|---|---|---|---|
+| `dietary_preferences` | text[] | `'{}'` | e.g. `['vegetarian', 'keto']` |
+| `allergies` | text[] | `'{}'` | e.g. `['dairy', 'gluten']` — drives allergen warnings in cart |
+| `household_size` | smallint | `1` | Set by QuickOnboardingModal |
+| `primary_goal` | text | `'save_money'` | `'save_money'` \| `'eat_healthier'` \| `'save_time'` |
+| `quick_onboarding_done` | boolean | `false` | Set to `true` when QuickOnboardingModal completes or is skipped with answers saved |
+
+---
+
+## Savings Loop Tables (added 2026-05-04)
+Migration: `supabase/migrations/20260504_savings_loop.sql`
+**Status: Pending — apply in Supabase Dashboard → SQL Editor**
+
+### weekly_plans
+One row per user per week. Created when user taps "Add All to My List" in WeeklyPlanScreen.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL | FK → auth.users ON DELETE CASCADE |
+| `week_start` | date NOT NULL | UNIQUE with user_id |
+| `budget_target` | numeric | User's weekly grocery budget |
+| `household_size` | smallint | |
+| `preferred_stores` | text[] | |
+| `projected_total` | numeric | Planned Snippd cost |
+| `baseline_without_snippd_total` | numeric | Estimated full-price cost |
+| `estimated_snippd_savings` | numeric | baseline - projected |
+| `meals_covered` | integer | Estimated total meals |
+| `nutrition_summary` | jsonb | |
+| `allergy_flags` | jsonb | |
+| `created_at` | timestamptz | |
+
+### weekly_plan_days
+7 rows per weekly_plans row.
+
+| Column | Type | Notes |
+|---|---|---|
+| `weekly_plan_id` | uuid FK | ON DELETE CASCADE |
+| `day_name` | text | Monday–Sunday |
+| `day_index` | smallint | 0–6 |
+| `breakfast` | jsonb | `{ name, total_cents, note }` |
+| `lunch` | jsonb | `{ name, total_cents, note }` |
+| `dinner` | jsonb | `{ name, ingredients[], total_cents, cal, coupon }` |
+| `daily_total` | numeric | Sum of B+L+D in dollars |
+
+### coupon_checklist
+Coupons the user needs to clip for their weekly plan.
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | uuid | |
+| `weekly_plan_id` | uuid FK | |
+| `store` | text | |
+| `item_name` | text | |
+| `coupon_description` | text | |
+| `estimated_value` | numeric | |
+| `clip_url` | text | |
+| `status` | text CHECK | `not_clipped`\|`clipped`\|`used`\|`expired` |
+
+### receipt_outcomes
+One row per receipt scan. Core savings comparison result.
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | uuid | |
+| `weekly_plan_id` | uuid FK | Nullable — comparison works without a plan |
+| `store` | text | |
+| `planned_total` | numeric | From weekly_plans.projected_total |
+| `actual_total` | numeric | From receipt scan |
+| `baseline_without_snippd_total` | numeric | Estimated full-price cost |
+| `planned_savings` | numeric | baseline - planned |
+| `actual_savings` | numeric | baseline - actual |
+| `plan_accuracy_percent` | numeric | 0–100 |
+| `budget_target` | numeric | |
+| `budget_result` | numeric | budget_target - actual_total |
+| `was_under_budget` | boolean | |
+| `matched_items_count` | integer | |
+| `missing_items_count` | integer | |
+| `coupons_expected` | integer | |
+| `coupons_confirmed` | integer | |
+| `meals_covered` | integer | |
+| `bonus_savings` | jsonb | Fetch/Ibotta optional |
+| `raw_receipt_payload` | jsonb | |
+
+### optional_bonus_savings
+Fetch/Ibotta bonus savings. Never blocks core flow.
+
+| Column | Type | Notes |
+|---|---|---|
+| `source` | text CHECK | `fetch`\|`ibotta`\|`other` |
+| `status` | text CHECK | `available`\|`claimed`\|`missed`\|`expired` |
+| `estimated_value` | numeric | |
+| `claimed_value` | numeric | |
+
+---
+
+## Adaptive Memory Layer (added 2026-05-03)
+Migration: `supabase/migrations/20260503_adaptive_memory.sql`
+**Status: Pending — apply in Supabase Dashboard → SQL Editor**
+
+### memory_events
+Supabase-backed store for every user action that feeds the Neo4j memory graph. Rows with `neo4j_synced=false` are replayed by `sync-memory-events`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL | FK → auth.users |
+| `event_type` | text NOT NULL | e.g. `survey_completed`, `cart_completed`, `barcode_scanned` |
+| `entity_type` | text | `product`, `deal`, `meal`, `store`, `trip` |
+| `entity_id` | text | ID of the entity |
+| `store_id` | text | |
+| `product_id` | text | |
+| `deal_id` | text | |
+| `meal_id` | text | |
+| `trip_id` | text | |
+| `barcode` | text | |
+| `cost` | numeric | Spend in cents |
+| `savings` | numeric | Savings in cents |
+| `nutrition_summary` | jsonb | `{ calories, protein, carbs, fat }` |
+| `allergy_flags` | jsonb | Triggered allergens |
+| `diet_flags` | jsonb | Dietary labels |
+| `survey_response` | jsonb | `{ saved_money, matched_store, use_again }` |
+| `metadata` | jsonb | Freeform extra context |
+| `neo4j_synced` | boolean NOT NULL DEFAULT false | |
+| `neo4j_synced_at` | timestamptz | |
+| `error` | text | Neo4j error message if sync failed |
+| `created_at` | timestamptz NOT NULL DEFAULT NOW() | |
+
+RLS: users insert/select own rows; service_role manages all.
+Indexes: `(user_id, created_at DESC)`, `(neo4j_synced) WHERE NOT neo4j_synced`
+
+### user_priority_profiles
+One row per user. Stores 9 learned behavioral priority scores (0–1). Updated by `record-memory-event` on every event.
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | uuid PK | FK → auth.users ON DELETE CASCADE |
+| `savings_priority` | numeric CHECK 0-1 | Default 0.5 |
+| `nutrition_priority` | numeric CHECK 0-1 | Default 0.3 |
+| `convenience_priority` | numeric CHECK 0-1 | Default 0.4 |
+| `allergy_safety_priority` | numeric CHECK 0-1 | Default 0.5 |
+| `store_loyalty_priority` | numeric CHECK 0-1 | Default 0.4 |
+| `novelty_priority` | numeric CHECK 0-1 | Default 0.2 |
+| `budget_pressure_priority` | numeric CHECK 0-1 | Default 0.3 |
+| `scan_compare_priority` | numeric CHECK 0-1 | Default 0.2 |
+| `store_accuracy_warning_priority` | numeric CHECK 0-1 | Default 0.1 |
+| `updated_at` | timestamptz NOT NULL DEFAULT NOW() | Auto-updated by trigger |
+
+SQL helper: `clamp_priority(value numeric) RETURNS numeric` — clamps any value to [0, 1].
+Trigger: `touch_updated_at()` fires BEFORE UPDATE to set `updated_at = NOW()`.
+RLS: users read own row; service_role manages all.
+
+### trip_feedback
+Migration: `supabase/migrations/20260503_trip_feedback.sql`
+Post-trip micro-survey + outcome storage. Backward-compatible: existing `TripSummaryFeedbackScreen.js` inserts continue without schema changes; new adaptive-memory columns are nullable.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL | |
+| `trip_id` | text | |
+| `store` | text | |
+| `store_id` | text | |
+| `planned_total_cents` | numeric | Existing screen field |
+| `receipt_total_cents` | numeric | Existing screen field |
+| `verified_savings_cents` | numeric | Existing screen field |
+| `coupons_clipped` | integer | Existing screen field |
+| `plan_followed_pct` | numeric | Existing screen field |
+| `planned_total` | numeric | Dollar-unit alternative (nullable) |
+| `actual_total` | numeric | Dollar-unit alternative (nullable) |
+| `estimated_savings` | numeric | Dollar-unit (nullable) |
+| `actual_savings` | numeric | Dollar-unit (nullable) |
+| `was_under_budget` | boolean | Nullable |
+| `meals_covered` | integer | Nutrition enrichment (nullable) |
+| `total_protein` | numeric | Nutrition enrichment (nullable) |
+| `total_calories` | numeric | Nutrition enrichment (nullable) |
+| `allergy_safe` | boolean | Nullable |
+| `rating` | text CHECK | `'perfect'`\|`'good'`\|`'okay'`\|`'frustrating'` |
+| `issue` | text | Existing screen field |
+| `savings_action` | text | Existing screen field |
+| `saved_money_response` | text | Adaptive-memory spec: `'yes'`\|`'somewhat'`\|`'not really'` |
+| `store_accuracy_response` | text | `'yes'`\|`'mostly'`\|`'no'` |
+| `reuse_intent` | text | `'yes'`\|`'maybe'`\|`'no'` |
+| `improvement_area` | text | Nullable freeform |
+| `created_at` | timestamptz NOT NULL | |
+
+RLS: users insert/select own rows; service_role manages all.
+Indexes: `(user_id, created_at DESC)`, `(rating) WHERE rating IS NOT NULL`
+
+---
+
+## Nutrition Intelligence Layer (added 2026-05-03)
+Migration: `supabase/migrations/20260503_nutrition_intelligence.sql`
+**Status: Pending — apply in Supabase Dashboard → SQL Editor**
+
+### nutrition_cache
+Stores USDA FoodData Central nutrition data keyed by FDC food ID. Populated by `usda-search-food` Edge Function. No RLS — server-side only.
+
+| Column | Type | Notes |
+|---|---|---|
+| `usda_food_id` | integer PK | FDC food ID from USDA API |
+| `description` | text NOT NULL | USDA food description |
+| `calories` | numeric | kcal per 100g |
+| `protein` | numeric | g per 100g |
+| `carbs` | numeric | g per 100g |
+| `fat` | numeric | g per 100g |
+| `fiber` | numeric | g per 100g |
+| `sugar` | numeric | g per 100g |
+| `sodium` | numeric | mg per 100g |
+| `serving_size` | numeric | grams per serving (if USDA provides it) |
+| `serving_unit` | text | |
+| `last_updated` | timestamptz NOT NULL DEFAULT NOW() | |
+
+Indexes: `idx_nutrition_cache_updated` on `(last_updated DESC)`
+
+### product_nutrition_map
+Maps product names (from `normalized_offers` / `app_home_feed`) to USDA food IDs. `usda_food_id` is nullable — a mapping can exist before nutrition is cached.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK DEFAULT gen_random_uuid() | |
+| `product_name` | text NOT NULL | Lookup key; matches `product_name` or `query` |
+| `retailer` | text | NULL = any retailer |
+| `usda_food_id` | integer FK → nutrition_cache | ON DELETE SET NULL |
+| `confidence_score` | numeric NOT NULL DEFAULT 0.5 | 0.0–1.0; word-overlap score + 0.2 |
+| `created_at` | timestamptz NOT NULL DEFAULT NOW() | |
+
+Indexes: `idx_product_nutrition_map_name` on `(product_name)`, `idx_product_nutrition_map_usda` on `(usda_food_id)`
+Unique: `uq_product_nutrition_map` on `(product_name, COALESCE(retailer, ''))`
+
+### user_variation_state
+Tracks recently seen deals/meals per user to drive the rotation/novelty engine. RLS: user reads/writes only their own row.
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | uuid PK FK → auth.users | ON DELETE CASCADE |
+| `last_seen_deals` | text[] NOT NULL DEFAULT '{}' | Offer IDs seen recently (max 40, ring buffer) |
+| `last_seen_meals` | text[] NOT NULL DEFAULT '{}' | Bundle IDs (max 10) |
+| `rotation_seed` | integer NOT NULL DEFAULT 0 | Increments each rotation cycle |
+| `updated_at` | timestamptz NOT NULL DEFAULT NOW() | |
+
+RLS policy: `uvs_own_row` — `auth.uid() = user_id`
+
+### get_scored_deals() SQL function
+```sql
+get_scored_deals(p_stores TEXT[] DEFAULT NULL, p_limit INTEGER DEFAULT 60)
+```
+SECURITY DEFINER. Returns `normalized_offers` joined with nutrition data via LATERAL join on `product_nutrition_map` + `nutrition_cache`. Called by `score-deals` Edge Function. Filters: `confidence_score >= 0.5`, `price_cents IS NOT NULL`, optional store filter. Orders by `savings_cents DESC NULLS LAST`.
+
+---
+
+## Normalized Offer Engine (added 2026-05-02)
+Migration: `supabase/migrations/20260502_normalized_offers.sql`
+
+### normalized_offers
+Canonical normalized form of any offer from any retailer. Fed by `normalizeAndSaveOffers()` in `src/services/normalizedOffersService.ts`. READ by `BestSavingsPreview` component. Does NOT modify or reference any existing table.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK DEFAULT gen_random_uuid() | |
+| `source_offer_id` | text | Nullable. Unique when not null (partial index). Enables upsert. |
+| `retailer` | text NOT NULL | |
+| `product_name` | text NOT NULL | |
+| `brand` | text | |
+| `category` | text | |
+| `size_text` | text | Raw size string e.g. "16 oz" |
+| `normalized_size` | numeric | Parsed numeric size e.g. 16 |
+| `normalized_unit` | text | Canonical unit: 'oz', 'lb', 'g', 'kg', 'ml', 'l', 'ct', 'fl oz', etc. |
+| `price_cents` | integer | Sale/multibuy total price; for coupon = discount amount |
+| `regular_price_cents` | integer | Regular (non-sale) price for savings calculation |
+| `deal_type` | text CHECK | 'sale' \| 'bogo' \| 'multibuy' \| 'coupon' \| 'regular' \| 'unknown' |
+| `quantity_required` | integer NOT NULL DEFAULT 1 | Units to buy to activate the deal |
+| `quantity_received` | integer NOT NULL DEFAULT 1 | Units received (>1 for BOGO/multibuy) |
+| `final_unit_price_cents` | integer | Effective per-unit price after deal |
+| `savings_cents` | integer | Savings vs regular; null if regular price unknown |
+| `confidence_score` | numeric NOT NULL DEFAULT 0.5 | 0.0–1.0; blended from price + size parse confidence |
+| `raw_source` | jsonb NOT NULL DEFAULT '{}' | Original source payload for audit/debug |
+| `created_at` | timestamptz NOT NULL DEFAULT NOW() | |
+| `updated_at` | timestamptz NOT NULL DEFAULT NOW() | |
+
+Indexes:
+- `uq_normalized_offers_source_id` — UNIQUE partial on `(source_offer_id) WHERE source_offer_id IS NOT NULL`
+- `idx_normalized_offers_retailer` — on `(retailer)`
+- `idx_normalized_offers_product_name` — on `(product_name)`
+- `idx_normalized_offers_deal_type` — on `(deal_type)`
+- `idx_normalized_offers_category` — on `(category)`
+- `idx_normalized_offers_savings` — partial on `(savings_cents DESC, confidence_score DESC) WHERE savings_cents IS NOT NULL`
+
+RLS: none (server-side only; not user-facing data).
+
+---
+
+## Personalization (added 2026-05-02)
+Migration: `supabase/migrations/20260502_user_preferences.sql`
+
+### user_preferences
+Per-user behavior model. Written by the HomeScreen on every deal/meal interaction (debounced). Drives `experience_type` calculation and section ordering.
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | uuid PK | References `auth.users(id)` ON DELETE CASCADE |
+| `budget_range` | int NOT NULL DEFAULT 150 | Weekly budget in dollars |
+| `preferred_stores` | text[] NOT NULL DEFAULT '{}' | User-selected store preferences |
+| `category_clicks` | jsonb NOT NULL DEFAULT '{}' | `{ "protein": 5, "snacks": 2 }` — incremented per interaction |
+| `last_actions` | jsonb NOT NULL DEFAULT '{}' | `{ recent: [{ action, category, at }] }` — last 5 actions |
+| `experience_type` | text NOT NULL DEFAULT 'saver' | Derived: 'saver' \| 'convenience' \| 'explorer' |
+| `updated_at` | timestamptz NOT NULL DEFAULT NOW() | Last write timestamp |
+
+RLS: enabled. Users can only SELECT/UPDATE their own row.
+Index: `idx_user_preferences_experience` on `(experience_type)`.
+
+---
+
+## Genius Mode — Core Deal Tables (added 2026-04-30)
+Migration: `supabase/migrations/20260430_genius_mode_activate.sql`
+
+### app_home_feed
+Powers the "This Week's Price Drops" horizontal rail on HomeScreen. Populated by `vertex-agent` (flyer extraction or AI crawl). Expires via `weekly-refresh` cron.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `title` | text NOT NULL | Stack/deal title e.g. "Publix Chicken & Greens Meal Prep" |
+| `retailer` | text NOT NULL | Display name e.g. "Publix" |
+| `pay_price` | numeric NOT NULL | Sum of all item sale prices (what customer pays) |
+| `original_price` | numeric | Sum of regular shelf prices |
+| `save_price` | numeric | `original_price - pay_price` |
+| `breakdown_list` | jsonb | Array of `{name, brand, size, price, regular_price, savings, deal_type, qty, coupon}` |
+| `dietary_tags` | text[] | e.g. `['BOGO','FRESH','FAMILY']` |
+| `meal_type` | text | `dinner`, `breakfast`, `produce`, `household`, etc |
+| `card_type` | text | `meal_stack` |
+| `status` | text | `active`, `expired`, `draft`, `hidden` |
+| `verification_status` | text | `verified_live`, `unverified`, `synthetic`, `pending` |
+| `valid_from` | date | First day of validity |
+| `valid_until` | date | Expiry — weekly-refresh sets `status='expired'` after this date |
+| `preference_profile` | jsonb | `{region, source, file_uri, retailer_key}` |
+| `source_summary` | jsonb | `{description}` — one-sentence benefit statement |
+| `created_at` | timestamptz | |
+
+**RLS:** Public read for `status = 'active'` rows. Service role for writes.
+**Indexes:** (status, save_price DESC), (valid_until, status), (retailer, status)
+
+`stack_candidates` extended with new columns (see migration for full list): `is_active`, `item_name`, `category`, `brand`, `stack_type`, `final_estimated_cents`, `price_at_rec`, `base_price`, `final_price`, `confidence_pct`, `user_badge`, `validation_status`, `verified_coupon_id`, `exact_coupon_url`, `published_at`.
+
+---
+
+## Anticipatory Intelligence Layer (added 2026-04-30)
+Migration: `supabase/migrations/20260430_anticipatory_intelligence.sql`
+
+### anticipatory_plans
+One row per user per week. Stores the AI-generated Monday morning savings plan.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL FK | → `auth.users` ON DELETE CASCADE |
+| `week_of` | date NOT NULL | Monday of the plan week |
+| `plan_items` | jsonb NOT NULL | `[{item_name, retailer_key, deal_type, savings_cents, normalized_key}]` |
+| `total_savings_cents` | int | Sum of all deal savings |
+| `item_count` | int | Total plan items |
+| `essentials_matched` | int | Household essentials with a deal this week |
+| `status` | text | `ready` \| `viewed` \| `clipped_all` \| `dismissed` |
+| `push_sent_at` | timestamptz | When Expo push was fired |
+| `push_token` | text | Token used for this push |
+
+**Unique:** `(user_id, week_of)` — one plan per user per week. Upsert-safe.
+**RLS:** user reads own rows; service_role manages all.
+**Cron:** `anticipatory-plan-monday` — every Monday 11:00 UTC (6 AM EST) via pg_cron.
+
+### store_locations
+Real-world store GPS coordinates for geofencing. 10 FL demo market stores seeded.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `retailer_key` | text | e.g. `publix`, `target` |
+| `store_name` | text | Display name |
+| `latitude` | numeric(10,7) | GPS lat |
+| `longitude` | numeric(10,7) | GPS lng |
+| `radius_meters` | int | Geofence radius (default 150m) |
+| `address`, `city`, `state`, `zip_code` | text | For display |
+| `is_active` | boolean | Soft delete |
+
+**RLS:** Public SELECT (no user data). Service_role writes.
+**Coverage:** 56 stores across 8 states after applying both migration files (FL, TN, OH, GA, TX, NY, CA, IL). Retailers: Publix, Kroger, Target, Walmart, Aldi, Whole Foods, Costco, Trader Joe's, H-E-B, Wegmans, Jewel-Osco, Mariano's, Ralphs, Vons, Meijer. GeofenceService reads this table directly — add rows here to activate new markets with zero code changes.
+
+### profiles additions (2026-04-30)
+- `expo_push_token text` — Expo Push Token for Monday morning plan notifications.
+- `push_notifications_on boolean` — True when user has granted and token is stored.
+- `push_token_updated_at timestamptz` — Last registration time.
+
+### receipt_items additions (2026-04-30) — Self-Correcting OCR audit trail
+- `ocr_confidence numeric(4,3)` — Gemini confidence 0.0–1.0. Below 0.6 triggers ghost match.
+- `is_ghost_match boolean` — True when app suggested item from household_cart_items.
+- `ghost_source text` — `'household_cart'` | `'weekly_plan'` | `'trip_history'`.
+- `ghost_match_key text` — normalized_key of the matched item.
+- `user_confirmed boolean` — null=pending, true=confirmed, false=user corrected.
+- `user_corrected_name text` — What user said the item actually was.
+
+### SQL Functions (2026-04-30)
+- `get_this_week_anticipatory_plan(user_id uuid)` — Returns the current week's `ready` plan for a user, or empty. SECURITY DEFINER. GRANT to authenticated.
+- `mark_plan_viewed(plan_id uuid, user_id uuid)` — Sets plan status `ready → viewed`. SECURITY DEFINER. GRANT to authenticated.
+
+---
+
+## Digital Coupon SQL Functions (added 2026-04-29)
+Migration: `supabase/migrations/20260429_digital_savings.sql`
+
+Additive functions only — no schema changes to existing tables.
+
+### calculate_digital_savings(p_user_id uuid, p_normalized_keys text[])
+Returns total potential digital savings in cents for a cart.
+
+**Returns:** `(savings_cents bigint, matched_count int)`
+
+- Reads user's `preferred_stores` from `user_persona` to scope results to their retailers.
+- Falls back to 8 common retailers if user has no preferred stores.
+- Matches `digital_coupons` where `is_active = true`, `normalized_key = ANY(keys)`, `retailer_key = ANY(preferred)`, and `expires_at > now()`.
+- For pct-off coupons with no fixed discount_cents, estimates 15% off a $4.00 average item (60¢).
+- GRANT EXECUTE to `authenticated`. SECURITY DEFINER.
+
+### get_clippable_coupons(p_user_id uuid, p_normalized_keys text[])
+Returns matching coupon rows for Checkout Shield display.
+
+**Returns:** `(coupon_id, retailer_key, product_name, brand, normalized_key, discount_cents, discount_pct, coupon_type, is_loyalty_req, is_app_only, expires_at, savings_label)`
+
+- Same retailer scoping logic as `calculate_digital_savings`.
+- `savings_label` is a formatted string: `"$1.00 off"` or `"20% off"`.
+- Ordered by `discount_cents DESC, discount_pct DESC` (biggest savings first).
+- GRANT EXECUTE to `authenticated`. SECURITY DEFINER.
+
+---
+
+## SOC2 Fortress Layer (added 2026-04-29)
+Migration: `supabase/migrations/20260429_soc2_fortress.sql`
+
+### credit_ledger
+Immutable audit trail. Every `credits_balance` change produces one row. Never deleted. SOC2 Processing Integrity proof — no one (including admins) can change balances without a ledger entry.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL FK | → `auth.users` ON DELETE CASCADE |
+| `delta` | integer NOT NULL | positive = earn, negative = spend |
+| `balance_after` | integer NOT NULL | balance after this transaction |
+| `reason` | text NOT NULL | `RECEIPT_VERIFY`, `STREAK_SHIELD`, `UNAUTHORIZED_DIRECT_UPDATE`, etc. |
+| `ref_id` | text | optional — `receipt_upload_id`, item key, etc. |
+| `txn_source` | text NOT NULL DEFAULT `'rpc'` | `'rpc'` or `'UNAUTHORIZED_DIRECT_UPDATE'` |
+| `created_at` | timestamptz NOT NULL DEFAULT now() | |
+
+**RLS:** user reads own rows; service_role manages all. anon REVOKED.
+**Trigger:** `credit_ledger_guard` on `profiles.credits_balance` — auto-inserts a row on every change. If the update bypassed the RPCs, `txn_source = 'UNAUTHORIZED_DIRECT_UPDATE'` fires an alert.
+
+### receipt_hashes
+Deduplication + velocity window for receipt credit awards. Prevents replay attacks and credit farming.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL FK | → `auth.users` |
+| `receipt_upload_id` | text NOT NULL UNIQUE | idempotency key |
+| `content_hash` | text | SHA-256 of store_name+date+total — catches same receipt re-uploaded |
+| `credits_awarded` | integer NOT NULL DEFAULT 0 | base credits |
+| `bonus_credits` | integer NOT NULL DEFAULT 0 | variable reward bonus |
+| `fraud_flagged` | boolean NOT NULL DEFAULT false | set true on velocity violation |
+| `fraud_reason` | text | `velocity_limit_exceeded` etc. |
+| `created_at` | timestamptz NOT NULL DEFAULT now() | also used for velocity window |
+
+**Constraints:** `UNIQUE (receipt_upload_id)`, `UNIQUE (user_id, content_hash)`
+
+### SQL Functions (SOC2 Fortress)
+
+| Function | Purpose |
+|---|---|
+| `earn_credits(user_id, amount, reason, ref_id)` → jsonb | Atomic credit addition with `SELECT FOR UPDATE` row lock |
+| `spend_credits(user_id, amount, reason, ref_id)` → jsonb | Atomic deduction — returns `insufficient_credits` if balance too low |
+| `redeem_store_item(user_id, item_key)` → jsonb | Atomic store purchase for all 5 item types, locked, audited |
+| `process_receipt_verification(user_id, upload_id, content_hash)` → jsonb | Full gatekeeper: dedup + velocity + credits + streak + badges in one transaction |
+| `credit_ledger_guard()` | Trigger function — logs all `credits_balance` changes to `credit_ledger` |
+
+### healing_events — reflexion columns (added)
+| Column | Type | Notes |
+|---|---|---|
+| `reflexion_analyzed` | boolean NOT NULL DEFAULT false | Set true after agent analysis |
+| `reflexion_at` | timestamptz | When agent analyzed this event |
+| `reflexion_notes` | text | Root cause + fix result from Gemini |
+
+---
+
+## Credits Economy + Streak Mechanics (added 2026-04-29)
+Migration: `supabase/migrations/20260429_streak_achievements.sql`
+
+### profiles — streak columns (added)
+| Column | Type | Notes |
+|---|---|---|
+| `savings_streak_weeks` | int NOT NULL DEFAULT 0 | Consecutive ISO weeks with ≥1 verified receipt |
+| `longest_streak_weeks` | int NOT NULL DEFAULT 0 | All-time record streak length |
+| `last_streak_week` | text | ISO week string `YYYY-Www` of last verified receipt |
+| `streak_shield_count` | int NOT NULL DEFAULT 1 | Shields held (max 5). Each absorbs one missed week. Starts at 1 (welcome gift). |
+| `streak_updated_at` | timestamptz | Timestamp of last streak update |
+
+### user_achievements
+Badge unlock ledger. One row per user per badge (idempotent by UNIQUE constraint).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL FK | → `auth.users` ON DELETE CASCADE |
+| `badge_key` | text NOT NULL | `STREAK_4`, `STREAK_8`, `STREAK_26`, `STREAK_52`, `CENTURY`, `FIRST_100`, `HALF_GRAND`, `FOUR_FIGURES`, `FIVE_GRAND` |
+| `earned_at` | timestamptz NOT NULL DEFAULT now() | |
+| `metadata` | jsonb NOT NULL DEFAULT `{}` | `{ streak_weeks: N }` or `{ lifetime_cents: N }` |
+
+**Constraints:** `UNIQUE (user_id, badge_key)` — safe to `upsert` with `ignoreDuplicates: true`
+**Indexes:** `(user_id, earned_at DESC)`
+**RLS:** users read own rows; service_role manages all.
+
+---
+
 ## Deal Intelligence Layer (added 2026-04-29)
 Migration: `supabase/migrations/20260429_deal_intelligence_layer.sql`
 
@@ -1266,3 +1838,28 @@ Aggregate counts for community display.
 | `free_count` | Users with `tier = 'free'` |
 | `approved_count` | Users with `status = 'approved'` |
 | `last_paid_position` | Highest paid `current_position` (i.e. how many paid spots are gone) |
+
+
+---
+
+### trip_feedback
+
+Post-trip micro-survey results. One row per feedback submission.
+Migration: `supabase/migrations/20260501_trip_feedback.sql`
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | uuid | Primary key |
+| `user_id` | uuid | FK → auth.users |
+| `store` | text | Store name from shopping list |
+| `planned_total_cents` | integer | Backend-provided planned total |
+| `receipt_total_cents` | integer | Actual receipt total (0 if not uploaded) |
+| `verified_savings_cents` | integer | Savings confirmed by backend |
+| `coupons_clipped` | integer | Count of verified coupons in the list |
+| `plan_followed_pct` | numeric(5,2) | % of checklist items checked before View Summary |
+| `rating` | text | perfect / good / okay / frustrating |
+| `issue` | text | Selected issue when rating is okay/frustrating |
+| `savings_action` | text | What user plans to do with savings |
+| `created_at` | timestamptz | Submission timestamp |
+
+RLS: user reads/writes own rows only (`auth.uid() = user_id`).
