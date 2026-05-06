@@ -134,6 +134,16 @@ import LogicScanScreen from './screens/LogicScanScreen';
 import WaitlistScreen from './screens/WaitlistScreen';
 import FounderDashboardScreen from './screens/FounderDashboardScreen';
 import BarcodeScannerScreen from './screens/BarcodeScannerScreen';
+import QuickDealsScreen from './screens/QuickDealsScreen';
+import MealDetailScreen from './screens/MealDetailScreen';
+import ShoppingListScreen from './screens/ShoppingListScreen';
+import OutcomeScreen from './screens/OutcomeScreen';
+import SavingsActionScreen from './screens/SavingsActionScreen';
+import NextWeekBuilderScreen from './screens/NextWeekBuilderScreen';
+import InstantForecastScreen from './screens/InstantForecastScreen';
+import QuickStartScreen from './screens/QuickStartScreen';
+import SoftPersonalizationScreen from './screens/SoftPersonalizationScreen';
+import UnlockBetaScreen from './screens/UnlockBetaScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -194,6 +204,12 @@ function HomeStack() {
       <HomeStackNav.Screen name="CategoryInsight"    component={CategoryInsightScreen} />
       <HomeStackNav.Screen name="BarcodeScanner"     component={BarcodeScannerScreen} />
       <HomeStackNav.Screen name="PrivacyPolicy"      component={PrivacyPolicyScreen} />
+      <HomeStackNav.Screen name="QuickDeals"         component={QuickDealsScreen} />
+      <HomeStackNav.Screen name="MealDetail"         component={MealDetailScreen} />
+      <HomeStackNav.Screen name="ShoppingList"       component={ShoppingListScreen} />
+      <HomeStackNav.Screen name="Outcome"            component={OutcomeScreen} />
+      <HomeStackNav.Screen name="SavingsAction"      component={SavingsActionScreen} />
+      <HomeStackNav.Screen name="NextWeekBuilder"    component={NextWeekBuilderScreen} />
     </HomeStackNav.Navigator>
   );
 }
@@ -218,8 +234,13 @@ function PlanStack() {
     <PlanStackNav.Navigator screenOptions={{ headerShown: false }}>
       <PlanStackNav.Screen name="WeeklyPlanPersonalization" component={WeeklyPlanPersonalizationScreen} />
       <PlanStackNav.Screen name="WeeklyPlan"                component={WeeklyPlanScreen} />
+      <PlanStackNav.Screen name="MealDetail"                component={MealDetailScreen} />
+      <PlanStackNav.Screen name="ShoppingList"              component={ShoppingListScreen} />
       <PlanStackNav.Screen name="NutritionProfile"          component={NutritionProfileScreen} />
       <PlanStackNav.Screen name="RecipeDetail"              component={RecipeDetailScreen} />
+      <PlanStackNav.Screen name="QuickDeals"                component={QuickDealsScreen} />
+      <PlanStackNav.Screen name="SavingsAction"             component={SavingsActionScreen} />
+      <PlanStackNav.Screen name="NextWeekBuilder"           component={NextWeekBuilderScreen} />
     </PlanStackNav.Navigator>
   );
 }
@@ -239,7 +260,10 @@ function CartStack() {
       <CartStackNav.Screen name="VerifyReceipt"     component={ReceiptVerifiedScreen} />
       <CartStackNav.Screen name="CartOptions"       component={CartOptionsScreen} />
       <CartStackNav.Screen name="CartOptionDetail"  component={CartOptionDetailScreen} />
-      <CartStackNav.Screen name="WealthMomentum"   component={WealthMomentumScreen} />
+      <CartStackNav.Screen name="WealthMomentum"    component={WealthMomentumScreen} />
+      <CartStackNav.Screen name="Outcome"           component={OutcomeScreen} />
+      <CartStackNav.Screen name="SavingsAction"     component={SavingsActionScreen} />
+      <CartStackNav.Screen name="NextWeekBuilder"   component={NextWeekBuilderScreen} />
     </CartStackNav.Navigator>
   );
 }
@@ -591,9 +615,13 @@ function RootNavigator() {
       >
         <Stack.Screen name="SplashIntro"           component={SplashIntroScreen} />
         <Stack.Screen name="Auth"                  component={SignInScreen} />
-        <Stack.Screen name="Onboarding"           component={OnboardingScreen} />
-        <Stack.Screen name="WaitlistForecast"    component={WaitlistForecastScreen} />
-        <Stack.Screen name="ConciergeOnboarding"  component={OnboardingConciergeScreen} />
+        <Stack.Screen name="Onboarding"            component={OnboardingScreen} />
+        <Stack.Screen name="QuickStart"            component={QuickStartScreen} />
+        <Stack.Screen name="InstantForecast"       component={InstantForecastScreen} />
+        <Stack.Screen name="SoftPersonalization"   component={SoftPersonalizationScreen} />
+        <Stack.Screen name="UnlockBeta"            component={UnlockBetaScreen} />
+        <Stack.Screen name="WaitlistForecast"      component={WaitlistForecastScreen} />
+        <Stack.Screen name="ConciergeOnboarding"   component={OnboardingConciergeScreen} />
         <Stack.Screen name="LogicScan"            component={LogicScanScreen} />
         <Stack.Screen name="Waitlist"             component={WaitlistScreen} />
         <Stack.Screen name="FounderDashboard"     component={FounderDashboardScreen} />
