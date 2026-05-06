@@ -1,35 +1,36 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
 // ── Block large non-RN directories from Metro's file crawler ─────────────────
-// Metro crashes with "Data cannot be cloned, out of memory" when it tries to
-// serialize these directories into a V8 IPC buffer.
-// NOTE: Do NOT use watchFolders — Metro crashes if any listed directory is missing.
+// Use full absolute paths so we ONLY block root-level dirs, not nested ones
+// (e.g. we must NOT block src/services/ — only the root services/ dir).
+function escRx(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function rootDirPattern(dirName) {
+  const abs = path.resolve(__dirname, dirName);
+  // Match the dir itself or anything inside it
+  return new RegExp('^' + escRx(abs) + '([/\\\\]|$)');
+}
+
 config.resolver.blockList = [
   // Neo4j Node.js driver — server-only, large binary buffers
-  /node_modules\/neo4j-driver\//,
-  /node_modules\/neo4j-driver-core\//,
-  /node_modules\/neo4j-driver-bolt-connection\//,
-  /node_modules\/neo4j-driver-lite\//,
+  /node_modules[/\\]neo4j-driver[/\\]/,
+  /node_modules[/\\]neo4j-driver-core[/\\]/,
+  /node_modules[/\\]neo4j-driver-bolt-connection[/\\]/,
+  /node_modules[/\\]neo4j-driver-lite[/\\]/,
 
-  // Next.js web app
-  /[/\\]web[/\\]/,
-
-  // Python / Cloud Run services
-  /[/\\]services[/\\]/,
-  /[/\\]agent[/\\]/,
-
-  // Terraform infrastructure
-  /[/\\]infra[/\\]/,
-
-  // Playwright / e2e tests
-  /[/\\]e2e[/\\]/,
-
-  // Build artifacts and backups
-  /[/\\]dist-run-check[/\\]/,
-  /[/\\]snippd-backup[/\\]/,
-  /[/\\]__pycache__[/\\]/,
+  // Root-level dirs that are NOT React Native source
+  rootDirPattern('web'),        // Next.js app
+  rootDirPattern('services'),   // Cloud Run Python services (NOT src/services)
+  rootDirPattern('agent'),      // Python ADK agent
+  rootDirPattern('infra'),      // Terraform
+  rootDirPattern('e2e'),        // Playwright tests
+  rootDirPattern('dist-run-check'),
+  rootDirPattern('snippd-backup'),
 ];
 
 // Limit parallel workers to reduce IPC memory pressure
