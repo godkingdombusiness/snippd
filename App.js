@@ -524,12 +524,8 @@ function RootNavigator() {
         const route = await resolveUserStatus(session.user.id);
         setInitialRoute(route);
       } else {
-        // No session — check if cold visitor has seen the intro slides
-        let introSeen = false;
-        try {
-          introSeen = (await AsyncStorage.getItem('@snippd_intro_seen')) === 'true';
-        } catch (_) {}
-        setInitialRoute(introSeen ? 'Auth' : 'SplashIntro');
+        // No session — always show sign-in screen first
+        setInitialRoute('Auth');
       }
       setLoading(false);
     }

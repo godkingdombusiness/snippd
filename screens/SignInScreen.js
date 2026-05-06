@@ -355,11 +355,11 @@ export default function SignInScreen({ navigation }) {
       {/* Headline */}
       <View style={left.content}>
         <Text style={left.headline}>
-          {'Stack every\ndeal. '}
-          <Text style={left.headlineItalic}>{'Miss\nnothing.'}</Text>
+          {'Your money\nworks '}
+          <Text style={left.headlineItalic}>{'harder\nnow.'}</Text>
         </Text>
         <Text style={left.sub}>
-          Your autonomous shopping intelligence finds savings you didn't know existed — automatically, every week.
+          Snippd stacks coupons, sale prices, and rebates automatically — so every grocery run costs less without the clipping.
         </Text>
       </View>
 
@@ -367,9 +367,9 @@ export default function SignInScreen({ navigation }) {
       <View style={left.statsRow}>
         <StatChip value={stats.savings} label="avg annual savings" />
         <View style={left.divider} />
-        <StatChip value={stats.stores}  label="stores tracked" />
+        <StatChip value={stats.stores}  label="stores covered" />
         <View style={left.divider} />
-        <StatChip value={stats.autonomous} label="autonomous" />
+        <StatChip value={stats.autonomous} label="hands-free" />
       </View>
     </LinearGradient>
   );
@@ -399,17 +399,17 @@ export default function SignInScreen({ navigation }) {
                 snipp<Text style={{ color: FOREST }}>d</Text>
               </Text>
             )}
-            <Text style={form.eyebrow}>Your shopping intelligence</Text>
+            <Text style={form.eyebrow}>Autonomous Savings Intelligence</Text>
             <Text style={form.title}>
               {tab === 'signin'
                 ? <Text>Welcome{'\n'}<Text style={form.titleItalic}>back.</Text></Text>
-                : <Text>Start{'\n'}<Text style={form.titleItalic}>saving.</Text></Text>
+                : <Text>Stop{'\n'}<Text style={form.titleItalic}>overpaying.</Text></Text>
               }
             </Text>
             <Text style={form.sub}>
               {tab === 'signin'
-                ? <Text>New here? <Text style={form.subLink} onPress={() => switchTab('signup')}>Create your account</Text></Text>
-                : <Text>Already have an account? <Text style={form.subLink} onPress={() => switchTab('signin')}>Sign in</Text></Text>
+                ? <Text>New to Snippd? <Text style={form.subLink} onPress={() => switchTab('signup')}>Create your account</Text></Text>
+                : <Text>Already saving with us? <Text style={form.subLink} onPress={() => switchTab('signin')}>Sign in</Text></Text>
               }
             </Text>
           </View>
@@ -509,7 +509,7 @@ export default function SignInScreen({ navigation }) {
               <ActivityIndicator color={WHITE} />
             ) : (
               <Text style={form.submitBtnTxt}>
-                {tab === 'signin' ? 'Sign in to Snippd' : 'Create my account'}
+                {tab === 'signin' ? 'Sign In' : 'Start Saving with Snippd'}
               </Text>
             )}
           </TouchableOpacity>
@@ -517,8 +517,8 @@ export default function SignInScreen({ navigation }) {
           {/* Bottom link */}
           <Text style={form.bottomLink}>
             {tab === 'signin'
-              ? <Text>No account yet?<Text style={form.bottomLinkA} onPress={() => switchTab('signup')}> Start saving for free</Text></Text>
-              : <Text>Already have an account?<Text style={form.bottomLinkA} onPress={() => switchTab('signin')}> Sign in</Text></Text>
+              ? <Text>No account?<Text style={form.bottomLinkA} onPress={() => switchTab('signup')}> Join Snippd — it's free</Text></Text>
+              : <Text>Already a member?<Text style={form.bottomLinkA} onPress={() => switchTab('signin')}> Sign in</Text></Text>
             }
           </Text>
         </Animated.View>
