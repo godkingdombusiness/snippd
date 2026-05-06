@@ -359,7 +359,7 @@ export default function SignInScreen({ navigation }) {
           <Text style={left.headlineItalic}>{'harder\nnow.'}</Text>
         </Text>
         <Text style={left.sub}>
-          Snippd stacks coupons, sale prices, and rebates automatically — so every grocery run costs less without the clipping.
+          Your autonomous shopping intelligence finds savings you didn't know existed — automatically, every week.
         </Text>
       </View>
 
@@ -399,11 +399,11 @@ export default function SignInScreen({ navigation }) {
                 snipp<Text style={{ color: FOREST }}>d</Text>
               </Text>
             )}
-            <Text style={form.eyebrow}>Autonomous Savings Intelligence</Text>
+            <Text style={form.eyebrow}>Your Savings Intelligence</Text>
             <Text style={form.title}>
               {tab === 'signin'
                 ? <Text>Welcome{'\n'}<Text style={form.titleItalic}>back.</Text></Text>
-                : <Text>Stop{'\n'}<Text style={form.titleItalic}>overpaying.</Text></Text>
+                : <Text>Start{'\n'}<Text style={form.titleItalic}>saving.</Text></Text>
               }
             </Text>
             <Text style={form.sub}>
