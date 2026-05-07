@@ -69,7 +69,8 @@ function WinCard({ snap }) {
   );
 }
 
-export default function WinsScreen({ navigation }) {
+export default function WinsScreen({ route, navigation }) {
+  const freshStart = route?.params?.freshStart ?? null;
   const [loading, setLoading]       = useState(true);
   const [snapshots, setSnapshots]   = useState([]);
   const [lifetimeCents, setLifetime] = useState(null);
@@ -128,6 +129,41 @@ export default function WinsScreen({ navigation }) {
         contentContainerStyle={s.scroll}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={GREEN} />}
       >
+        {/* Fresh Start celebration banner */}
+        {freshStart && (
+          <View style={s.celebCard}>
+            <View style={s.celebRow}>
+              <Feather name="refresh-cw" size={20} color={GREEN} />
+              <Text style={s.celebTitle}>Fresh Start!</Text>
+            </View>
+            <Text style={s.celebStore}>{freshStart.storeName} — trip complete</Text>
+            <View style={s.celebStats}>
+              <View style={s.celebStat}>
+                <Text style={s.celebStatVal}>{fmt(freshStart.savingsThisWeek)}</Text>
+                <Text style={s.celebStatLabel}>Saved this week</Text>
+              </View>
+              <View style={s.heroStatDivider} />
+              <View style={s.celebStat}>
+                <Text style={s.celebStatVal}>+{freshStart.creditsAwarded}</Text>
+                <Text style={s.celebStatLabel}>Stash Credits</Text>
+              </View>
+              <View style={s.heroStatDivider} />
+              <View style={s.celebStat}>
+                <Text style={s.celebStatVal}>{freshStart.streak}</Text>
+                <Text style={s.celebStatLabel}>{freshStart.streak === 1 ? 'Week streak' : 'Week streak'}</Text>
+              </View>
+            </View>
+            {freshStart.leveledUp && (
+              <View style={s.levelUpBadge}>
+                <Feather name="award" size={13} color={AMBER} />
+                <Text style={s.levelUpTxt}>
+                  Level up! {freshStart.levelBefore} → {freshStart.levelAfter}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Hero stats */}
         {lifetimeCents !== null && (
           <View style={s.heroCard}>
@@ -275,4 +311,24 @@ const s = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 20,
   },
   primaryBtnTxt: { color: WHITE, fontSize: 13, fontWeight: '900' },
+
+  // Fresh Start celebration
+  celebCard: {
+    backgroundColor: WHITE, borderRadius: 18, padding: 20,
+    borderWidth: 1.5, borderColor: '#86EFAC',
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12, shadowRadius: 10, elevation: 3,
+  },
+  celebRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  celebTitle: { fontSize: 20, fontWeight: '900', color: FOREST },
+  celebStore: { fontSize: 12, color: GRAY, marginBottom: 14 },
+  celebStats: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 },
+  celebStat:  { flex: 1, alignItems: 'center' },
+  celebStatVal: { fontSize: 22, fontWeight: '900', color: NAVY, marginBottom: 2 },
+  celebStatLabel: { fontSize: 9, fontWeight: '700', color: GRAY, textTransform: 'uppercase', letterSpacing: 0.8 },
+  levelUpBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'flex-start',
+  },
+  levelUpTxt: { fontSize: 12, fontWeight: '800', color: '#92400E' },
 });

@@ -219,16 +219,17 @@ function isVerifiedSystemStack(row) {
   const validation = String(
     row.validation_status || row.verification_status || ''
   ).toLowerCase();
-  const sourceType = row.source_type
-    ? String(row.source_type).toUpperCase()
-    : 'SNIPPD_GENERATED';
-  const active = row.is_active !== false && row.status !== 'inactive';
+  const active = row.is_active !== false && row.status !== 'inactive' && row.status !== 'blocked';
+  // Accept any approved/verified status — do not block on source_type
   const isVerified =
     validation === 'system_generated_verified' ||
-    validation === 'verified_live';
-  const isSnippd =
-    sourceType === 'SNIPPD_GENERATED' || sourceType.includes('SNIPPD');
-  return active && isVerified && isSnippd;
+    validation === 'verified_live' ||
+    validation === 'auto_approved' ||
+    validation === 'approved_with_caution' ||
+    validation === 'approved' ||
+    validation === '' ||  // rows with no validation_status set are shown
+    !validation;
+  return active && isVerified;
 }
 
 function stackItemsFromRow(row) {
@@ -345,17 +346,29 @@ function normalizePlanDinner(plan) {
 }
 
 async function queryVerifiedHomeFeed(limit = 6) {
+  // Primary: active rows ordered by confidence then recency
   const { data, error } = await supabase
     .from('app_home_feed')
     .select('*')
     .eq('is_active', true)
-    .eq('validation_status', 'system_generated_verified')
-    .eq('source_type', 'SNIPPD_GENERATED')
-    .order('created_at', { ascending: false })
+    .not('validation_status', 'eq', 'blocked')
+    .not('validation_status', 'eq', 'needs_review')
+    .order('confidence_score', { ascending: false })
+    .order('published_at', { ascending: false })
     .limit(limit);
 
   if (error) throw error;
-  return (data || []).filter(isVerifiedSystemStack).map(normalizeStack);
+  const filtered = (data || []).filter(isVerifiedSystemStack).map(normalizeStack);
+  if (filtered.length > 0) return filtered;
+
+  // Fallback: any active feed row (newest first)
+  const { data: fallback } = await supabase
+    .from('app_home_feed')
+    .select('*')
+    .eq('is_active', true)
+    .order('published_at', { ascending: false })
+    .limit(limit);
+  return (fallback || []).map(normalizeStack);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -975,10 +988,10 @@ export default function HomeScreen({ navigation }) {
 
         {!stacksLoading && sortedTopStacks.length === 0 && (
           <View style={styles.emptyStackBox}>
-            <Feather name="database" size={22} color={BRAND.primaryGreen} />
+            <Feather name="tag" size={22} color={BRAND.primaryGreen} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyStackTitle}>Waiting for live deal feed.</Text>
-              <Text style={styles.emptyStackSub}>Pull to refresh after deals are generated.</Text>
+              <Text style={styles.emptyStackTitle}>We're checking today's live deals.</Text>
+              <Text style={styles.emptyStackSub}>Pull to refresh — your best deals will appear here.</Text>
             </View>
           </View>
         )}
@@ -1022,9 +1035,9 @@ export default function HomeScreen({ navigation }) {
           ))}
           {sortedHomeDeals.length === 0 && (
             <View style={styles.emptyDealCard}>
-              <Feather name="database" size={28} color={BRAND.primaryGreen} />
-              <Text style={styles.emptyDealTitle}>Waiting for live deal feed.</Text>
-              <Text style={styles.emptyDealSub}>Verified Snippd deals will appear here after /generate-stacks writes to app_home_feed.</Text>
+              <Feather name="tag" size={28} color={BRAND.primaryGreen} />
+              <Text style={styles.emptyDealTitle}>We're checking today's live deals.</Text>
+              <Text style={styles.emptyDealSub}>Check back soon — verified deals appear here daily.</Text>
             </View>
           )}
         </ScrollView>

@@ -306,8 +306,15 @@ export default function ListScreen({ navigation }) {
 
   const totalUnchecked = unchecked.reduce((s, i) => s + (i.price_cents || 0), 0);
   const totalSaved = items
-    .filter(i => i.from_stack)
-    .reduce((s, i) => s + (i.price_cents || 0) * 0.3, 0);
+    .filter(i => i.from_stack || i.coupon_value_cents > 0 || i.rebate_value_cents > 0)
+    .reduce((s, i) => {
+      const coupon = i.coupon_value_cents || 0;
+      const rebate = i.rebate_value_cents || 0;
+      const reg    = i.regular_price_cents || i.price_cents || 0;
+      const oop    = i.estimated_oop_cents || i.price_cents || reg;
+      const diff   = Math.max(0, reg - oop);
+      return s + (coupon + rebate + diff || (i.price_cents || 0) * 0.3);
+    }, 0);
 
   // Group unchecked by store
   const storeGroups = Object.entries(
@@ -559,8 +566,25 @@ export default function ListScreen({ navigation }) {
 
                         <View style={styles.itemInfo}>
                           <Text style={styles.itemName}>{item.name}</Text>
-                          {item.category && (
+                          {/* Coupon instruction — shown when item came from a stack */}
+                          {item.customer_instructions ? (
+                            <Text style={styles.itemCouponNote} numberOfLines={2}>
+                              {item.customer_instructions}
+                            </Text>
+                          ) : item.coupon_value_cents > 0 ? (
+                            <Text style={styles.itemCouponNote}>
+                              Clip ${(item.coupon_value_cents / 100).toFixed(2)} coupon
+                              {item.coupon_code ? ` · ${item.coupon_code}` : ''}
+                            </Text>
+                          ) : item.category ? (
                             <Text style={styles.itemCat}>{item.category}</Text>
+                          ) : null}
+                          {/* Rebate note */}
+                          {item.rebate_value_cents > 0 && (
+                            <Text style={styles.itemRebateNote}>
+                              + ${(item.rebate_value_cents / 100).toFixed(2)} rebate
+                              {item.rebate_app ? ` via ${item.rebate_app}` : ''}
+                            </Text>
                           )}
                           {isMyList && (
                             <TouchableOpacity
@@ -576,12 +600,25 @@ export default function ListScreen({ navigation }) {
                         </View>
 
                         <View style={styles.itemRight}>
-                          {item.price_cents > 0 && (
-                            <Text style={styles.itemPrice}>{fmt(item.price_cents)}</Text>
+                          {/* Show regular price struck through when there's a discount */}
+                          {item.regular_price_cents > 0 && item.regular_price_cents !== item.estimated_oop_cents && (
+                            <Text style={styles.itemRegularPrice}>
+                              ${(item.regular_price_cents / 100).toFixed(2)}
+                            </Text>
+                          )}
+                          {(item.estimated_oop_cents > 0 || item.price_cents > 0) && (
+                            <Text style={styles.itemPrice}>
+                              {fmt(item.estimated_oop_cents || item.price_cents)}
+                            </Text>
+                          )}
+                          {item.savings_percent > 0 && (
+                            <Text style={styles.itemSavingsPct}>
+                              {Math.round(item.savings_percent)}% off
+                            </Text>
                           )}
                           {item.from_stack && (
                             <View style={styles.stackBadge}>
-                              <Text style={styles.stackBadgeTxt}>STACK</Text>
+                              <Text style={styles.stackBadgeTxt}>DEAL</Text>
                             </View>
                           )}
                         </View>
@@ -954,8 +991,12 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 14, fontWeight: 'bold', color: NAVY },
   itemNameDone: { fontSize: 14, fontWeight: 'normal', color: GRAY, textDecorationLine: 'line-through' },
   itemCat: { fontSize: 11, color: GRAY, marginTop: 2 },
-  itemRight: { alignItems: 'flex-end', gap: 4 },
+  itemCouponNote: { fontSize: 11, color: '#0C7A3D', marginTop: 2, fontWeight: '500' },
+  itemRebateNote: { fontSize: 11, color: '#7C3AED', marginTop: 1 },
+  itemRight: { alignItems: 'flex-end', gap: 3 },
+  itemRegularPrice: { fontSize: 11, color: GRAY, textDecorationLine: 'line-through' },
   itemPrice: { fontSize: 14, fontWeight: 'bold', color: NAVY },
+  itemSavingsPct: { fontSize: 10, color: GREEN, fontWeight: '600' },
   stackBadge: {
     backgroundColor: LIGHT_GREEN, borderRadius: 5,
     paddingHorizontal: 6, paddingVertical: 2,

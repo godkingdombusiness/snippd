@@ -17,11 +17,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Share, Alert, Linking,
+  StatusBar, Share, Alert, Linking, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { resolveCouponActivationLink } from '../src/lib/retailerCouponLinks';
+import { supabase } from '../lib/supabase';
 
 // ── Brand ─────────────────────────────────────────────────────────────────────
 const GREEN      = '#0C9E54';
@@ -215,13 +216,65 @@ export default function StackDetailScreen({ route, navigation }) {
   const subtotalCents = stack.subtotal_cents ?? 0;
   const discountCents = stack.total_discounts_cents ?? 0;
 
+  const [addedToList, setAddedToList] = useState(false);
+  const [addingToList, setAddingToList] = useState(false);
+
   const toggleItem = (idx) => setChecked(prev => ({ ...prev, [idx]: !prev[idx] }));
 
   const checkedCount = Object.values(checked).filter(Boolean).length;
   const allChecked = items.length > 0 && checkedCount === items.length;
 
-  const handleAddAll = () => {
-    navigation.navigate('ShoppingList', { stack });
+  const handleAddAll = async () => {
+    if (addedToList || addingToList) return;
+    setAddingToList(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const listRows = items.map((item, idx) => {
+          const reg  = regularPriceCents(item);
+          const fin  = finalPriceCents(item);
+          const coup = couponValueCents(item);
+          const qty  = quantity(item);
+          return {
+            id:                     `stack_${stack.id ?? stack.stack_candidate_id ?? 'detail'}_${idx}`,
+            name:                   itemName(item),
+            store:                  retailer || 'any',
+            price_cents:            fin || reg || 0,
+            checked:                false,
+            from_stack:             true,
+            category:               item.category || 'deal',
+            quantity:               qty,
+            regular_price_cents:    reg,
+            sale_price_cents:       fin,
+            coupon_code:            item.coupon_code || item.couponCode || null,
+            coupon_value_cents:     coup,
+            rebate_app:             item.rebate_app || item.rebateApp || null,
+            rebate_value_cents:     centsFrom(item.rebate_value_cents ?? item.rebateValueCents ?? 0),
+            estimated_oop_cents:    fin || reg || 0,
+            net_after_rebate_cents: Math.max(0, fin - centsFrom(item.rebate_value_cents ?? 0)),
+            savings_percent:        savingsPct,
+            stack_type:             stack.stack_type || null,
+            customer_instructions:  stack.customer_instructions || instructions.join('. ') || null,
+            budget_fit:             true,
+            confidence_score:       typeof stack.confidence === 'number' ? stack.confidence : null,
+            stack_candidate_id:     stack.stack_candidate_id ?? stack.id ?? null,
+            source:                 'stack_detail',
+            expiration_date:        stack.expiration_date ?? null,
+          };
+        });
+        await supabase.rpc('upsert_shopping_list_items', {
+          p_user_id: user.id,
+          p_items:   listRows,
+        });
+      }
+      setAddedToList(true);
+    } catch (e) {
+      console.warn('[StackDetail] handleAddAll:', e.message);
+      // Still navigate so user isn't blocked
+    } finally {
+      setAddingToList(false);
+      navigation.navigate('ShoppingList', { stack });
+    }
   };
 
   const handleShare = async () => {
@@ -366,13 +419,17 @@ export default function StackDetailScreen({ route, navigation }) {
           <Text style={s.footerPrice}>{fmtCents(finalCents)}</Text>
         </View>
         <TouchableOpacity
-          style={[s.ctaBtn, items.length === 0 && { opacity: 0.4 }]}
+          style={[s.ctaBtn, (items.length === 0 || addedToList) && { opacity: 0.7 }]}
           onPress={handleAddAll}
-          disabled={items.length === 0}
+          disabled={items.length === 0 || addingToList}
           activeOpacity={0.85}
         >
-          <Feather name="list" size={18} color={WHITE} />
-          <Text style={s.ctaBtnTxt}>Add All Items to My List</Text>
+          {addingToList
+            ? <ActivityIndicator size="small" color={WHITE} />
+            : <Feather name={addedToList ? 'check' : 'list'} size={18} color={WHITE} />}
+          <Text style={s.ctaBtnTxt}>
+            {addedToList ? 'Added to List' : 'Add All Items to My List'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

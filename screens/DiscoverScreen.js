@@ -251,10 +251,40 @@ export default function DiscoverScreen({ navigation }) {
       const result = await addStackToCart(stack);
       if (result === 'already_added') {
         Alert.alert('Already in cart', `${stack.title} is already in your cart.`);
-      } else {
-        setAddedIds(prev => new Set([...prev, stack.id]));
-        Alert.alert('Added', `${stack.title} was added to your cart.`);
+        return;
       }
+      setAddedIds(prev => new Set([...prev, stack.id]));
+
+      // Persist to shopping_list_items so ListScreen realtime subscription picks it up
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const raw = stack.raw;
+        const listRows = (stack.items.length ? stack.items : [{ name: stack.title }]).map((item, idx) => ({
+          id: `discover_${stack.id}_${idx}`,
+          name: itemName(item),
+          store: stack.retailer,
+          stack_candidate_id: raw.stack_candidate_id ?? raw.id ?? null,
+          stack_title: stack.title,
+          retailer_key: stack.retailerKey,
+          final_out_of_pocket_cents: item.final_price_cents ?? item.sale_price_cents ?? cents(item.final_price ?? item.sale_price ?? item.price, 'auto'),
+          regular_price_cents: item.regular_price_cents ?? cents(item.regular_price ?? item.reg_price ?? item.price, 'auto'),
+          total_discounts_cents: raw.total_discounts_cents ?? raw.savings_cents ?? null,
+          coupon_value_cents: item.coupon_value_cents ?? raw.coupon_value_cents ?? null,
+          rebate_value_cents: item.rebate_value_cents ?? raw.rebate_value_cents ?? null,
+          savings_percent: stack.savingsPercent,
+          confidence_score: raw.confidence_score ?? null,
+          validation_status: raw.validation_status ?? null,
+          coupon_code: item.coupon_code ?? raw.coupon_code ?? null,
+          rebate_app: item.rebate_app ?? raw.rebate_app ?? null,
+          customer_instructions: item.customer_instructions ?? raw.customer_instructions ?? null,
+          deal_type: item.deal_type ?? raw.deal_type ?? null,
+          quantity: Number(item.quantity || item.qty || 1) || 1,
+          source: 'discover',
+        }));
+        await supabase.rpc('upsert_shopping_list_items', { p_user_id: user.id, p_items: listRows });
+      }
+
+      Alert.alert('Added', `${stack.title} was added to your list.`);
     } catch {
       Alert.alert('Could not add stack', 'Please try again.');
     }

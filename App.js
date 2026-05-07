@@ -413,48 +413,25 @@ function MainTabs() {
 }
 
 // ── USER STATUS GATE ─────────────────────────────────────────────────────────
-// Resolves the correct post-auth route based on user_persona.status
-// and the snippd_integrations is_beta_live flag.
-//
-// NEW        → ConciergeOnboarding (start the 7-step wizard)
-// WAITLIST   → Waitlist
-// PAID_BETA  + isBetaLive=false → Waitlist (holding screen)
-// PAID_BETA  + isBetaLive=true  → FounderDashboard
-// LAUNCHED   → MainApp
+// All authenticated users → MainApp. Waitlist/forecast screens bypassed.
 async function resolveUserStatus(userId) {
   try {
-    const [{ data: persona }, { data: betaFlag }] = await Promise.all([
-      supabase
-        .from('user_persona')
-        .select('status, forecast_completed, briefing_completed')
-        .eq('user_id', userId)
-        .single(),
-      supabase.from('snippd_integrations').select('value').eq('key', 'is_beta_live').single(),
-    ]);
+    const { data: persona } = await supabase
+      .from('user_persona')
+      .select('status, briefing_completed')
+      .eq('user_id', userId)
+      .single();
 
-    const status             = persona?.status;
-    const forecastCompleted  = persona?.forecast_completed  ?? false;
-    const briefingCompleted  = persona?.briefing_completed  ?? false;
-    const isBetaLive         = betaFlag?.value === 'true';
+    const status            = persona?.status;
+    const briefingCompleted = persona?.briefing_completed ?? false;
 
-    // New user or no persona row → start the Forecast (waitlist capture)
-    if (!status || status === 'new') {
-      return 'WaitlistForecast';
-    }
-
-    // Waitlist / paid beta → MainApp (paywall removed; RevenueCat handles monetization at launch)
-    if (status === 'waitlist') return 'MainApp';
-
-    if (status === 'paid_beta') return 'MainApp';
-
-    // Launched → Deep Brief if not done, otherwise main app
-    if (status === 'launched') {
-      return briefingCompleted ? 'MainApp' : 'ConciergeOnboarding';
+    // Launched users who haven't completed the concierge brief still see it once
+    if (status === 'launched' && !briefingCompleted) {
+      return 'ConciergeOnboarding';
     }
 
     return 'MainApp';
   } catch (_) {
-    // Table missing or query error → fall through to MainApp
     return 'MainApp';
   }
 }
