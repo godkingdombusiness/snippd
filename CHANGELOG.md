@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — Hero Rebuild v1 (2026-05-07)
+- `screens/SignInScreen.js` — Complete redesign (SNIPPD_BETA_HERO_REBUILD_V1). New copy: headline "Groceries got expensive. Your cart got smarter.", subheadline, auth eyebrow "Welcome back to smarter shopping." / sub "Sign in to continue building smarter carts and personalized savings plans." Tab labels: "Sign In" / "Join Beta". Submit CTAs: "Continue" / "Join Beta". Bottom link: "New to Snippd? Join the beta →". Removed fake metrics ($2.4k / 6+ / 100%) — replaced with 3 value blocks (Save Time / Smarter Carts / Gets Smarter). Phone: dark navy gradient hero header + floating white auth card (32px radius). Tablet: left panel with hero copy + animated AI mockup cart optimization card + 3 full value blocks; right panel white form card (28px radius, soft navy shadow). New color palette: Green #0C9E54, Navy #172250, Accent #C5FFBC, Alert #FB5B5B. HeroBg uses 3 animated blobs. AIMockup has pulsing cart optimization animation with savings tags. All auth wiring (Supabase email/OAuth, routing) unchanged.
+
 ### Security (2026-05-07)
 - `screens/UnlockBetaScreen.js` — Removed hardcoded promo code fallback list (`HARDCODED_VALID`). All promo code validation now goes through the `promo_codes` Supabase table only; no client-side bypass possible.
 - `.gitignore` — Added `infra/vpc-sc/terraform.tfstate`, `terraform.tfstate.backup`, `*.tfplan` patterns to prevent infrastructure secrets from being committed. Fixed `Bash tool output*.txt` glob (removed erroneous surrounding quotes).
