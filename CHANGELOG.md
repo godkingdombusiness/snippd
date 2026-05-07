@@ -4,6 +4,17 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — UX Patch: Make Stacks Easy to Find (2026-05-07)
+- `App.js` — `resolveUserStatus` simplified: all authenticated users route to `MainApp` except `status='launched' && !briefingCompleted` → `ConciergeOnboarding`. WaitlistForecast screen fully removed from customer routing. `QuickStartScreen` import + route removed.
+- `screens/HomeScreen.js` — `isVerifiedSystemStack` filter loosened to accept any active, non-blocked row. `queryVerifiedHomeFeed` rewritten: orders by `confidence_score DESC, published_at DESC`, removes strict `source_type` gate, adds fallback query for any active row. Empty state copy updated to "We're checking today's live deals."
+- `screens/ListScreen.js` — Coupon/rebate breakdown shown per item: `customer_instructions` in green, `coupon_value_cents` as "Clip $X coupon · [code]", `rebate_value_cents` as "+ $X.XX rebate via [app]" in purple, regular price struck-through when different from OOP, `savings_percent` badge. STACK badge renamed DEAL. Savings strip uses real coupon/rebate data.
+- `screens/StackDetailScreen.js` — `handleAddAll` now writes full item data to `shopping_list_items` via `upsert_shopping_list_items` RPC before navigating. CTA shows `ActivityIndicator` when in-flight and checkmark + "Added to List" when complete.
+- `screens/DiscoverScreen.js` — `handleAdd` now also persists full stack item data to `shopping_list_items` via `upsert_shopping_list_items` RPC so ListScreen realtime subscription picks up Discover adds.
+- `screens/WinsScreen.js` — Now accepts `route.params.freshStart`; renders celebration banner at top of scroll when arriving from TripResultsScreen Fresh Start flow (shows weekly savings, Stash Credits awarded, streak count, level-up badge if applicable).
+
+### Removed — (2026-05-07)
+- `screens/QuickStartScreen.js` — Deleted. No longer needed in the onboarding flow.
+
 ### Added — Foldable Patch: Stack Engine v2 + Daily Refresh + List Sync + Admin QA (2026-05-07)
 - `supabase/migrations/20260507_stack_engine_v2.sql` — Extends `stack_candidates` with 18 output columns (customer_instructions, budget_fit, deal_title, items_needed, regular/sale/coupon/rebate/oop/net price fields, savings_percent, expiration_date, store, qa_metadata, verified_at, math_verified, published_to_feed_at). Creates 5 SQL functions: `generate_customer_instructions(UUID)` (human-readable "Buy X, clip Y…" string), `verify_stack_math(UUID)` (recalculates OOP/net/savings %, marks math_verified), `refresh_app_home_feed()` (daily refresh — publishes confidence ≥ 80 stacks, expires stale items, logs run), `append_stack_qa_metadata(UUID, JSONB)` (audit metadata helper), `admin_review_stack(UUID, TEXT, TEXT, TEXT)` (approve/reject/needs_review/wrong_price/missing_coupon actions). Comments 6 canonical stack types on `stack_type` column.
 - `supabase/migrations/20260507_list_sync_v2.sql` — Extends `shopping_list_items` with 19 stack/coupon/rebate columns (quantity, regular/sale/coupon/rebate/oop/net prices, savings_percent, stack_type, stack_breakdown, customer_instructions, budget_fit, confidence_score, stack_candidate_id, source, synced_at, expiration_date). Enables Postgres realtime (REPLICA IDENTITY FULL + supabase_realtime publication). Creates `upsert_shopping_list_items(UUID, JSONB)` batch upsert RPC (SECURITY DEFINER). Creates `v_user_list_budget_summary` view (per-user OOP/net/savings/coupon/rebate totals).
