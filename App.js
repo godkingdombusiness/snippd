@@ -143,7 +143,6 @@ import OutcomeScreen from './screens/OutcomeScreen';
 import SavingsActionScreen from './screens/SavingsActionScreen';
 import NextWeekBuilderScreen from './screens/NextWeekBuilderScreen';
 import InstantForecastScreen from './screens/InstantForecastScreen';
-import QuickStartScreen from './screens/QuickStartScreen';
 import SoftPersonalizationScreen from './screens/SoftPersonalizationScreen';
 import UnlockBetaScreen from './screens/UnlockBetaScreen';
 import DeepPersonalizationScreen from './screens/DeepPersonalizationScreen';
@@ -615,7 +614,6 @@ function RootNavigator() {
         <Stack.Screen name="SplashIntro"           component={SplashIntroScreen} />
         <Stack.Screen name="Auth"                  component={SignInScreen} />
         <Stack.Screen name="Onboarding"            component={OnboardingScreen} />
-        <Stack.Screen name="QuickStart"            component={QuickStartScreen} />
         <Stack.Screen name="InstantForecast"       component={InstantForecastScreen} />
         <Stack.Screen name="SoftPersonalization"   component={SoftPersonalizationScreen} />
         <Stack.Screen name="UnlockBeta"            component={UnlockBetaScreen} />
