@@ -2,10 +2,12 @@
  * stack-automation - service/admin entry point for automatic stack generation.
  *
  * POST /functions/v1/stack-automation
- * Body: { retailer_key?: string, week_of?: string, publish?: boolean }
+ * Body:
+ *   { action?: "generate", retailer_key?: string, week_of?: string, budget_cents?: number, publish?: boolean }
+ *   { action: "budget_optimizer", budget_cents?: number, retailer_key?: string, limit?: number }
  *
- * Writes through rpc_generate_auto_stack_candidates so all stack/deal data lands
- * in the existing stack_candidates and app_home_feed surfaces with audit rows.
+ * Writes through backend Supabase RPCs so stack/deal data lands in the existing
+ * stack_candidates and app_home_feed surfaces with audit rows.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -58,11 +60,24 @@ serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const db = createClient(supabaseUrl, serviceKey);
 
-  const { data, error } = await db.rpc('rpc_generate_auto_stack_candidates', {
-    p_retailer_key: body.retailer_key ?? null,
-    p_week_of: body.week_of ?? null,
-    p_publish: body.publish ?? true,
-  });
+  const action = String(body.action ?? 'generate');
+  const rpcName = action === 'budget_optimizer'
+    ? 'rpc_build_budget_stack_plan'
+    : 'rpc_run_stack_thinking_engine';
+  const rpcArgs = action === 'budget_optimizer'
+    ? {
+        p_budget_cents: body.budget_cents ?? 5000,
+        p_retailer_key: body.retailer_key ?? null,
+        p_limit: body.limit ?? 20,
+      }
+    : {
+        p_retailer_key: body.retailer_key ?? null,
+        p_week_of: body.week_of ?? null,
+        p_budget_cents: body.budget_cents ?? null,
+        p_publish: body.publish ?? true,
+      };
+
+  const { data, error } = await db.rpc(rpcName, rpcArgs);
 
   if (error) {
     console.error('stack-automation failed', error);

@@ -6,7 +6,7 @@ Loads stack_candidates + digital_coupons + retailer_policies from Supabase,
 runs the 6-type stack engine, filters by savings_threshold, writes results
 to app_home_feed, and returns clean JSON for the 3-screen flow.
 
-Stack types:
+Legacy stack types:
   BOGO_STACK           final = bogo_price - coupon_value - rebate
   THRESHOLD_STACK      subtotal >= threshold; apply threshold coupon last
   PROMO_TRIGGER_STACK  buy_X_get_Y / auto-discount; trigger count must be met
@@ -535,6 +535,43 @@ def health():
     return jsonify({"ok": True, "service": "generate-stacks"})
 
 
+@app.route("/stack-thinking-engine", methods=["POST"])
+def stack_thinking_engine():
+    if not SUPABASE_URL or not SERVICE_KEY:
+        return jsonify({"ok": False, "error": "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured"}), 500
+
+    body = request.get_json(silent=True) or {}
+    stores = body.get("stores") or []
+    retailer_key = body.get("retailer_key") or (stores[0] if stores else None)
+    result = _sb_rpc("rpc_run_stack_thinking_engine", {
+        "p_retailer_key": retailer_key,
+        "p_week_of": body.get("week_of"),
+        "p_budget_cents": body.get("budget_cents"),
+        "p_publish": body.get("publish", True),
+    })
+    status = 200 if result.get("ok") else 500
+    return jsonify(result), status
+
+
+@app.route("/budget-optimizer", methods=["POST"])
+def budget_optimizer():
+    if not SUPABASE_URL or not SERVICE_KEY:
+        return jsonify({"ok": False, "error": "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured"}), 500
+
+    body = request.get_json(silent=True) or {}
+    budget_cents = body.get("budget_cents")
+    if budget_cents is None:
+        budget_cents = int(float(body.get("budget", 50)) * 100)
+
+    result = _sb_rpc("rpc_build_budget_stack_plan", {
+        "p_budget_cents": budget_cents,
+        "p_retailer_key": body.get("retailer_key"),
+        "p_limit": body.get("limit", 20),
+    })
+    status = 200 if result.get("ok") else 500
+    return jsonify(result), status
+
+
 @app.route("/generate-stacks", methods=["POST"])
 def generate_stacks():
     if not SUPABASE_URL or not SERVICE_KEY:
@@ -545,9 +582,10 @@ def generate_stacks():
     savings_threshold = float(body.get("savings_threshold", MIN_SAVINGS_PCT))
 
     # ── 1. Load data ──────────────────────────────────────────────────────────
-    automation_result = _sb_rpc("rpc_generate_auto_stack_candidates", {
+    automation_result = _sb_rpc("rpc_run_stack_thinking_engine", {
         "p_retailer_key": stores[0] if len(stores) == 1 else None,
-        "p_week_of": None,
+        "p_week_of": body.get("week_of"),
+        "p_budget_cents": body.get("budget_cents"),
         "p_publish": True,
     })
 

@@ -39,7 +39,7 @@ describe('Automatic Stack Tracking', () => {
     expect(sql).toContain("'system_generated_verified'");
     expect(sql).toContain("'verified_live'");
 
-    expect(cloudRun).toContain('rpc_generate_auto_stack_candidates');
+    expect(cloudRun).toContain('rpc_run_stack_thinking_engine');
     expect(cloudRun).toContain('_sb_select("stack_candidates"');
     expect(cloudRun).toContain('_sb_upsert("app_home_feed"');
   });
@@ -63,5 +63,37 @@ describe('Automatic Stack Tracking', () => {
     expect(screen).toContain("'add_note'");
 
     expect(app).toContain('StackReviewTrainingScreen');
+  });
+
+  it('adds a backend Stack Thinking Engine and budget optimizer', () => {
+    const sql = file('supabase/migrations/20260507_stack_thinking_engine.sql');
+    const cloudRun = file('services/generate_stacks/main.py');
+    const edge = file('supabase/functions/stack-automation/index.ts');
+
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.rpc_run_stack_thinking_engine');
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.rpc_build_budget_stack_plan');
+    expect(sql).toContain('CREATE OR REPLACE VIEW public.v_stack_thinking_engine_results');
+    expect(sql).toContain('BOGO_STACK');
+    expect(sql).toContain('CLEARANCE_COUPON_STACK');
+    expect(sql).toContain('DIGITAL_COUPON_STACK');
+    expect(sql).toContain('REBATE_STACK');
+    expect(sql).toContain('THRESHOLD_STACK');
+    expect(sql).toContain('BASKET_ENGINEERED_STACK');
+    expect(sql).toContain('customer_instructions');
+    expect(sql).toContain('budget_fit');
+    expect(sql).toContain('INSERT INTO public.stack_candidates');
+    expect(sql).toContain('UPDATE public.app_home_feed');
+    expect(sql).toContain('INSERT INTO public.app_home_feed');
+
+    expect(sql).not.toMatch(/\bDROP\s+TABLE\b/i);
+    expect(sql).not.toMatch(/\bDROP\s+COLUMN\b/i);
+    expect(sql).not.toMatch(/\bALTER\s+TABLE\b[\s\S]*\bRENAME\b/i);
+
+    expect(cloudRun).toContain('/stack-thinking-engine');
+    expect(cloudRun).toContain('/budget-optimizer');
+    expect(cloudRun).toContain('rpc_run_stack_thinking_engine');
+    expect(cloudRun).toContain('rpc_build_budget_stack_plan');
+    expect(edge).toContain('rpc_run_stack_thinking_engine');
+    expect(edge).toContain('rpc_build_budget_stack_plan');
   });
 });
