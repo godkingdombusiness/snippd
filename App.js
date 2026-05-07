@@ -437,14 +437,10 @@ async function resolveUserStatus(userId) {
       return forecastCompleted ? 'Waitlist' : 'WaitlistForecast';
     }
 
-    // On waitlist → holding screen
-    if (status === 'waitlist') return 'Waitlist';
+    // Waitlist / paid beta → MainApp (paywall removed; RevenueCat handles monetization at launch)
+    if (status === 'waitlist') return 'MainApp';
 
-    // Paid beta → Deep Brief if not done, otherwise dashboard
-    if (status === 'paid_beta') {
-      if (!isBetaLive) return 'Waitlist';
-      return briefingCompleted ? 'FounderDashboard' : 'ConciergeOnboarding';
-    }
+    if (status === 'paid_beta') return 'MainApp';
 
     // Launched → Deep Brief if not done, otherwise main app
     if (status === 'launched') {

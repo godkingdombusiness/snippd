@@ -32,8 +32,8 @@ const MINT_POP   = '#C5FFBC';
 const STRIPE_BETA_PRO = process.env.EXPO_PUBLIC_STRIPE_BETA_PRO  ?? 'https://buy.stripe.com/snippd-beta-pro';
 const STRIPE_FOUNDER  = process.env.EXPO_PUBLIC_STRIPE_FOUNDER   ?? 'https://buy.stripe.com/snippd-founder';
 
-// Hardcoded fallback codes (same as PromoCodesScreen)
-const HARDCODED_VALID = ['SNIPPD10', 'WELCOME5', 'SAVE20', 'CLERMONT', 'SNIPPDBETA', 'FOUNDER97', 'TEST1234SNIPPD'];
+// All promo code validation is server-side via the promo_codes table
+const HARDCODED_VALID = [];
 
 // ── Helper — defined outside to avoid remount ─────────────────────────────────
 

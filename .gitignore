@@ -68,11 +68,14 @@ web/.next/
 __pycache__/
 *.pyc
 
-# Terraform provider downloads
+# Terraform provider downloads and state (contains infrastructure secrets)
 infra/vpc-sc/.terraform/
+infra/vpc-sc/terraform.tfstate
+infra/vpc-sc/terraform.tfstate.backup
+infra/vpc-sc/*.tfplan
 
 # Local build / backup artifacts
 dist-run-check/
 snippd-backup/
-"Bash tool output*.txt"
+Bash tool output*.txt
 AGENTS.md
