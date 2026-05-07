@@ -4,6 +4,16 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Deep Personalization + Persona Flow (2026-05-07)
+- `screens/DeepPersonalizationScreen.js` — NEW. 6-step deep onboarding: (1) Store selection (16 chains, multi-select chips), (2) Shopping habits (frequency radio + mode grid), (3) Cooking style (8 options, multi-select), (4) Foods loved (18 items grouped by category), (5) Foods to avoid (14 allergen/restriction chips + free-text "other"), (6) Weekly budget (exact dollar TextInput with live monthly estimate). Saves `preferred_stores`, `shopping_frequency`, `shopping_mode`, `cooking_preferences`, `foods_liked`, `foods_avoided`, `weekly_budget_cents` to `user_persona`. Animated step transitions. Mobile-first with `maxWidth: 600` centering on web.
+- `screens/PersonaRevealScreen.js` — NEW. Animated persona reveal screen. Calculates one of 7 archetypes (Wellness Optimizer, Performance Athlete, Family CFO, Savings Hunter, Meal Planner, Speed Shopper, Smart Stacker) from all collected data (household, missions, cooking style, foods, budget, stores). Staggered entrance animations for card, emoji pulse, and trait badge cascade. Shows projected savings and store count from profile. Routes to HowItWorks.
+- `screens/HowItWorksScreen.js` — NEW. 4-feature walkthrough (Stacks Every Deal, Learns Your Household, Budget-Built Plans, Price Watch Alerts). Accordion-style tap-to-expand cards. "Why Snippd is different" checklist. "What happens after Get Started" countdown. Animated entrance + stagger. "Get Started" → MainApp.
+- `App.js` — Registered `DeepPersonalization`, `PersonaReveal`, `HowItWorks` in root stack navigator. Added imports.
+
+### Changed — Goal Selection + Why Save (2026-05-07)
+- `screens/WaitlistForecastScreen.js` — Mission step now shows inline follow-up detail panels when a goal is selected: each selected mission card expands to show a chip grid of sub-questions (Clinical Guardrails: 8 restriction chips; Program Tracking: 8 program chips; Athletic Fuel: 5 goal chips; Pure Savings: 8 category chips). Selected details stored in `missionDetails` state and saved to `user_persona.mission_details` on join. "Why do you need Snippd?" card now has a dedicated "Submit my reason" button that saves `why_snippd` to Supabase immediately (separate from the main join flow); shows "Saved ✓" state on success. Added `MISSION_DETAILS` config object outside component.
+- `screens/WaitlistScreen.js` — ACCESS NOW button now routes to `DeepPersonalization` instead of `MainApp`, starting the full deep onboarding flow (Personalization → Persona Reveal → How It Works → Get Started → MainApp).
+
 ### Fixed — SignInScreen web input visuals (2026-05-07)
 - `screens/SignInScreen.js` — Focus ring now renders #0C9E54 brand green on web: `inputWrapFocused` uses double `box-shadow` (`3px rgba green glow + 1.5px solid #0C9E54`). Browser autofill black box eliminated: `WebkitBoxShadow` inset raised from 60px → 1000px to fully cover any browser-injected background. Input `outline`, `outlineWidth`, `outlineStyle`, `borderWidth` all zeroed on web so only the container border is visible (no double-border on focus).
 

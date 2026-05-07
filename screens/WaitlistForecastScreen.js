@@ -177,16 +177,72 @@ function getActiveBonuses(household) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Mission detail follow-up questions ───────────────────────────────────────
+const MISSION_DETAILS = {
+  clinical_guardrails: {
+    question: 'What restrictions do you manage?',
+    options: [
+      { key: 'nut_allergy',    label: 'Tree Nuts' },
+      { key: 'peanut',         label: 'Peanuts' },
+      { key: 'gluten_free',    label: 'Gluten-Free' },
+      { key: 'dairy_free',     label: 'Dairy-Free' },
+      { key: 'diabetic',       label: 'Diabetic' },
+      { key: 'low_sodium',     label: 'Low Sodium' },
+      { key: 'vegan',          label: 'Vegan' },
+      { key: 'kosher',         label: 'Kosher/Halal' },
+    ],
+  },
+  program_tracking: {
+    question: 'Which program are you following?',
+    options: [
+      { key: 'keto',            label: 'Keto' },
+      { key: 'ww',              label: 'WW / Weight Watchers' },
+      { key: 'noom',            label: 'Noom' },
+      { key: 'whole30',         label: 'Whole30' },
+      { key: 'paleo',           label: 'Paleo' },
+      { key: 'if',              label: 'Intermittent Fasting' },
+      { key: 'calorie_count',   label: 'Calorie Counting' },
+      { key: 'other_program',   label: 'Other' },
+    ],
+  },
+  athletic_fuel: {
+    question: "What's your primary fitness goal?",
+    options: [
+      { key: 'build_muscle',    label: 'Build Muscle' },
+      { key: 'lose_weight',     label: 'Lose Weight' },
+      { key: 'endurance',       label: 'Endurance / Cardio' },
+      { key: 'maintain',        label: 'Maintain Weight' },
+      { key: 'performance',     label: 'Athletic Performance' },
+    ],
+  },
+  pure_savings: {
+    question: 'Which categories matter most?',
+    options: [
+      { key: 'all_groceries',   label: 'All Groceries' },
+      { key: 'meat_seafood',    label: 'Meat & Seafood' },
+      { key: 'produce',         label: 'Produce' },
+      { key: 'dairy',           label: 'Dairy' },
+      { key: 'pantry',          label: 'Pantry Staples' },
+      { key: 'household',       label: 'Household Items' },
+      { key: 'baby',            label: 'Baby Products' },
+      { key: 'pet',             label: 'Pet Food' },
+    ],
+  },
+};
+
 export default function WaitlistForecastScreen({ navigation }) {
-  const [step,       setStep]       = useState(0);
-  const [household,  setHousehold]  = useState({});
-  const [leak,       setLeak]       = useState(null);
-  const [missions,   setMissions]   = useState([]);   // multi-select array
-  const [bucket,     setBucket]     = useState(null);
-  const [spendMode,  setSpendMode]  = useState('monthly'); // 'monthly' | 'weekly'
-  const [whyText,    setWhyText]    = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [displayAmt, setDisplayAmt] = useState(0);
+  const [step,          setStep]          = useState(0);
+  const [household,     setHousehold]     = useState({});
+  const [leak,          setLeak]          = useState(null);
+  const [missions,      setMissions]      = useState([]);   // multi-select array
+  const [missionDetails, setMissionDetails] = useState({}); // { mission_key: [detail_keys] }
+  const [bucket,        setBucket]        = useState(null);
+  const [spendMode,     setSpendMode]     = useState('monthly'); // 'monthly' | 'weekly'
+  const [whyText,       setWhyText]       = useState('');
+  const [whySaved,      setWhySaved]      = useState(false);
+  const [whySaving,     setWhySaving]     = useState(false);
+  const [submitting,    setSubmitting]    = useState(false);
+  const [displayAmt,    setDisplayAmt]    = useState(0);
 
   const fadeAnim   = useRef(new Animated.Value(1)).current;
   const slideAnim  = useRef(new Animated.Value(0)).current;
@@ -265,6 +321,33 @@ export default function WaitlistForecastScreen({ navigation }) {
     );
   }, []);
 
+  // ── Mission detail toggle ─────────────────────────────────────────────────
+  const toggleMissionDetail = useCallback((missionKey, detailKey) => {
+    setMissionDetails(prev => {
+      const current = prev[missionKey] ?? [];
+      const next = current.includes(detailKey)
+        ? current.filter(k => k !== detailKey)
+        : [...current, detailKey];
+      return { ...prev, [missionKey]: next };
+    });
+  }, []);
+
+  // ── Save just the "why" text ──────────────────────────────────────────────
+  const handleSaveWhy = useCallback(async () => {
+    if (!whyText.trim() || whySaving) return;
+    setWhySaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from('user_persona').upsert(
+        { user_id: user.id, why_snippd: whyText.trim() },
+        { onConflict: 'user_id' }
+      );
+      setWhySaved(true);
+    } catch (_) {}
+    setWhySaving(false);
+  }, [whyText, whySaving]);
+
   // ── Can advance ──────────────────────────────────────────────────────────
   const canAdvance = useCallback(() => {
     if (step === 0) return Object.values(household).some(v => v > 0);
@@ -289,6 +372,7 @@ export default function WaitlistForecastScreen({ navigation }) {
         household_composition:            household,
         leak_category:                    leak,
         mission_type:                     missions.join(','),
+        mission_details:                  Object.keys(missionDetails).length > 0 ? missionDetails : null,
         monthly_spend_cents:              monthlySpend * 100,
         projected_monthly_recovery_cents: proj.monthly * 100,
         why_snippd:                       whyText.trim() || null,
@@ -474,7 +558,7 @@ export default function WaitlistForecastScreen({ navigation }) {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // STEP 2 — The Mission (multi-select)
+  // STEP 2 — The Mission (multi-select + inline detail follow-ups)
   // ─────────────────────────────────────────────────────────────────────────
   function renderMissionStep() {
     return (
@@ -486,27 +570,62 @@ export default function WaitlistForecastScreen({ navigation }) {
         </Text>
 
         {MISSIONS.map(m => {
-          const sel = missions.includes(m.key);
+          const sel     = missions.includes(m.key);
+          const details = MISSION_DETAILS[m.key];
+          const chosen  = missionDetails[m.key] ?? [];
           return (
-            <TouchableOpacity
-              key={m.key}
-              style={[styles.optionCard, sel && styles.optionCardSelected]}
-              onPress={() => toggleMission(m.key)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.optionIconWrap, sel && styles.optionIconWrapSelected]}>
-                <Feather name={m.icon} size={20} color={sel ? WHITE : GREEN} />
-              </View>
-              <View style={styles.optionText}>
-                <Text style={[styles.optionLabel, sel && styles.optionLabelSelected]}>
-                  {m.label}
-                </Text>
-                <Text style={styles.optionSub}>{m.sub}</Text>
-              </View>
-              <View style={[styles.multiCheckBox, sel && styles.multiCheckBoxSelected]}>
-                {sel && <Feather name="check" size={13} color={WHITE} />}
-              </View>
-            </TouchableOpacity>
+            <View key={m.key} style={styles.missionCardWrap}>
+              <TouchableOpacity
+                style={[styles.optionCard, sel && styles.optionCardSelected, { marginBottom: 0 }]}
+                onPress={() => toggleMission(m.key)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.optionIconWrap, sel && styles.optionIconWrapSelected]}>
+                  <Feather name={m.icon} size={20} color={sel ? WHITE : GREEN} />
+                </View>
+                <View style={styles.optionText}>
+                  <Text style={[styles.optionLabel, sel && styles.optionLabelSelected]}>
+                    {m.label}
+                  </Text>
+                  <Text style={styles.optionSub}>{m.sub}</Text>
+                </View>
+                <View style={[styles.multiCheckBox, sel && styles.multiCheckBoxSelected]}>
+                  {sel && <Feather name="check" size={13} color={WHITE} />}
+                </View>
+              </TouchableOpacity>
+
+              {/* Inline follow-up — visible only when selected */}
+              {sel && details && (
+                <View style={styles.missionDetailPanel}>
+                  <Text style={styles.missionDetailQ}>{details.question}</Text>
+                  <View style={styles.missionDetailChips}>
+                    {details.options.map(opt => {
+                      const active = chosen.includes(opt.key);
+                      return (
+                        <TouchableOpacity
+                          key={opt.key}
+                          style={[styles.detailChip, active && styles.detailChipActive]}
+                          onPress={() => toggleMissionDetail(m.key, opt.key)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[styles.detailChipText, active && styles.detailChipTextActive]}>
+                            {opt.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  {chosen.length > 0 && (
+                    <View style={styles.detailChosenRow}>
+                      <Feather name="check-circle" size={12} color={GREEN} />
+                      <Text style={styles.detailChosenText}>
+                        {chosen.length} selected — I'll prioritize these
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
           );
         })}
 
@@ -665,14 +784,35 @@ export default function WaitlistForecastScreen({ navigation }) {
               placeholder={"\"I'm tired of choosing between eating healthy and my savings account.\""}
               placeholderTextColor={SLATE}
               value={whyText}
-              onChangeText={setWhyText}
+              onChangeText={text => { setWhyText(text); setWhySaved(false); }}
               multiline
               maxLength={140}
               returnKeyType="done"
             />
-            {whyText.length > 0 && (
-              <Text style={styles.revealWhyCount}>{140 - whyText.length} left</Text>
-            )}
+            <View style={styles.revealWhyFooter}>
+              {whyText.length > 0 && (
+                <Text style={styles.revealWhyCount}>{140 - whyText.length} left</Text>
+              )}
+              {whyText.trim().length > 0 && (
+                <TouchableOpacity
+                  style={[styles.whySaveBtn, whySaved && styles.whySaveBtnDone]}
+                  onPress={handleSaveWhy}
+                  disabled={whySaving || whySaved}
+                  activeOpacity={0.85}
+                >
+                  {whySaved ? (
+                    <>
+                      <Feather name="check" size={13} color={GREEN} />
+                      <Text style={[styles.whySaveBtnText, { color: GREEN }]}>Saved</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.whySaveBtnText}>
+                      {whySaving ? 'Saving…' : 'Submit my reason'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           {/* Viral trigger */}
@@ -1345,11 +1485,93 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     lineHeight: 21,
   },
+  revealWhyFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   revealWhyCount: {
     fontSize: 11,
     color: SLATE,
-    textAlign: 'right',
-    marginTop: 6,
+  },
+  whySaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: GREEN,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  whySaveBtnDone: {
+    backgroundColor: GREEN_SOFT,
+    borderWidth: 1,
+    borderColor: GREEN,
+  },
+  whySaveBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: WHITE,
+  },
+
+  // ── Mission detail follow-up panels ──────────────────────────────────────
+  missionCardWrap: {
+    marginBottom: 10,
+  },
+  missionDetailPanel: {
+    backgroundColor: GREEN_SOFT,
+    borderLeftWidth: 3,
+    borderLeftColor: GREEN,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
+  },
+  missionDetailQ: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: NAVY,
+    marginBottom: 10,
+    letterSpacing: 0.2,
+  },
+  missionDetailChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detailChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: GREEN,
+    backgroundColor: WHITE,
+  },
+  detailChipActive: {
+    backgroundColor: GREEN,
+  },
+  detailChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: GREEN,
+  },
+  detailChipTextActive: {
+    color: WHITE,
+  },
+  detailChosenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 10,
+  },
+  detailChosenText: {
+    fontSize: 11,
+    color: GREEN,
+    fontWeight: '600',
   },
   revealViralCard: {
     flexDirection: 'row',

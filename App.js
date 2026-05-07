@@ -144,6 +144,9 @@ import InstantForecastScreen from './screens/InstantForecastScreen';
 import QuickStartScreen from './screens/QuickStartScreen';
 import SoftPersonalizationScreen from './screens/SoftPersonalizationScreen';
 import UnlockBetaScreen from './screens/UnlockBetaScreen';
+import DeepPersonalizationScreen from './screens/DeepPersonalizationScreen';
+import PersonaRevealScreen from './screens/PersonaRevealScreen';
+import HowItWorksScreen from './screens/HowItWorksScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -612,6 +615,9 @@ function RootNavigator() {
         <Stack.Screen name="InstantForecast"       component={InstantForecastScreen} />
         <Stack.Screen name="SoftPersonalization"   component={SoftPersonalizationScreen} />
         <Stack.Screen name="UnlockBeta"            component={UnlockBetaScreen} />
+        <Stack.Screen name="DeepPersonalization"   component={DeepPersonalizationScreen} />
+        <Stack.Screen name="PersonaReveal"         component={PersonaRevealScreen} />
+        <Stack.Screen name="HowItWorks"            component={HowItWorksScreen} />
         <Stack.Screen name="WaitlistForecast"      component={WaitlistForecastScreen} />
         <Stack.Screen name="ConciergeOnboarding"   component={OnboardingConciergeScreen} />
         <Stack.Screen name="LogicScan"            component={LogicScanScreen} />

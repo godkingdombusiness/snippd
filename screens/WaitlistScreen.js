@@ -415,7 +415,7 @@ export default function WaitlistScreen({ route, navigation }) {
             <Text style={styles.approvedText}>Beta access granted</Text>
             <TouchableOpacity
               style={styles.accessNowBtn}
-              onPress={() => navigation.replace('MainApp')}
+              onPress={() => navigation.navigate('DeepPersonalization')}
               activeOpacity={0.85}
             >
               <Text style={styles.accessNowBtnTxt}>ACCESS NOW</Text>
