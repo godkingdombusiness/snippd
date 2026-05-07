@@ -881,7 +881,7 @@ const form = StyleSheet.create({
   inputWrapFocused: {
     borderColor: GREEN,
     ...Platform.select({
-      web:     { boxShadow: '0px 0px 0px 3px rgba(12,158,84,0.12)' },
+      web:     { boxShadow: '0 0 0 3px rgba(12,158,84,0.20), 0 0 0 1.5px #0C9E54' },
       default: { shadowColor: GREEN, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 5, elevation: 2 },
     }),
   },
@@ -895,8 +895,11 @@ const form = StyleSheet.create({
     ...Platform.select({
       web: {
         outline: 'none',
-        // Overrides browser autofill dark/yellow background on Chrome/Safari
-        WebkitBoxShadow: '0 0 0 60px #FFFFFF inset',
+        outlineWidth: 0,
+        outlineStyle: 'none',
+        borderWidth: 0,
+        // Covers browser autofill dark/yellow background — 1000px guarantees full fill
+        WebkitBoxShadow: '0 0 0 1000px #FFFFFF inset',
         WebkitTextFillColor: '#0D1217',
         caretColor: GREEN,
       },
