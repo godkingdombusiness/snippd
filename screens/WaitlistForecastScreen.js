@@ -397,7 +397,7 @@ export default function WaitlistForecastScreen({ navigation }) {
         },
       }).catch(() => {});
 
-      navigation.replace('Waitlist', { projection: proj });
+      navigation.replace('MainApp');
     } catch (e) {
       console.error('WaitlistForecast save error:', e);
     } finally {

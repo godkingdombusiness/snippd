@@ -63,7 +63,7 @@ export default function FounderDashboardScreen({ navigation }) {
       setLoading(false);
 
       if (!live) {
-        navigation.replace('Waitlist');
+        navigation.replace('MainApp');
         return;
       }
 

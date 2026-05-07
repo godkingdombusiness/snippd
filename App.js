@@ -133,7 +133,6 @@ import OnboardingConciergeScreen from './screens/OnboardingConciergeScreen';
 import SplashIntroScreen from './screens/SplashIntroScreen';
 import WaitlistForecastScreen from './screens/WaitlistForecastScreen';
 import LogicScanScreen from './screens/LogicScanScreen';
-import WaitlistScreen from './screens/WaitlistScreen';
 import FounderDashboardScreen from './screens/FounderDashboardScreen';
 import BarcodeScannerScreen from './screens/BarcodeScannerScreen';
 import QuickDealsScreen from './screens/QuickDealsScreen';
@@ -440,7 +439,7 @@ async function resolveUserStatus(userId) {
 
     // New user or no persona row → start the Forecast (waitlist capture)
     if (!status || status === 'new') {
-      return forecastCompleted ? 'Waitlist' : 'WaitlistForecast';
+      return 'WaitlistForecast';
     }
 
     // Waitlist / paid beta → MainApp (paywall removed; RevenueCat handles monetization at launch)
@@ -623,7 +622,6 @@ function RootNavigator() {
         <Stack.Screen name="WaitlistForecast"      component={WaitlistForecastScreen} />
         <Stack.Screen name="ConciergeOnboarding"   component={OnboardingConciergeScreen} />
         <Stack.Screen name="LogicScan"            component={LogicScanScreen} />
-        <Stack.Screen name="Waitlist"             component={WaitlistScreen} />
         <Stack.Screen name="FounderDashboard"     component={FounderDashboardScreen} />
         <Stack.Screen name="MainApp"              component={MainTabs} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
