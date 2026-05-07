@@ -274,7 +274,8 @@ function SocialBtn({ icon, label, onPress, disabled }) {
 
 // ── Field ─────────────────────────────────────────────────────────────────────
 function Field({ label, value, onChangeText, secureTextEntry, keyboardType,
-                 autoCapitalize, placeholder, rightEl, onFocus, onBlur, focused }) {
+                 autoCapitalize, placeholder, rightEl, onFocus, onBlur, focused,
+                 autoComplete }) {
   return (
     <View style={form.fieldWrap}>
       <Text style={form.fieldLabel}>{label}</Text>
@@ -291,9 +292,7 @@ function Field({ label, value, onChangeText, secureTextEntry, keyboardType,
           onFocus={onFocus}
           onBlur={onBlur}
           autoCorrect={false}
-          autoComplete="off"
-          importantForAutofill="no"
-          textContentType="none"
+          autoComplete={autoComplete || 'off'}
           selectionColor={GREEN}
           cursorColor={GREEN}
         />
@@ -520,31 +519,6 @@ export default function SignInScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Social auth */}
-      <View style={form.socialGroup}>
-        <SocialBtn
-          icon={<GoogleIcon size={18} />}
-          label="Continue with Google"
-          onPress={() => handleOAuth('google')}
-          disabled={!!loading || oauthLoading === 'google'}
-        />
-        {Platform.OS === 'ios' && (
-          <SocialBtn
-            icon={<Feather name="smartphone" size={18} color={INK} />}
-            label="Continue with Apple"
-            onPress={() => handleOAuth('apple')}
-            disabled={!!loading || oauthLoading === 'apple'}
-          />
-        )}
-      </View>
-
-      {/* Divider */}
-      <View style={form.dividerRow}>
-        <View style={form.dividerLine} />
-        <Text style={form.dividerTxt}>or continue with email</Text>
-        <View style={form.dividerLine} />
-      </View>
-
       {/* Fields */}
       <View style={form.fieldGroup}>
         <Field
@@ -552,6 +526,8 @@ export default function SignInScreen({ navigation }) {
           value={email}
           onChangeText={t => { setEmail(t); clearError(); }}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
           placeholder="you@example.com"
           focused={focusedField === 'email'}
           onFocus={() => setFocusedField('email')}
@@ -562,6 +538,7 @@ export default function SignInScreen({ navigation }) {
           value={password}
           onChangeText={t => { setPassword(t); clearError(); }}
           secureTextEntry={!showPw}
+          autoComplete={tab === 'signin' ? 'current-password' : 'new-password'}
           placeholder="••••••••"
           focused={focusedField === 'pw'}
           onFocus={() => setFocusedField('pw')}
@@ -591,9 +568,9 @@ export default function SignInScreen({ navigation }) {
 
       {/* Submit */}
       <TouchableOpacity
-        style={[form.submitBtn, (loading || !!oauthLoading || rlBlocked) && form.submitBtnDisabled]}
+        style={[form.submitBtn, (loading || rlBlocked) && form.submitBtnDisabled]}
         onPress={handleEmail}
-        disabled={loading || !!oauthLoading || rlBlocked}
+        disabled={loading || rlBlocked}
         activeOpacity={0.88}
       >
         {loading ? (
@@ -675,7 +652,7 @@ export default function SignInScreen({ navigation }) {
             <Animated.View
               style={[layout.formCard, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
             >
-              <FormBody />
+              {FormBody()}
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -726,7 +703,7 @@ export default function SignInScreen({ navigation }) {
             <Animated.View
               style={[layout.phoneCard, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
             >
-              <FormBody />
+              {FormBody()}
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -739,12 +716,10 @@ export default function SignInScreen({ navigation }) {
       <StatusBar barStyle="light-content" />
       {isTablet ? (
         <View style={layout.tabletRow}>
-          <LeftPanel />
-          <RightPanel />
+          {LeftPanel()}
+          {RightPanel()}
         </View>
-      ) : (
-        <PhoneLayout />
-      )}
+      ) : PhoneLayout()}
     </View>
   );
 }
@@ -912,12 +887,20 @@ const form = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: INK,
     backgroundColor: WHITE,
     underlineColorAndroid: 'transparent',
     paddingVertical: 0,
-    ...Platform.select({ web: { outline: 'none' } }),
+    ...Platform.select({
+      web: {
+        outline: 'none',
+        // Overrides browser autofill dark/yellow background on Chrome/Safari
+        WebkitBoxShadow: '0 0 0 60px #FFFFFF inset',
+        WebkitTextFillColor: '#0D1217',
+        caretColor: GREEN,
+      },
+    }),
   },
   eyeBtn: { padding: 4 },
 

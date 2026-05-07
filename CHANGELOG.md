@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — SignInScreen input & auth (2026-05-07)
+- `screens/SignInScreen.js` — Removed Google/Apple social buttons (email/password only for now). Fixed critical TextInput bug: inner components (`FormBody`, `LeftPanel`, `RightPanel`, `PhoneLayout`) were called as JSX tags causing remount on every render — changed to direct function calls `{FormBody()}` etc. Fixed web autofill black box: added `WebkitBoxShadow: '0 0 0 60px #FFFFFF inset'` and `WebkitTextFillColor` overrides, removed `importantForAutofill`/`textContentType` (native-only props that caused web issues). Set `autoComplete="email"` on email field and `autoComplete="current-password"/"new-password"` on password field. Font size 14→15 for readability.
+
 ### Security + Auth (2026-05-07)
 - `screens/SignInScreen.js` — Google OAuth fixed for web vs native: web uses full browser redirect (no skipBrowserRedirect), native uses `openAuthSessionAsync` + `exchangeCodeForSession`. Accent color restored to brand green `#0C9E54` (wordmark, headline, chips, icons, mockup card). Client-side rate limiter added: 5 failed attempts → 15-minute lockout, persisted via AsyncStorage across sessions/reloads, live countdown timer shown in card banner, submit button disabled during lockout. Attempt count and remaining shown on error messages.
 - `supabase/config.toml` — Added `[auth.external.google]` with setup instructions (Google Cloud Console OAuth callback URL, Supabase Dashboard redirect URLs). Tightened rate limits: `sign_in_sign_ups` 30 → 8, `token_verifications` 30 → 8, `email_sent` 2 → 5, `token_refresh` 150 → 30. Added Turnstile CAPTCHA config block (commented, ready to activate with secret key).
