@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Technical wiring documentation (2026-05-07)
+- `docs/APP_WIRING.md` — Complete engineer-facing reference: navigation tree, every screen's purpose and data sources, context providers (Budget, Trial), startup sequence, session guard, health monitor, event tracker, all database tables, all edge functions, feature flags, AsyncStorage keys, known issues, and design system tokens. Created to enable an external engineer to understand and repair the app.
+
 ### Changed — HomeScreen redesign + loading fix (2026-05-07)
 - `screens/HomeScreen.js` — Full UI redesign to match new clean layout: white header with snippd logo, greeting, bell + credits pill; "YOUR TOP STACK" featured card (store-aware image, Pay/Save side-by-side, day badge, subtotal + expiry, "Start This Stack" outlined button); "MORE STACKS FOR YOU" compact rows with store-logo circle (brand colors), pay/save meta, chevron; "YOUR BUDGET" card with progress bar; "Scan Receipt & Earn" row. Removed broken `QuickOnboardingModal` import (file deleted). Removed strict `validation_status + source_type` double-filter from `isVerifiedSystemStack` and `queryVerifiedHomeFeed` that was returning 0 results. Added fallback feed query. Added `storeInitials()` + `storeLogoColor()` helpers.
 
