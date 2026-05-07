@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — HomeScreen redesign + loading fix (2026-05-07)
+- `screens/HomeScreen.js` — Full UI redesign to match new clean layout: white header with snippd logo, greeting, bell + credits pill; "YOUR TOP STACK" featured card (store-aware image, Pay/Save side-by-side, day badge, subtotal + expiry, "Start This Stack" outlined button); "MORE STACKS FOR YOU" compact rows with store-logo circle (brand colors), pay/save meta, chevron; "YOUR BUDGET" card with progress bar; "Scan Receipt & Earn" row. Removed broken `QuickOnboardingModal` import (file deleted). Removed strict `validation_status + source_type` double-filter from `isVerifiedSystemStack` and `queryVerifiedHomeFeed` that was returning 0 results. Added fallback feed query. Added `storeInitials()` + `storeLogoColor()` helpers.
+
 ### Changed — UX Patch: Make Stacks Easy to Find (2026-05-07)
 - `App.js` — `resolveUserStatus` simplified: all authenticated users route to `MainApp` except `status='launched' && !briefingCompleted` → `ConciergeOnboarding`. WaitlistForecast screen fully removed from customer routing. `QuickStartScreen` import + route removed.
 - `screens/HomeScreen.js` — `isVerifiedSystemStack` filter loosened to accept any active, non-blocked row. `queryVerifiedHomeFeed` rewritten: orders by `confidence_score DESC, published_at DESC`, removes strict `source_type` gate, adds fallback query for any active row. Empty state copy updated to "We're checking today's live deals."
