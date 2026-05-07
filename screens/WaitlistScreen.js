@@ -415,7 +415,7 @@ export default function WaitlistScreen({ route, navigation }) {
             <Text style={styles.approvedText}>Beta access granted</Text>
             <TouchableOpacity
               style={styles.accessNowBtn}
-              onPress={() => navigation.navigate('DeepPersonalization')}
+              onPress={() => navigation.replace('MainApp')}
               activeOpacity={0.85}
             >
               <Text style={styles.accessNowBtnTxt}>ACCESS NOW</Text>
@@ -492,22 +492,11 @@ export default function WaitlistScreen({ route, navigation }) {
               </Text>
               <View style={styles.unlockShortcutRow}>
                 <TouchableOpacity
-                  style={styles.unlockPromoBtn}
-                  onPress={() => {
-                    recordMemoryEvent({ event_type: 'promo_code_entered', metadata: { source: 'waitlist_shortcut' } });
-                    navigation.navigate('UnlockBeta', { openPromo: true });
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="tag" size={14} color={CORAL} />
-                  <Text style={styles.unlockPromoBtnText}>Enter promo code</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
                   style={styles.unlockPayBtn}
-                  onPress={() => navigation.navigate('UnlockBeta', { openPromo: false })}
+                  onPress={() => navigation.replace('MainApp')}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.unlockPayBtnText}>Unlock now</Text>
+                  <Text style={styles.unlockPayBtnText}>Get started now</Text>
                   <Feather name="arrow-right" size={14} color={WHITE} />
                 </TouchableOpacity>
               </View>
