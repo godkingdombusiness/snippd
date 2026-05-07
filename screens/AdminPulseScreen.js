@@ -20,6 +20,7 @@ const BORDER = '#E5E5EA';
 
 // Hardcoded admin emails — add yours here
 const ADMIN_EMAILS = [
+  'ddavis@getsnippd.com',
   'dina@getsnippd.com',
   'admin@getsnippd.com',
   // 'youremail@gmail.com',
@@ -289,6 +290,21 @@ export default function AdminPulseScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* ── CIRCULAR UPLOAD ───────────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.graphViewerBtn}
+          onPress={() => navigation.navigate('StackReviewTraining')}
+          activeOpacity={0.82}
+        >
+          <View style={styles.graphViewerLeft}>
+            <Feather name="layers" size={20} color={GREEN} />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.graphViewerTitle}>Stack Review</Text>
+              <Text style={styles.graphViewerSub}>Audit trail - confidence - training feedback</Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={18} color={GRAY} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.graphViewerBtn}
           onPress={() => navigation.navigate('AdminCircularUpload')}

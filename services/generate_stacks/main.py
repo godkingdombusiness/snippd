@@ -101,6 +101,22 @@ def _sb_upsert(table: str, rows: list | dict) -> bool:
         return False
 
 
+def _sb_rpc(function_name: str, payload: dict) -> dict:
+    try:
+        r = requests.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/{function_name}",
+            headers=_hdr(),
+            json=payload,
+            timeout=30,
+        )
+        if r.ok:
+            data = r.json()
+            return data if isinstance(data, dict) else {"ok": True, "data": data}
+        return {"ok": False, "error": r.text}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def _parse_json_field(value: Any, fallback: Any = None) -> Any:
     if fallback is None:
         fallback = []
@@ -193,9 +209,23 @@ def enrich_item(raw: dict, coupons: list, retailer_key: str) -> dict:
     retailer_coupon_hub_url = RETAILER_COUPON_HUBS.get(retailer_key)
     coupon_activation_url = official_coupon_url or retailer_coupon_hub_url
 
-    # price_cents from multiple possible fields
-    price_raw = raw.get("regular_price") or raw.get("base_price") or raw.get("price") or 0
-    pay_raw   = raw.get("pay_price") or raw.get("final_price") or raw.get("sale_price") or 0
+    # price_cents from multiple possible fields, including existing *_cents names.
+    price_raw = (
+        raw.get("regular_price_cents")
+        or raw.get("regular_price")
+        or raw.get("base_price")
+        or raw.get("price_cents")
+        or raw.get("price")
+        or 0
+    )
+    pay_raw = (
+        raw.get("sale_price_cents")
+        or raw.get("pay_price")
+        or raw.get("final_price_cents")
+        or raw.get("final_price")
+        or raw.get("sale_price")
+        or 0
+    )
     price_cents = int(float(price_raw) * 100) if float(price_raw) < 500 else int(float(price_raw))
     pay_cents   = int(float(pay_raw)   * 100) if float(pay_raw)   < 500 else int(float(pay_raw))
 
@@ -227,7 +257,8 @@ def enrich_item(raw: dict, coupons: list, retailer_key: str) -> dict:
         "qty":                     qty,
         # pass-through originals for basket math
         "_deal_type": str(raw.get("deal_type") or raw.get("stack_type") or "").upper(),
-        "_rebate_cents": int(float(raw.get("rebate_value") or 0) * 100),
+        "_promo_discount_cents": int(raw.get("promo_discount_cents") or max(price_cents - pay_cents, 0)),
+        "_rebate_cents": int(raw.get("rebate_value_cents") or raw.get("rebate_cents") or float(raw.get("rebate_value") or 0) * 100),
     }
 
 
@@ -376,7 +407,12 @@ def build_stack_from_candidate(
     # Strip internal fields from enriched items before returning
     stack_items = [{k: v for k, v in i.items() if not k.startswith("_")} for i in enriched]
 
+    rebate_total = sum(i.get("_rebate_cents", 0) * i["qty"] for i in enriched)
+    promo_total = sum(i.get("_promo_discount_cents", 0) * i["qty"] for i in enriched)
+    coupon_total = sum(i["coupon_value_cents"] * i["qty"] for i in enriched)
+
     return {
+        "stack_candidate_id":          candidate.get("id"),
         "retailer_key":               retailer_key,
         "store":                      store_name,
         "title":                      title,
@@ -396,6 +432,18 @@ def build_stack_from_candidate(
         "source_type":                "SNIPPD_GENERATED",
         "validation_status":          "system_generated_verified",
         "attribution":                None,
+        "source_tables_used":          candidate.get("source_tables_used") or ["stack_candidates", "digital_coupons", "retailer_policies"],
+        "rules_applied":              _parse_json_field(candidate.get("rules_applied"), []),
+        "model_function_used":         candidate.get("model_function_used") or "generate-stacks-cloudrun",
+        "generation_timestamp":        candidate.get("generation_timestamp") or datetime.now(timezone.utc).isoformat(),
+        "review_status":              candidate.get("review_status") or "approved",
+        "error_reason":               candidate.get("error_reason"),
+        "regular_price_cents":         candidate.get("regular_price_cents") or math["subtotal_cents"],
+        "sale_price_cents":            candidate.get("sale_price_cents"),
+        "promo_discount_cents":        candidate.get("promo_discount_cents") or promo_total,
+        "coupon_discount_cents":       candidate.get("coupon_discount_cents") or coupon_total,
+        "rebate_value_cents":          candidate.get("rebate_value_cents") or rebate_total,
+        "net_price_after_rebate_cents": candidate.get("net_price_after_rebate_cents") or max(0, math["final_out_of_pocket_cents"] - rebate_total),
     }
 
 
@@ -439,6 +487,7 @@ def save_stack_to_home_feed(stack: dict) -> bool:
     save_dollars  = round(stack["total_discounts_cents"] / 100, 2)
 
     row = {
+        "stack_candidate_id":           stack.get("stack_candidate_id"),
         "title":                       stack["title"],
         "retailer":                    stack["retailer_key"],
         "pay_price":                   pay_dollars,
@@ -461,6 +510,20 @@ def save_stack_to_home_feed(stack: dict) -> bool:
         "subtotal_cents":              stack["subtotal_cents"],
         "total_discounts_cents":       stack["total_discounts_cents"],
         "item_count":                  stack["item_count"],
+        "source_type":                 stack["source_type"],
+        "is_active":                   True,
+        "source_tables_used":          stack.get("source_tables_used"),
+        "rules_applied":               stack.get("rules_applied") or [],
+        "model_function_used":         stack.get("model_function_used"),
+        "generation_timestamp":        stack.get("generation_timestamp"),
+        "review_status":               stack.get("review_status"),
+        "error_reason":                stack.get("error_reason"),
+        "regular_price_cents":         stack.get("regular_price_cents"),
+        "sale_price_cents":            stack.get("sale_price_cents"),
+        "promo_discount_cents":        stack.get("promo_discount_cents", 0),
+        "coupon_discount_cents":       stack.get("coupon_discount_cents", 0),
+        "rebate_value_cents":          stack.get("rebate_value_cents", 0),
+        "net_price_after_rebate_cents": stack.get("net_price_after_rebate_cents"),
     }
     return _sb_upsert("app_home_feed", row)
 
@@ -482,6 +545,12 @@ def generate_stacks():
     savings_threshold = float(body.get("savings_threshold", MIN_SAVINGS_PCT))
 
     # ── 1. Load data ──────────────────────────────────────────────────────────
+    automation_result = _sb_rpc("rpc_generate_auto_stack_candidates", {
+        "p_retailer_key": stores[0] if len(stores) == 1 else None,
+        "p_week_of": None,
+        "p_publish": True,
+    })
+
     cand_qs = "is_active=eq.true&select=*&order=stack_rank_score.desc&limit=60"
     candidates = _sb_select("stack_candidates", cand_qs)
 
@@ -531,6 +600,7 @@ def generate_stacks():
         "ok":               True,
         "status":           status,
         "mode":             "budget_first_self_healing",
+        "automation_result": automation_result,
         "stacks_generated": len(top),
         "stacks":           top,
     }

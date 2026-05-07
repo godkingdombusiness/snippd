@@ -9,6 +9,9 @@
  * POST /admin-deal-review/escalate      — escalate to human senior review
  * POST /admin-deal-review/bulk-score    — re-score all pending offers now
  * GET  /admin-deal-review/stats         — dashboard stats
+ * GET  /admin-deal-review/stack-audit   — list generated stack audit rows
+ * GET  /admin-deal-review/stack-runs    — list recent stack generation runs
+ * POST /admin-deal-review/stack-feedback — record admin stack training feedback
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -49,7 +52,7 @@ serve(async (req) => {
 
   // For non-ingest calls, verify admin email from JWT
   if (!isIngestKey) {
-    const userDb = createClient(supabaseUrl, supabaseUrl, {
+    const userDb = createClient(supabaseUrl, serviceKey, {
       global: { headers: { authorization: auth } },
     });
     const { data: { user } } = await userDb.auth.getUser();
@@ -228,6 +231,75 @@ serve(async (req) => {
       offer_sources:  offerStats,
       user_feedback:  feedbackStats,
     });
+  }
+
+  // ── stack-audit ─────────────────────────────────────────────
+  if (action === 'stack-audit') {
+    const limit = Number(url.searchParams.get('limit') ?? '50');
+    const reviewStatus = url.searchParams.get('review_status');
+    const retailerKey = url.searchParams.get('retailer_key');
+
+    let q = db
+      .from('v_stack_review_training_dashboard')
+      .select('*')
+      .limit(limit);
+
+    if (reviewStatus) q = q.eq('review_status', reviewStatus);
+    if (retailerKey) q = q.eq('retailer_key', retailerKey);
+
+    const { data, error } = await q;
+    if (error) return json({ error: error.message }, 500);
+    return json({ items: data ?? [], count: data?.length ?? 0 });
+  }
+
+  // ── stack-runs ──────────────────────────────────────────────
+  if (action === 'stack-runs') {
+    const limit = Number(url.searchParams.get('limit') ?? '20');
+    const { data, error } = await db
+      .from('stack_generation_runs')
+      .select('*')
+      .order('started_at', { ascending: false })
+      .limit(limit);
+
+    if (error) return json({ error: error.message }, 500);
+    return json({ items: data ?? [], count: data?.length ?? 0 });
+  }
+
+  // ── stack-feedback ──────────────────────────────────────────
+  if (action === 'stack-feedback') {
+    const {
+      stack_candidate_id,
+      app_home_feed_id,
+      audit_id,
+      action: feedbackAction,
+      note,
+    } = body;
+
+    const allowed = new Set([
+      'approve',
+      'reject',
+      'needs_review',
+      'mark_price_wrong',
+      'mark_coupon_missing',
+      'add_note',
+    ]);
+    const normalizedAction = String(feedbackAction ?? 'add_note');
+    if (!allowed.has(normalizedAction)) {
+      return json({ error: 'unsupported stack feedback action' }, 400);
+    }
+
+    const { data, error } = await db.rpc('rpc_record_stack_training_feedback', {
+      p_stack_candidate_id: stack_candidate_id ?? null,
+      p_app_home_feed_id: app_home_feed_id ?? null,
+      p_audit_id: audit_id ?? null,
+      p_action: normalizedAction,
+      p_note: note ?? null,
+      p_actor_id: null,
+      p_actor_email: ADMIN_EMAIL,
+    });
+
+    if (error) return json({ error: error.message }, 500);
+    return json(data ?? { ok: true });
   }
 
   return json({ error: `unknown action: ${action}` }, 404);

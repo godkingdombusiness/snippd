@@ -117,6 +117,7 @@ import TrialGateScreen from './screens/TrialGateScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import AdminCircularUploadScreen from './screens/AdminCircularUploadScreen';
 import AdminAnalyticsDashboardScreen from './screens/AdminAnalyticsDashboardScreen';
+import StackReviewTrainingScreen from './screens/StackReviewTrainingScreen';
 import WeeklyPlanScreen from './screens/WeeklyPlanScreen';
 import WeeklyPlanPersonalizationScreen from './screens/WeeklyPlanPersonalizationScreen';
 import NutritionProfileScreen from './screens/NutritionProfileScreen';
@@ -299,6 +300,7 @@ function ProfileStack() {
       <ProfileStackNav.Screen name="SnippdPro"            component={SnippdProScreen} options={{ presentation: 'modal' }} />
       <ProfileStackNav.Screen name="AdminCircularUpload"  component={AdminCircularUploadScreen} />
       <ProfileStackNav.Screen name="AdminAnalytics"       component={AdminAnalyticsDashboardScreen} />
+      <ProfileStackNav.Screen name="StackReviewTraining"  component={StackReviewTrainingScreen} />
       <ProfileStackNav.Screen name="NutritionProfile"     component={NutritionProfileScreen} />
     </ProfileStackNav.Navigator>
   );
