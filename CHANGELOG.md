@@ -4,6 +4,12 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Security (2026-05-07)
+- `screens/UnlockBetaScreen.js` — Removed hardcoded promo code fallback list (`HARDCODED_VALID`). All promo code validation now goes through the `promo_codes` Supabase table only; no client-side bypass possible.
+- `.gitignore` — Added `infra/vpc-sc/terraform.tfstate`, `terraform.tfstate.backup`, `*.tfplan` patterns to prevent infrastructure secrets from being committed. Fixed `Bash tool output*.txt` glob (removed erroneous surrounding quotes).
+- `App.js` — `waitlist` and `paid_beta` statuses both route to `MainApp` (paywall removed; RevenueCat will handle monetization at launch).
+- Removed from git history: `terraform.tfstate`, `terraform.tfstate.backup`, `snippd-vpc-sc.tfplan`, and accidentally committed `Bash tool output (0o4xjl).txt`.
+
 ### Changed — Plan + Meal Detail Redesign (2026-05-06)
 - `screens/WeeklyPlanScreen.js` — Redesigned hero block to match spec C: shows "X dinners for Y people", week range eyebrow, Out of pocket / You save metrics in a frosted row, Stores + Best shop window footer. Moved store filter tabs outside the hero card into a scrollable row below it. Redesigned meal list rows: each row shows a slot badge (DIN/LUN/BRK), meal name, green price, "for N people", Save badge, and coupon/calorie metadata. Day group headers still divide breakfast/lunch/dinner.
 - `screens/MealDetailScreen.js` — Full redesign to match spec D: white header with back + share icons, large meal title, "Serves N · Xmin prep · Ymin cook" subheader, food image card, horizontal 4-column nutrition row (cal/protein/carbs/fat), side-by-side pricing (Your price large left, Regular strikethrough + You save right), ingredient checklist with tap-to-check and "Search: X" search term per item, "View Coupons & Details" full-width green CTA.
