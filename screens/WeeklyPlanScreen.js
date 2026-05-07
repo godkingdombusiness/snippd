@@ -939,18 +939,48 @@ export default function WeeklyPlanScreen({ navigation, route }) {
                   }))
               );
               const storeKey = String(platform || 'publix').toLowerCase().replace(/\s+/g, '_');
+              const resolvedStore = storeKey === 'snippd' ? 'publix' : storeKey;
               const listRows = allPlanMeals.flatMap((meal) =>
                 meal.ingredients
                   .filter(i => i.name && (i.sale_cents || 0) > 0)
-                  .map((i, j) => ({
-                    id: `planlist_${meal.id}_${j}_${String(i.name).slice(0, 24).replace(/\s+/g, '_')}`,
-                    name: i.name,
-                    store: storeKey === 'snippd' ? 'publix' : storeKey,
-                    price_cents: i.sale_cents || 0,
-                    checked: false,
-                    from_stack: true,
-                    category: 'meal_plan',
-                  }))
+                  .map((i, j) => {
+                    const regCents  = i.reg_cents  || i.sale_cents || 0;
+                    const saleCents = i.sale_cents || 0;
+                    const couponVal = i.coupon_value_cents || 0;
+                    const rebateVal = i.rebate_value_cents || 0;
+                    const oop       = Math.max(0, saleCents - couponVal);
+                    const net       = Math.max(0, oop - rebateVal);
+                    const savingsPct = regCents > 0
+                      ? Math.round(((regCents - oop) / regCents) * 10000) / 100
+                      : 0;
+                    return {
+                      id:                     `planlist_${meal.id}_${j}_${String(i.name).slice(0, 24).replace(/\s+/g, '_')}`,
+                      name:                   i.name,
+                      store:                  resolvedStore,
+                      price_cents:            saleCents,
+                      checked:                false,
+                      from_stack:             true,
+                      category:               'meal_plan',
+                      quantity:               i.deal_type === 'BOGO' ? 2 : 1,
+                      regular_price_cents:    regCents,
+                      sale_price_cents:       saleCents,
+                      coupon_code:            i.coupon_code || null,
+                      coupon_value_cents:     couponVal,
+                      rebate_app:             i.rebate_app || null,
+                      rebate_value_cents:     rebateVal,
+                      estimated_oop_cents:    oop,
+                      net_after_rebate_cents: net,
+                      savings_percent:        savingsPct,
+                      stack_type:             i.stack_type || (i.deal_type === 'BOGO' ? 'BOGO_STACK' : 'DIGITAL_COUPON_STACK'),
+                      stack_breakdown:        i.stack_breakdown || null,
+                      customer_instructions:  i.customer_instructions || null,
+                      budget_fit:             true,
+                      confidence_score:       i.confidence_score || null,
+                      stack_candidate_id:     i.stack_candidate_id || null,
+                      source:                 'meal_plan',
+                      expiration_date:        i.expiration_date || null,
+                    };
+                  })
               );
               const planNameSet = [
                 ...new Set(cartItems.map(c => String(c.product_name || '').toLowerCase().trim()).filter(Boolean)),
@@ -958,6 +988,16 @@ export default function WeeklyPlanScreen({ navigation, route }) {
               try {
                 await addItemsToActiveCart(cartItems, { replace: true });
                 await AsyncStorage.setItem('snippd_my_list_import', JSON.stringify({ items: listRows, saved_at: new Date().toISOString() }));
+                // Write full stack data directly to shopping_list_items for realtime sync
+                const { data: { session: listSession } } = await supabase.auth.getSession();
+                if (listSession?.user?.id) {
+                  supabase.rpc('upsert_shopping_list_items', {
+                    p_user_id: listSession.user.id,
+                    p_items:   listRows,
+                  }).then(({ error: rpcErr }) => {
+                    if (rpcErr) console.warn('[WeeklyPlan] upsert_shopping_list_items:', rpcErr.message);
+                  });
+                }
                 await AsyncStorage.setItem('snippd_weekly_plan_ingredient_names', JSON.stringify(planNameSet));
                 const { data: { session } } = await supabase.auth.getSession();
                 // Save plan to DB and store weekly_plan_id for receipt comparison

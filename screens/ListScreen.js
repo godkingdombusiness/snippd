@@ -147,7 +147,26 @@ export default function ListScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { fetchList(); }, []);
+  useEffect(() => {
+    fetchList();
+
+    let channel = null;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      channel = supabase
+        .channel(`list_items_${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'shopping_list_items', filter: `user_id=eq.${user.id}` },
+          () => fetchList()
+        )
+        .subscribe();
+    });
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {

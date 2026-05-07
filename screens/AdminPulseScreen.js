@@ -336,6 +336,22 @@ export default function AdminPulseScreen({ navigation }) {
           <Feather name="chevron-right" size={18} color={GRAY} />
         </TouchableOpacity>
 
+        {/* ── DEAL REVIEW QUEUE ────────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.graphViewerBtn}
+          onPress={() => navigation.navigate('AdminDealReview')}
+          activeOpacity={0.82}
+        >
+          <View style={styles.graphViewerLeft}>
+            <Feather name="check-square" size={20} color={GREEN} />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.graphViewerTitle}>Deal Review Queue</Text>
+              <Text style={styles.graphViewerSub}>Approve · reject · flag stacks and offers</Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={18} color={GRAY} />
+        </TouchableOpacity>
+
         <View style={{ height: 48 }} />
 
       </ScrollView>
