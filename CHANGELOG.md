@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — User flow and coupon validation documentation (2026-05-07)
+- `docs/USER_FLOW_AND_COUPON_VALIDATION.md` — Complete user journey from cold-start through verified savings: all 10 stages (app open, sign in, quick onboarding, deep brief, home screen, discover, clip session build, checkout, receipt upload/verification, wins screen). Full coupon validation pipeline: 4 pipelines (deal ingestion + 33 validation rules + publish gate, cart-based coupon matching service, stack spec engine 12-rule validator, receipt HMAC verification). Data written at every stage, all DB tables touched, 8 known engineer action items.
+
 ### Added — Technical wiring documentation (2026-05-07)
 - `docs/APP_WIRING.md` — Complete engineer-facing reference: navigation tree, every screen's purpose and data sources, context providers (Budget, Trial), startup sequence, session guard, health monitor, event tracker, all database tables, all edge functions, feature flags, AsyncStorage keys, known issues, and design system tokens. Created to enable an external engineer to understand and repair the app.
 
