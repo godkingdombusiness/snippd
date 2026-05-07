@@ -33,7 +33,6 @@ import { fetchTop3StoreEngine, engineTotalsForDisplay } from '../src/services/to
 import { generateStacks, loadVerifiedStacks } from '../src/lib/generateStacks';
 import { getExperienceType, getTopCategories } from '../src/lib/experienceType';
 import BestSavingsPreview from '../src/components/BestSavingsPreview';
-import QuickOnboardingModal from '../src/components/QuickOnboardingModal';
 import { DEFAULT_HOME_LAYOUT, fetchDynamicHomeLayout, recordMemoryEvent } from '../src/lib/memoryEvents';
 import { WEEKLY_BUDGET_UPDATED, fetchWeeklyBudgetCents, saveWeeklyBudgetEverywhere } from '../lib/weeklyBudget';
 
@@ -390,8 +389,6 @@ export default function HomeScreen({ navigation }) {
   // ── Personalization state ───────────────────────────────────────────────────
   const [experienceType, setExperienceType] = useState('saver');
   const [userPrefs, setUserPrefs] = useState(null);
-  const [showQuickOnboarding, setShowQuickOnboarding] = useState(false);
-  const [onboardingUserId,    setOnboardingUserId]    = useState(null);
   const [profileCompletePct,  setProfileCompletePct]  = useState(0);
   const [dynamicLayout, setDynamicLayout] = useState({
     sections: DEFAULT_HOME_LAYOUT,
@@ -516,11 +513,6 @@ export default function HomeScreen({ navigation }) {
       if (data) {
         setUserPrefs(data);
         setExperienceType(getExperienceType(data));
-        // Show quick onboarding if dietary step was never completed
-        if (!data.quick_onboarding_done) {
-          setOnboardingUserId(user.id);
-          setShowQuickOnboarding(true);
-        }
       } else {
         // Bootstrap a default row — fire and forget
         supabase.from('user_preferences').upsert({
@@ -532,9 +524,6 @@ export default function HomeScreen({ navigation }) {
           experience_type:  'saver',
           updated_at:       new Date().toISOString(),
         }, { onConflict: 'user_id' });
-        // New user — show onboarding immediately
-        setOnboardingUserId(user.id);
-        setShowQuickOnboarding(true);
       }
     } catch {
       // Non-fatal: migration may not be applied yet
@@ -1211,24 +1200,6 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-
-      {showQuickOnboarding && onboardingUserId && (
-        <QuickOnboardingModal
-          userId={onboardingUserId}
-          onDone={() => {
-            setShowQuickOnboarding(false);
-            recordMemoryEvent({
-              event_type: 'onboarding_completed',
-              entity_type: 'user',
-              entity_id: onboardingUserId,
-              metadata: { source: 'QuickOnboardingModal' },
-            });
-            // Reload prefs so dietary filters apply immediately
-            loadUserPreferences();
-            loadDynamicLayout();
-          }}
-        />
-      )}
 
       <SafeAreaView style={styles.headerShell} edges={['top']}>
         <View style={styles.headerInner}>
