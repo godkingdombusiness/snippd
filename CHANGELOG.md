@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — SignInScreen web input visuals (2026-05-07)
+- `screens/SignInScreen.js` — Focus ring now renders #0C9E54 brand green on web: `inputWrapFocused` uses double `box-shadow` (`3px rgba green glow + 1.5px solid #0C9E54`). Browser autofill black box eliminated: `WebkitBoxShadow` inset raised from 60px → 1000px to fully cover any browser-injected background. Input `outline`, `outlineWidth`, `outlineStyle`, `borderWidth` all zeroed on web so only the container border is visible (no double-border on focus).
+
 ### Fixed — SignInScreen input & auth (2026-05-07)
 - `screens/SignInScreen.js` — Removed Google/Apple social buttons (email/password only for now). Fixed critical TextInput bug: inner components (`FormBody`, `LeftPanel`, `RightPanel`, `PhoneLayout`) were called as JSX tags causing remount on every render — changed to direct function calls `{FormBody()}` etc. Fixed web autofill black box: added `WebkitBoxShadow: '0 0 0 60px #FFFFFF inset'` and `WebkitTextFillColor` overrides, removed `importantForAutofill`/`textContentType` (native-only props that caused web issues). Set `autoComplete="email"` on email field and `autoComplete="current-password"/"new-password"` on password field. Font size 14→15 for readability.
 
