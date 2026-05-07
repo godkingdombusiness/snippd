@@ -21,10 +21,46 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
 
 WebBrowser.maybeCompleteAuthSession();
+
+// ── Client-side rate limiter ──────────────────────────────────────────────────
+// Persisted across sessions so a page reload doesn't reset the lockout.
+const RL_KEY        = '@snippd/auth_attempts';
+const RL_MAX        = 5;   // failed attempts before lockout
+const RL_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+async function rl_check() {
+  try {
+    const raw = await AsyncStorage.getItem(RL_KEY);
+    if (!raw) return { blocked: false, remaining: RL_MAX };
+    const { count, lockedUntil } = JSON.parse(raw);
+    if (lockedUntil && Date.now() < lockedUntil) {
+      return { blocked: true, secsLeft: Math.ceil((lockedUntil - Date.now()) / 1000) };
+    }
+    if (lockedUntil && Date.now() >= lockedUntil) {
+      await AsyncStorage.removeItem(RL_KEY);
+      return { blocked: false, remaining: RL_MAX };
+    }
+    return { blocked: false, remaining: Math.max(0, RL_MAX - count) };
+  } catch {
+    return { blocked: false, remaining: RL_MAX };
+  }
+}
+
+async function rl_record(success) {
+  try {
+    if (success) { await AsyncStorage.removeItem(RL_KEY); return; }
+    const raw = await AsyncStorage.getItem(RL_KEY);
+    const prev = raw ? JSON.parse(raw) : { count: 0, lockedUntil: null };
+    const count = prev.count + 1;
+    const lockedUntil = count >= RL_MAX ? Date.now() + RL_LOCKOUT_MS : null;
+    await AsyncStorage.setItem(RL_KEY, JSON.stringify({ count, lockedUntil }));
+  } catch {}
+}
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const GREEN      = '#0C9E54';
@@ -78,7 +114,7 @@ function HeroBg() {
   return (
     <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none', overflow: 'hidden' }]}>
       <Animated.View style={[blobSt(360, 360, -100, -100, 'rgba(12,158,84,0.13)'), { transform: [{ translateX: t1 }, { translateY: t1 }] }]} />
-      <Animated.View style={[blobSt(240, 240, undefined, -60, 'rgba(197,255,188,0.07)', 120), { transform: [{ translateX: t2 }] }]} />
+      <Animated.View style={[blobSt(240, 240, undefined, -60, 'rgba(12,158,84,0.07)', 120), { transform: [{ translateX: t2 }] }]} />
       <Animated.View style={[blobSt(180, 180, 220, undefined, 'rgba(12,158,84,0.09)', undefined, 40), { transform: [{ translateY: t3 }] }]} />
     </View>
   );
@@ -93,7 +129,7 @@ function ValueBlock({ icon, title, text, compact = false }) {
   if (compact) {
     return (
       <View style={vb.chipWrap}>
-        <Feather name={icon} size={13} color={ACCENT} />
+        <Feather name={icon} size={13} color={GREEN} />
         <Text style={vb.chipTitle}>{title}</Text>
       </View>
     );
@@ -101,7 +137,7 @@ function ValueBlock({ icon, title, text, compact = false }) {
   return (
     <View style={vb.blockWrap}>
       <View style={vb.iconWrap}>
-        <Feather name={icon} size={16} color={ACCENT} />
+        <Feather name={icon} size={16} color={GREEN} />
       </View>
       <Text style={vb.blockTitle}>{title}</Text>
       <Text style={vb.blockText}>{text}</Text>
@@ -112,13 +148,13 @@ function ValueBlock({ icon, title, text, compact = false }) {
 const vb = StyleSheet.create({
   // Full blocks (tablet left panel)
   blockWrap:  { flex: 1, gap: 6 },
-  iconWrap:   { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(197,255,188,0.12)', alignItems: 'center', justifyContent: 'center' },
+  iconWrap:   { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(12,158,84,0.18)', alignItems: 'center', justifyContent: 'center' },
   blockTitle: { fontSize: 13, fontWeight: '800', color: WHITE, letterSpacing: -0.2 },
   blockText:  { fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 15 },
 
   // Compact chips (mobile)
-  chipWrap:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(197,255,188,0.08)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(197,255,188,0.15)' },
-  chipTitle: { fontSize: 11, fontWeight: '700', color: ACCENT, letterSpacing: 0.2 },
+  chipWrap:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(12,158,84,0.14)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(12,158,84,0.30)' },
+  chipTitle: { fontSize: 11, fontWeight: '700', color: GREEN, letterSpacing: 0.2 },
 });
 
 // ── AI Mockup card (tablet right decoration) ──────────────────────────────────
@@ -152,7 +188,7 @@ function AIMockup() {
       <View style={mock.headerRow}>
         <Animated.View style={[mock.dot, { opacity: dotFade }]} />
         <Text style={mock.headerTxt}>Optimizing your cart…</Text>
-        <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 'auto' }} />
+        <ActivityIndicator size="small" color={GREEN} style={{ marginLeft: 'auto' }} />
       </View>
 
       {ITEMS.map((item, i) => (
@@ -176,7 +212,7 @@ function AIMockup() {
       </View>
 
       <View style={mock.insight}>
-        <Feather name="zap" size={11} color={ACCENT} />
+        <Feather name="zap" size={11} color={GREEN} />
         <Text style={mock.insightTxt}>Switching to Aldi for dairy saves ~$14/mo</Text>
       </View>
     </Animated.View>
@@ -188,26 +224,26 @@ const mock = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(197,255,188,0.12)',
+    borderColor: 'rgba(12,158,84,0.20)',
     padding: 16,
     gap: 10,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN },
   headerTxt: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.2 },
 
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
   itemName: { fontSize: 12, fontWeight: '600', color: WHITE },
   itemStore: { fontSize: 10, color: 'rgba(255,255,255,0.35)' },
-  itemSave: { fontSize: 13, fontWeight: '800', color: ACCENT },
+  itemSave: { fontSize: 13, fontWeight: '800', color: GREEN },
   tag: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   tagTxt: { fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
 
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(197,255,188,0.15)' },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(12,158,84,0.20)' },
   footerLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
-  footerVal: { fontSize: 18, fontWeight: '900', color: ACCENT, letterSpacing: -0.5 },
+  footerVal: { fontSize: 18, fontWeight: '900', color: GREEN, letterSpacing: -0.5 },
 
-  insight: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(197,255,188,0.06)', borderRadius: 10, padding: 8 },
+  insight: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(12,158,84,0.10)', borderRadius: 10, padding: 8 },
   insightTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)', flex: 1, lineHeight: 15 },
 });
 
@@ -280,6 +316,9 @@ export default function SignInScreen({ navigation }) {
   const [oauthLoading, setOauthLoading] = useState(null);
   const [errorMsg,     setErrorMsg]     = useState('');
   const [focusedField, setFocusedField] = useState(null);
+  const [rlBlocked,    setRlBlocked]    = useState(false);
+  const [rlSecsLeft,   setRlSecsLeft]   = useState(0);
+  const rlTimerRef = useRef(null);
 
   const cardFade  = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(24)).current;
@@ -289,13 +328,40 @@ export default function SignInScreen({ navigation }) {
       Animated.timing(cardFade,  { toValue: 1, duration: 750, delay: 200, useNativeDriver: true }),
       Animated.timing(cardSlide, { toValue: 0, duration: 750, delay: 200, useNativeDriver: true }),
     ]).start();
+    // Restore any active lockout from a previous session
+    rl_check().then(s => {
+      if (s.blocked) startLockoutTimer(s.secsLeft);
+    });
+    return () => clearInterval(rlTimerRef.current);
   }, []);
+
+  function startLockoutTimer(secsLeft) {
+    setRlBlocked(true);
+    setRlSecsLeft(secsLeft);
+    clearInterval(rlTimerRef.current);
+    rlTimerRef.current = setInterval(() => {
+      setRlSecsLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(rlTimerRef.current);
+          setRlBlocked(false);
+          AsyncStorage.removeItem(RL_KEY).catch(() => {});
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
 
   const clearError = () => setErrorMsg('');
 
   // ── Email auth ────────────────────────────────────────────────────────────
   const handleEmail = useCallback(async () => {
     clearError();
+
+    // Client-side rate limit check
+    const rl = await rl_check();
+    if (rl.blocked) { startLockoutTimer(rl.secsLeft); return; }
+
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setErrorMsg('Enter a valid email address.');
@@ -310,11 +376,13 @@ export default function SignInScreen({ navigation }) {
       if (tab === 'signin') {
         const { data, error } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
         if (error) throw error;
+        await rl_record(true);
         if (data?.session?.access_token) tracker.setAccessToken(data.session.access_token);
         // App.js onAuthStateChange fires SIGNED_IN → resolveUserStatus → navigates.
       } else {
         const { data, error } = await supabase.auth.signUp({ email: trimmedEmail, password });
         if (error) throw error;
+        await rl_record(true);
         if (data?.user) {
           await supabase.from('profiles').upsert({
             user_id:       data.user.id,
@@ -330,7 +398,17 @@ export default function SignInScreen({ navigation }) {
         }
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Authentication failed. Please try again.');
+      // Record the failed attempt and warn user of remaining tries
+      await rl_record(false);
+      const after = await rl_check();
+      if (after.blocked) {
+        startLockoutTimer(after.secsLeft);
+        setErrorMsg('Too many failed attempts. Please wait 15 minutes before trying again.');
+      } else {
+        const remaining = after.remaining ?? 0;
+        const suffix = remaining > 0 ? ` (${remaining} attempt${remaining !== 1 ? 's' : ''} left)` : '';
+        setErrorMsg((err.message || 'Authentication failed.') + suffix);
+      }
     } finally {
       setLoading(false);
     }
@@ -341,21 +419,38 @@ export default function SignInScreen({ navigation }) {
     clearError();
     setOauthLoading(provider);
     try {
-      const redirectTo = makeRedirectUri({ scheme: 'snippd', path: 'auth/callback' });
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo, skipBrowserRedirect: true },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-        if (result.type === 'success' && result.url) {
-          const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(result.url);
-          if (exchangeErr) throw exchangeErr;
+      if (Platform.OS === 'web') {
+        // Web: let Supabase redirect the browser to Google and back.
+        // The SPA rewrite in vercel.json sends every URL back to index.html,
+        // and App.js startup code calls exchangeCodeForSession on the callback URL.
+        const redirectTo = typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback`
+          : undefined;
+        const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+        if (error) throw error;
+        // Browser will navigate — no further action needed in this callback.
+      } else {
+        // Native (iOS / Android): open Google in a managed browser session,
+        // intercept the snippd://auth/callback redirect, exchange the code.
+        const redirectTo = makeRedirectUri({ scheme: 'snippd', path: 'auth/callback' });
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: { redirectTo, skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+          if (result.type === 'success' && result.url) {
+            const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(result.url);
+            if (exchangeErr) throw exchangeErr;
+            // onAuthStateChange in App.js fires SIGNED_IN and routes the user.
+          }
+          // result.type === 'cancel' means the user closed the browser — silent, no error.
         }
       }
     } catch (err) {
-      setErrorMsg(`${provider === 'google' ? 'Google' : 'Apple'} sign-in failed. Try email instead.`);
+      const name = provider === 'google' ? 'Google' : 'Apple';
+      setErrorMsg(`${name} sign-in failed. Check your internet connection or try email instead.`);
     } finally {
       setOauthLoading(null);
     }
@@ -384,6 +479,19 @@ export default function SignInScreen({ navigation }) {
   // ── Shared form body (everything inside the white card) ───────────────────
   const FormBody = () => (
     <>
+      {/* Rate-limit lockout banner */}
+      {rlBlocked && (
+        <View style={form.lockoutBanner}>
+          <Feather name="lock" size={14} color={ALERT} />
+          <Text style={form.lockoutTxt}>
+            Too many attempts.{' '}
+            <Text style={{ fontWeight: '800' }}>
+              Try again in {Math.floor(rlSecsLeft / 60)}:{String(rlSecsLeft % 60).padStart(2, '0')}
+            </Text>
+          </Text>
+        </View>
+      )}
+
       {/* Card header */}
       <View style={form.cardHead}>
         <Text style={form.cardEyebrow}>
@@ -483,9 +591,9 @@ export default function SignInScreen({ navigation }) {
 
       {/* Submit */}
       <TouchableOpacity
-        style={[form.submitBtn, (loading || !!oauthLoading) && form.submitBtnDisabled]}
+        style={[form.submitBtn, (loading || !!oauthLoading || rlBlocked) && form.submitBtnDisabled]}
         onPress={handleEmail}
-        disabled={loading || !!oauthLoading}
+        disabled={loading || !!oauthLoading || rlBlocked}
         activeOpacity={0.88}
       >
         {loading ? (
@@ -520,7 +628,7 @@ export default function SignInScreen({ navigation }) {
 
         {/* Wordmark */}
         <Text style={hero.wordmark}>
-          snipp<Text style={{ color: ACCENT }}>d</Text>
+          snipp<Text style={{ color: GREEN }}>d</Text>
         </Text>
 
         {/* Headline */}
@@ -528,7 +636,7 @@ export default function SignInScreen({ navigation }) {
           <Text style={hero.headline}>
             {'Groceries got\nexpensive.'}
           </Text>
-          <Text style={[hero.headline, { color: ACCENT }]}>
+          <Text style={[hero.headline, { color: GREEN }]}>
             {'Your cart got\nsmarter.'}
           </Text>
         </View>
@@ -597,11 +705,11 @@ export default function SignInScreen({ navigation }) {
             {/* Hero header */}
             <View style={hero.phoneHero}>
               <Text style={hero.wordmarkPhone}>
-                snipp<Text style={{ color: ACCENT }}>d</Text>
+                snipp<Text style={{ color: GREEN }}>d</Text>
               </Text>
               <Text style={hero.phoneHeadline}>
                 {'Groceries got expensive.\n'}
-                <Text style={{ color: ACCENT }}>Your cart got smarter.</Text>
+                <Text style={{ color: GREEN }}>Your cart got smarter.</Text>
               </Text>
               <Text style={hero.phoneSub}>
                 AI-powered savings that works quietly in the background — personalized to how you actually shop.
@@ -647,7 +755,7 @@ const hero = StyleSheet.create({
   wordmark: {
     fontFamily: 'Sublima-ExtraBold',
     fontSize: 28,
-    color: 'rgba(197,255,188,0.8)',
+    color: GREEN,
     letterSpacing: -0.5,
     marginBottom: 32,
   },
@@ -683,7 +791,7 @@ const hero = StyleSheet.create({
   wordmarkPhone: {
     fontFamily: 'Sublima-ExtraBold',
     fontSize: 24,
-    color: 'rgba(197,255,188,0.75)',
+    color: GREEN,
     letterSpacing: -0.5,
     marginBottom: 8,
   },
@@ -710,6 +818,9 @@ const hero = StyleSheet.create({
 
 // ── Form / card styles ────────────────────────────────────────────────────────
 const form = StyleSheet.create({
+  lockoutBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF1F1', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(251,91,91,0.20)' },
+  lockoutTxt: { flex: 1, fontSize: 12, color: ALERT, lineHeight: 17 },
+
   cardHead: { marginBottom: 20, gap: 6 },
   cardEyebrow: {
     fontSize: 15,

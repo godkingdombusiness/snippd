@@ -4,6 +4,11 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Security + Auth (2026-05-07)
+- `screens/SignInScreen.js` — Google OAuth fixed for web vs native: web uses full browser redirect (no skipBrowserRedirect), native uses `openAuthSessionAsync` + `exchangeCodeForSession`. Accent color restored to brand green `#0C9E54` (wordmark, headline, chips, icons, mockup card). Client-side rate limiter added: 5 failed attempts → 15-minute lockout, persisted via AsyncStorage across sessions/reloads, live countdown timer shown in card banner, submit button disabled during lockout. Attempt count and remaining shown on error messages.
+- `supabase/config.toml` — Added `[auth.external.google]` with setup instructions (Google Cloud Console OAuth callback URL, Supabase Dashboard redirect URLs). Tightened rate limits: `sign_in_sign_ups` 30 → 8, `token_verifications` 30 → 8, `email_sent` 2 → 5, `token_refresh` 150 → 30. Added Turnstile CAPTCHA config block (commented, ready to activate with secret key).
+- `.env.example` — Added `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID`, `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`, `SUPABASE_AUTH_CAPTCHA_SECRET`, `EXPO_PUBLIC_TURNSTILE_SITE_KEY`.
+
 ### Changed — Hero Rebuild v1 (2026-05-07)
 - `screens/SignInScreen.js` — Complete redesign (SNIPPD_BETA_HERO_REBUILD_V1). New copy: headline "Groceries got expensive. Your cart got smarter.", subheadline, auth eyebrow "Welcome back to smarter shopping." / sub "Sign in to continue building smarter carts and personalized savings plans." Tab labels: "Sign In" / "Join Beta". Submit CTAs: "Continue" / "Join Beta". Bottom link: "New to Snippd? Join the beta →". Removed fake metrics ($2.4k / 6+ / 100%) — replaced with 3 value blocks (Save Time / Smarter Carts / Gets Smarter). Phone: dark navy gradient hero header + floating white auth card (32px radius). Tablet: left panel with hero copy + animated AI mockup cart optimization card + 3 full value blocks; right panel white form card (28px radius, soft navy shadow). New color palette: Green #0C9E54, Navy #172250, Accent #C5FFBC, Alert #FB5B5B. HeroBg uses 3 animated blobs. AIMockup has pulsing cart optimization animation with savings tags. All auth wiring (Supabase email/OAuth, routing) unchanged.
 

@@ -189,25 +189,29 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+email_sent = 5
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
-sms_sent = 30
+sms_sent = 10
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
-anonymous_users = 30
+anonymous_users = 10
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
-token_refresh = 150
+token_refresh = 30
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
-sign_in_sign_ups = 30
+# Production tightened: 8 per 5 min per IP (was 30). Matches client-side 5-attempt lockout.
+sign_in_sign_ups = 8
 # Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
-token_verifications = 30
+token_verifications = 8
 # Number of Web3 logins that can be made in a 5 minute interval per IP address.
-web3 = 30
+web3 = 10
 
-# Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
+# CAPTCHA — Cloudflare Turnstile (invisible, no friction).
+# To enable: set SUPABASE_AUTH_CAPTCHA_SECRET in Supabase Dashboard → Settings → Edge Functions secrets,
+# then uncomment the block below AND pass captchaToken in every signUp / signInWithPassword call.
+# Dashboard: Authentication → Settings → Enable Captcha protection → Turnstile
 # [auth.captcha]
 # enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# provider = "turnstile"
+# secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
@@ -326,6 +330,24 @@ url = ""
 skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+# Setup steps:
+# 1. Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID
+#    Application type: Web application
+#    Authorized redirect URIs: https://gsnbpfpekqqjlmkgvwvb.supabase.co/auth/v1/callback
+# 2. Copy Client ID + Client Secret → set as env vars below (Supabase Dashboard → Settings → Vault)
+# 3. Supabase Dashboard → Authentication → Providers → Google → enable, paste Client ID + Secret
+# 4. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs → add:
+#      snippd://auth/callback
+#      exp://localhost:8082/--/auth/callback   (Expo Go dev)
+#      https://<your-vercel-domain>.vercel.app/auth/callback  (web)
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+skip_nonce_check = true
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
