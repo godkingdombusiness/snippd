@@ -241,6 +241,13 @@ function PersonalItemRow({ item, checked, onToggle, onRemove }) {
           ) : null}
         </View>
 
+        {item.meal_name ? (
+          <View style={s.mealConnectRow}>
+            <View style={s.mealConnectDot} />
+            <Text style={s.mealConnectTxt} numberOfLines={1}>For: {item.meal_name}</Text>
+          </View>
+        ) : null}
+
         {isBogo && (
           <Text style={s.bogoNote}>Buy 2 — second is free</Text>
         )}
@@ -361,8 +368,38 @@ function StoreSection({
               />
             );
           })}
+          <StoreFulfillment storeLabel={store.label} />
         </View>
       )}
+    </View>
+  );
+}
+
+function StoreFulfillment({ storeLabel }) {
+  const [mode, setMode] = React.useState('pickup');
+  const options = [
+    { key: 'pickup',   label: 'Pickup',   icon: 'map-pin' },
+    { key: 'delivery', label: 'Delivery', icon: 'truck' },
+    { key: 'instore',  label: 'In-Store', icon: 'shopping-bag' },
+  ];
+  return (
+    <View style={s.fulfillCard}>
+      <Text style={s.fulfillLabel}>FULFILLMENT  ·  {storeLabel.toUpperCase()}</Text>
+      <View style={s.fulfillRow}>
+        {options.map(opt => (
+          <TouchableOpacity
+            key={opt.key}
+            style={[s.fulfillBtn, mode === opt.key && s.fulfillBtnActive]}
+            onPress={() => setMode(opt.key)}
+            activeOpacity={0.8}
+          >
+            <Feather name={opt.icon} size={13} color={mode === opt.key ? GREEN : GRAY} />
+            <Text style={[s.fulfillBtnTxt, mode === opt.key && s.fulfillBtnTxtActive]}>
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 }
@@ -1116,6 +1153,27 @@ const s = StyleSheet.create({
   badge: { borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 },
   badgeTxt: { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
   bogoNote: { fontSize: 11, color: GREEN, fontWeight: '500', marginTop: 4 },
+
+  // Meal connection
+  mealConnectRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  mealConnectDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: GREEN, flexShrink: 0 },
+  mealConnectTxt: { fontSize: 11, color: GREEN, fontWeight: '600', flex: 1 },
+
+  // Store fulfillment
+  fulfillCard: {
+    marginTop: 10, backgroundColor: '#F8FAFC', borderRadius: 12,
+    padding: 12, borderWidth: 1, borderColor: BORDER,
+  },
+  fulfillLabel: { fontSize: 9, fontWeight: '800', color: GRAY, letterSpacing: 1.3, marginBottom: 8 },
+  fulfillRow: { flexDirection: 'row', gap: 8 },
+  fulfillBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 5, paddingVertical: 8, borderRadius: 9,
+    borderWidth: 1, borderColor: BORDER, backgroundColor: WHITE,
+  },
+  fulfillBtnActive: { borderColor: GREEN, backgroundColor: PALE_GREEN },
+  fulfillBtnTxt: { fontSize: 11, fontWeight: '700', color: GRAY },
+  fulfillBtnTxtActive: { color: GREEN },
 
   // Pricing column
   itemPricing: { alignItems: 'flex-end', gap: 2, minWidth: 72 },

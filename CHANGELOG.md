@@ -4,6 +4,18 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — HomeScreen: Week Savings Hero card (2026-05-08)
+- `screens/HomeScreen.js` — Added `WeekSavingsHero` component as the dominant first card in the scroll. Green gradient (`#0C9E54` → `#087038`), shows weekly budget vs. optimized spend side-by-side with strikethrough on budget, chip row (save amount / % less / stores / items), "See Smart Plan" action row. Displays a simpler single-number view when no cart is loaded. Always taps to `WeeklyPlan` tab.
+
+### Changed — WeeklyPlanScreen: 3-segment tab bar (Meals / Stacks / Nutrition) (2026-05-08)
+- `screens/WeeklyPlanScreen.js` — Added `planTab` state and inline segment control replacing the old flat scroll layout. **Meals tab**: existing 7-day meal list; each row now has a 3px colored left border keyed to meal slot (Breakfast=amber, Lunch=blue, Dinner=green); cook time added to meta line. **Stacks tab**: dark-green comparison card ("without Snippd" vs "with Snippd") above the existing store-filtered stack list; stack cards show deal-type badges; empty/loading states added. **Nutrition tab**: 4-cell macro grid (cal/protein/carbs/fat with color dots), GLP-1 alignment card with 91% progress bar, protein-per-dollar efficiency card, cost breakdown. Lock In button remains visible on all tabs.
+
+### Changed — CartScreen: meal connections + store fulfillment selector (2026-05-08)
+- `screens/CartScreen.js` — `PersonalItemRow` now shows a green "For: [meal name]" line under deal badges when item has `meal_name` set (populated by WeeklyPlan lock-in). Added `StoreFulfillment` component that renders below each store's area sections: 3-button Pickup / Delivery / In-Store toggle with icon, active state highlights in green. `React.useState` used inline for fulfillment mode per store.
+
+### Changed — Navigation: removed Explore tab (2026-05-08)
+- `App.js` — Removed DiscoverTab from bottom tab navigator. Discover/Explore is no longer visible in the bottom nav.
+
 ### Changed — OnboardingScreen: 9-step conversational onboarding (2026-05-08)
 - `screens/OnboardingScreen.js` — Full rewrite. 9 question steps: Budget (5 range chips) → Stores (11 multi-select) → Household (4 icon tiles) → Cooking Style (9 appliance chips: Air Fryer, Crockpot, Instant Pot, Meal Prep, etc.) → Cooking Frequency (5 single-select with sub-labels) → Weekly Habits (10 chips: Pizza Fridays, Gym Days, Takeout Nights, etc.) → Nutrition Goals (12 chips) → Grocery Goals (6 list options) → GLP-1 (3 options with "no judgment" microcopy). "Did you know?" modal overlay fires after steps 1, 3, 6, 8 — auto-dismisses after 3.5s, tap to skip. Progress bar tracks 9/9 questions. Smooth slide transitions via react-native-reanimated. Hero step kept. Persona Reveal updated with 9 new shopper types (GLP-1 Optimizer, Busy Parent, Budget Master, etc.). Paywall saves all 9 fields to profiles.preferences, then navigates to PersonalityResult.
 - Updated `derivePersona()` — now uses budget_range, preferred_stores, cooking_appliances, cooking_frequency, weekly_habits, grocery_goals, is_glp1, plus household/dietary inputs. 9 persona types.

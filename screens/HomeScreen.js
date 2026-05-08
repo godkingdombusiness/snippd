@@ -1008,6 +1008,17 @@ export default function HomeScreen({ navigation }) {
           />
         }
       >
+        {/* WEEK SAVINGS HERO */}
+        <WeekSavingsHero
+          weekRange={getWeekRange()}
+          budgetCents={weeklyBudgetCents}
+          optimizedCents={optimizedSpendCents}
+          savingsCents={estimatedSavingsCents}
+          items={optimizedDeals}
+          stores={storeCount}
+          onPress={goToSmartCart}
+        />
+
         {/* YOUR TOP STACK */}
         {stacksLoading && !topDeal ? (
           <View style={s.loadingCard}>
@@ -1162,6 +1173,65 @@ function storeLogoColor(name) {
 
 // â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+const WeekSavingsHero = ({ weekRange, budgetCents, optimizedCents, savingsCents, items, stores, onPress }) => {
+  const hasPlan = optimizedCents > 0 && optimizedCents < budgetCents;
+  const savePct = budgetCents > 0 && optimizedCents > 0
+    ? Math.min(99, Math.round(((budgetCents - optimizedCents) / budgetCents) * 100))
+    : 0;
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.93} style={{ marginBottom: 20 }}>
+      <LinearGradient
+        colors={['#0C9E54', '#087038']}
+        style={s.heroCard}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={s.heroEyebrow}>{weekRange.toUpperCase()}</Text>
+
+        {hasPlan ? (
+          <View style={s.heroPriceFlow}>
+            <View style={s.heroPriceBlock}>
+              <Text style={s.heroPriceWas}>{fmtCents(budgetCents)}</Text>
+              <Text style={s.heroPriceLbl}>budget</Text>
+            </View>
+            <Feather name="arrow-right" size={22} color="rgba(255,255,255,0.45)" />
+            <View style={s.heroPriceBlock}>
+              <Text style={s.heroPriceNow}>{fmtCents(optimizedCents)}</Text>
+              <Text style={s.heroPriceLbl}>optimized</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={s.heroNoPlanBig}>{fmtCents(budgetCents)}</Text>
+            <Text style={s.heroNoPlanSub}>weekly budget  ·  Build your smart plan</Text>
+          </View>
+        )}
+
+        <View style={s.heroChipRow}>
+          {savingsCents > 0 && (
+            <View style={s.heroChip}><Text style={s.heroChipTxt}>Save {fmtCents(savingsCents)}</Text></View>
+          )}
+          {savePct > 0 && (
+            <View style={s.heroChip}><Text style={s.heroChipTxt}>{savePct}% less</Text></View>
+          )}
+          {stores > 0 && (
+            <View style={s.heroChip}><Text style={s.heroChipTxt}>{stores} store{stores !== 1 ? 's' : ''}</Text></View>
+          )}
+          {items > 0 && (
+            <View style={s.heroChip}><Text style={s.heroChipTxt}>{items} item{items !== 1 ? 's' : ''}</Text></View>
+          )}
+        </View>
+
+        <View style={s.heroAction}>
+          <Text style={s.heroActionTxt}>See Smart Plan</Text>
+          <Feather name="arrow-right" size={15} color="rgba(255,255,255,0.9)" />
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+};
+
 const TopStackCard = ({ stack, todayBadge, onPress }) => (
   <TouchableOpacity style={s.featuredCard} onPress={onPress} activeOpacity={0.9}>
     <View style={s.featuredHeader}>
@@ -1252,6 +1322,25 @@ const s = StyleSheet.create({
   creditsTxt: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
 
   scroll: { padding: 16 },
+
+  // Week Savings Hero
+  heroCard: { borderRadius: 22, padding: 22, overflow: 'hidden' },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.8, marginBottom: 14 },
+  heroPriceFlow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
+  heroPriceBlock: { flex: 1 },
+  heroPriceWas: { fontSize: 28, fontWeight: '900', color: 'rgba(255,255,255,0.45)', textDecorationLine: 'line-through', letterSpacing: -0.5 },
+  heroPriceNow: { fontSize: 38, fontWeight: '900', color: '#FFFFFF', letterSpacing: -1 },
+  heroPriceLbl: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: 3, textTransform: 'uppercase', letterSpacing: 1.2 },
+  heroNoPlanBig: { fontSize: 38, fontWeight: '900', color: '#FFFFFF', letterSpacing: -1, marginBottom: 4 },
+  heroNoPlanSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  heroChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
+  heroChip: { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5 },
+  heroChipTxt: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
+  heroAction: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)',
+  },
+  heroActionTxt: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', flex: 1 },
 
   // Featured "Your Top Stack" card
   featuredCard: {

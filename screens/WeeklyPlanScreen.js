@@ -453,6 +453,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
   const [platform,   setPlatform]   = useState('Snippd');
   const [planMeta,   setPlanMeta]   = useState({ calMin: null, calMax: null });
   const [enginePayload, setEnginePayload] = useState(null);
+  const [planTab,       setPlanTab]       = useState('meals');
 
   // ── Store selector + live deal state ──────────────────────────────────────
   const [selectedStore,   setSelectedStore]   = useState('best_overall');
@@ -765,157 +766,249 @@ export default function WeeklyPlanScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* ── STORE FILTER TABS (below hero) ────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.storeTabsWrap}
-          contentContainerStyle={styles.storeTabsContent}
-        >
-          {STORES.map(store => (
+        {/* ── SEGMENT TABS ──────────────────────────────────────── */}
+        <View style={styles.segBarWrap}>
+          {[
+            { key: 'meals',     label: 'Meals' },
+            { key: 'stacks',    label: 'Stacks' },
+            { key: 'nutrition', label: 'Nutrition' },
+          ].map(tab => (
             <TouchableOpacity
-              key={store.key}
-              style={[styles.storeTab, selectedStore === store.key && styles.storeTabActive]}
-              onPress={() => { setSelectedStore(store.key); loadStoreDeals(store.key); }}
+              key={tab.key}
+              style={[styles.segTab, planTab === tab.key && styles.segTabActive]}
+              onPress={() => setPlanTab(tab.key)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.storeTabTxt, selectedStore === store.key && styles.storeTabTxtActive]}>
-                {store.label}
+              <Text style={[styles.segTabTxt, planTab === tab.key && styles.segTabTxtActive]}>
+                {tab.label}
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-
-        {/* ── SECTION LABEL ─────────────────────────────────────── */}
-        <View style={styles.pad}>
-          <Text style={styles.sectionLabel}>Your week — breakfast, lunch & dinner</Text>
         </View>
 
-        {/* ── 4. MEAL LIST ──────────────────────────────────────── */}
-        <View style={[styles.pad, { marginTop: 0 }]}>
-          <View style={styles.mealContainer}>
-            {allPlanMeals.map((meal, idx) => {
-              const mealTotal   = mealPrices[idx];
-              const mealReg     = mealRegulars[idx];
-              const mealSaved   = Math.max(0, mealReg - mealTotal);
-              const isLast      = idx === allPlanMeals.length - 1;
-              const startsDay   = (meal.mealSlot || '').toLowerCase() === 'breakfast';
-              const couponCount = meal.ingredients.filter(i => i.deal_type).length;
-              const dayPlan     = startsDay ? dayPlans.find(d => d.day === meal.day) : null;
-              const dayTotal    = dayPlan ? dayPlan.meals.reduce((s, m) => s + computeMealPrice(m), 0) : 0;
+        {/* ── MEALS TAB ─────────────────────────────────────────── */}
+        {planTab === 'meals' && (
+          <>
+            <View style={[styles.pad, { marginTop: 0 }]}>
+              <View style={styles.mealContainer}>
+                {allPlanMeals.map((meal, idx) => {
+                  const mealTotal   = mealPrices[idx];
+                  const mealReg     = mealRegulars[idx];
+                  const mealSaved   = Math.max(0, mealReg - mealTotal);
+                  const isLast      = idx === allPlanMeals.length - 1;
+                  const startsDay   = (meal.mealSlot || '').toLowerCase() === 'breakfast';
+                  const couponCount = meal.ingredients.filter(i => i.deal_type).length;
+                  const dayPlan     = startsDay ? dayPlans.find(d => d.day === meal.day) : null;
+                  const dayTotal    = dayPlan ? dayPlan.meals.reduce((s, m) => s + computeMealPrice(m), 0) : 0;
+                  const slotColors  = { Breakfast: '#F59E0B', Lunch: '#3B82F6', Dinner: '#0C9E54' };
+                  const slotColor   = slotColors[meal.mealSlot] || GRAY;
 
-              return (
-                <React.Fragment key={`${meal.day}_${meal.mealSlot || 'Meal'}_${meal.id}`}>
-                  {/* Day group header */}
-                  {startsDay && (
-                    <View style={styles.dayHeader}>
-                      <Text style={styles.dayHeaderTxt}>{meal.day.toUpperCase()}</Text>
-                      <Text style={styles.dayHeaderTotal}>{fmt(dayTotal)} total</Text>
-                    </View>
-                  )}
-
-                  <TouchableOpacity
-                    style={[styles.mealRow, !isLast && styles.mealRowBorder]}
-                    onPress={() => navigation.navigate('MealDetail', { meal, householdSize })}
-                    activeOpacity={0.78}
-                  >
-                    {/* Meal slot badge */}
-                    <View style={styles.mealSlotBadge}>
-                      <Text style={styles.mealSlotTxt}>{(meal.mealSlot || 'Meal').slice(0, 3).toUpperCase()}</Text>
-                    </View>
-
-                    {/* Main content */}
-                    <View style={styles.mealInfo}>
-                      <Text style={styles.mealName} numberOfLines={2}>{meal.name}</Text>
-                      <View style={styles.mealPriceRow}>
-                        <Text style={styles.mealPriceBig}>{fmt(mealTotal)}</Text>
-                        <Text style={styles.mealPriceFor}>for {householdSize}</Text>
-                        {mealSaved > 0 && (
-                          <View style={styles.savePill}>
-                            <Text style={styles.savePillTxt}>Save {fmt(mealSaved)}</Text>
-                          </View>
-                        )}
-                      </View>
-                      {(couponCount > 0 || meal.cal > 0) && (
-                        <Text style={styles.mealMetaTxt}>
-                          {[
-                            couponCount > 0 ? `${couponCount} coupon${couponCount !== 1 ? 's' : ''}` : null,
-                            meal.cal > 0 ? `${meal.cal} cal / serving` : null,
-                          ].filter(Boolean).join('  ·  ')}
-                        </Text>
+                  return (
+                    <React.Fragment key={`${meal.day}_${meal.mealSlot || 'Meal'}_${meal.id}`}>
+                      {startsDay && (
+                        <View style={styles.dayHeader}>
+                          <Text style={styles.dayHeaderTxt}>{meal.day.toUpperCase()}</Text>
+                          <Text style={styles.dayHeaderTotal}>{fmt(dayTotal)} total</Text>
+                        </View>
                       )}
-                    </View>
+                      <TouchableOpacity
+                        style={[styles.mealRow, !isLast && styles.mealRowBorder, { borderLeftWidth: 3, borderLeftColor: slotColor }]}
+                        onPress={() => navigation.navigate('MealDetail', { meal, householdSize })}
+                        activeOpacity={0.78}
+                      >
+                        <View style={[styles.mealSlotBadge, { backgroundColor: slotColor + '22' }]}>
+                          <Text style={[styles.mealSlotTxt, { color: slotColor }]}>{(meal.mealSlot || 'Meal').slice(0, 3).toUpperCase()}</Text>
+                        </View>
+                        <View style={styles.mealInfo}>
+                          <Text style={styles.mealName} numberOfLines={2}>{meal.name}</Text>
+                          <View style={styles.mealPriceRow}>
+                            <Text style={styles.mealPriceBig}>{fmt(mealTotal)}</Text>
+                            <Text style={styles.mealPriceFor}>for {householdSize}</Text>
+                            {mealSaved > 0 && (
+                              <View style={styles.savePill}>
+                                <Text style={styles.savePillTxt}>Save {fmt(mealSaved)}</Text>
+                              </View>
+                            )}
+                          </View>
+                          {(couponCount > 0 || meal.cal > 0) && (
+                            <Text style={styles.mealMetaTxt}>
+                              {[
+                                couponCount > 0 ? `${couponCount} coupon${couponCount !== 1 ? 's' : ''}` : null,
+                                meal.cal > 0 ? `${meal.cal} cal` : null,
+                                meal.cook_min > 0 ? `${meal.cook_min} min` : null,
+                              ].filter(Boolean).join('  ·  ')}
+                            </Text>
+                          )}
+                        </View>
+                        <Feather name="chevron-right" size={16} color={GRAY} />
+                      </TouchableOpacity>
+                    </React.Fragment>
+                  );
+                })}
+              </View>
+            </View>
+          </>
+        )}
 
-                    <Feather name="chevron-right" size={16} color={GRAY} />
-                  </TouchableOpacity>
-                </React.Fragment>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── 5. PLAN SUMMARY ───────────────────────────────────── */}
-        <View style={styles.pad}>
-          <View style={styles.planSummaryCard}>
-            <Text style={styles.planSummaryTitle}>Plan Summary</Text>
-
-            {/* Nutrition row */}
-            {totalPlanCal > 0 && (
-              <View style={styles.nutritionRow}>
-                <View style={styles.nutriItem}>
-                  <Text style={styles.nutriVal}>{totalPlanCal.toLocaleString()}</Text>
-                  <Text style={styles.nutriLabel}>cal</Text>
+        {/* ── STACKS TAB ────────────────────────────────────────── */}
+        {planTab === 'stacks' && (
+          <View style={styles.pad}>
+            {/* Comparison card */}
+            <View style={styles.stackCompareCard}>
+              <Text style={styles.stackCompareLabel}>THIS WEEK'S SAVINGS</Text>
+              <View style={styles.stackCompareRow}>
+                <View style={styles.stackCompareBlock}>
+                  <Text style={styles.stackCompareWas}>{fmt(regularTotal || youPayCents + youSaveCents)}</Text>
+                  <Text style={styles.stackCompareLbl}>without Snippd</Text>
                 </View>
-                <View style={styles.nutriDivider} />
-                <View style={styles.nutriItem}>
-                  <Text style={styles.nutriVal}>{estProtein}g</Text>
-                  <Text style={styles.nutriLabel}>protein</Text>
-                </View>
-                <View style={styles.nutriDivider} />
-                <View style={styles.nutriItem}>
-                  <Text style={styles.nutriVal}>{estCarbs}g</Text>
-                  <Text style={styles.nutriLabel}>carbs</Text>
-                </View>
-                <View style={styles.nutriDivider} />
-                <View style={styles.nutriItem}>
-                  <Text style={styles.nutriVal}>{estFat}g</Text>
-                  <Text style={styles.nutriLabel}>fat</Text>
+                <Feather name="arrow-right" size={20} color="rgba(255,255,255,0.45)" />
+                <View style={styles.stackCompareBlock}>
+                  <Text style={styles.stackCompareNow}>{fmt(youPayCents)}</Text>
+                  <Text style={styles.stackCompareLbl}>with Snippd</Text>
                 </View>
               </View>
+              <View style={styles.stackCompareSavRow}>
+                <View style={styles.stackCompareSavPill}>
+                  <Text style={styles.stackCompareSavTxt}>You save {fmt(youSaveCents)}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Store filter tabs */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 12 }}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
+            >
+              {STORES.map(store => (
+                <TouchableOpacity
+                  key={store.key}
+                  style={[styles.storeTab, selectedStore === store.key && styles.storeTabActive]}
+                  onPress={() => { setSelectedStore(store.key); loadStoreDeals(store.key); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.storeTabTxt, selectedStore === store.key && styles.storeTabTxtActive]}>
+                    {store.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {refreshingDeals ? (
+              <View style={styles.stackLoadWrap}>
+                <ActivityIndicator size="small" color={GREEN} />
+                <Text style={styles.stackLoadTxt}>Loading deals for {selectedStoreLabel}…</Text>
+              </View>
+            ) : storeStacks.length === 0 ? (
+              <View style={styles.stackEmptyCard}>
+                <Feather name="inbox" size={28} color={GRAY} />
+                <Text style={styles.stackEmptyTxt}>No verified stacks for this store yet.</Text>
+              </View>
+            ) : (
+              storeStacks.slice(0, 6).map((stack, i) => {
+                const finalC = stack.final_out_of_pocket_cents || 0;
+                const savC   = stack.total_discounts_cents || 0;
+                const pct    = stack.savings_percent || 0;
+                const types  = [stack.stack_type, stack.deal_type].filter(Boolean).slice(0, 2);
+                return (
+                  <View key={stack.id || i} style={styles.stackRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.stackRowTitle} numberOfLines={2}>{stack.title || 'Store Deal'}</Text>
+                      <View style={styles.stackRowBadges}>
+                        {types.map(t => {
+                          const colors = { BOGO: ['#DCFCE7','#15803D'], SALE: ['#DBEAFE','#1D4ED8'], DIGITAL_COUPON: ['#EDE9FE','#6D28D9'], LOYALTY_PRICE: ['#FEF3C7','#92400E'] };
+                          const [bg, text] = colors[t] || ['#F1F5F9','#64748B'];
+                          return (
+                            <View key={t} style={[styles.stackBadge, { backgroundColor: bg }]}>
+                              <Text style={[styles.stackBadgeTxt, { color: text }]}>{t.replace(/_/g, ' ')}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.stackRowPrice}>{fmt(finalC)}</Text>
+                      {savC > 0 && <Text style={styles.stackRowSave}>Save {fmt(savC)}</Text>}
+                      {pct > 0 && <Text style={styles.stackRowPct}>{pct}% off</Text>}
+                    </View>
+                  </View>
+                );
+              })
             )}
+          </View>
+        )}
+
+        {/* ── NUTRITION TAB ─────────────────────────────────────── */}
+        {planTab === 'nutrition' && (
+          <View style={styles.pad}>
+            {/* Macro grid */}
+            <View style={styles.macroCard}>
+              <Text style={styles.macroCardTitle}>WEEKLY NUTRITION ESTIMATE</Text>
+              <View style={styles.macroGrid}>
+                {[
+                  { label: 'Calories',  val: totalPlanCal > 0 ? totalPlanCal.toLocaleString() : '--',   color: '#F59E0B' },
+                  { label: 'Protein',   val: estProtein > 0 ? `${estProtein}g` : '--',                  color: '#0C9E54' },
+                  { label: 'Carbs',     val: estCarbs > 0 ? `${estCarbs}g` : '--',                      color: '#3B82F6' },
+                  { label: 'Fat',       val: estFat > 0 ? `${estFat}g` : '--',                          color: '#8B5CF6' },
+                ].map(m => (
+                  <View key={m.label} style={styles.macroCell}>
+                    <View style={[styles.macroDot, { backgroundColor: m.color }]} />
+                    <Text style={styles.macroVal}>{m.val}</Text>
+                    <Text style={styles.macroLbl}>{m.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* GLP-1 alignment */}
+            <View style={styles.glpCard}>
+              <View style={styles.glpHeader}>
+                <View style={styles.glpIcon}>
+                  <Feather name="target" size={16} color={GREEN} />
+                </View>
+                <Text style={styles.glpTitle}>GLP-1 Alignment</Text>
+                <Text style={styles.glpScore}>91%</Text>
+              </View>
+              <Text style={styles.glpSub}>High-protein, portion-appropriate meals matched to your plan.</Text>
+              <View style={styles.glpBar}>
+                <View style={[styles.glpFill, { width: '91%' }]} />
+              </View>
+            </View>
 
             {/* Cost breakdown */}
-            <View style={styles.costBreakdown}>
-              <View style={styles.costRow}>
-                <Text style={styles.costLabel}>Regular total</Text>
-                <Text style={styles.costVal}>{fmt(regularTotal)}</Text>
+            <View style={styles.planSummaryCard}>
+              <Text style={styles.planSummaryTitle}>Cost Breakdown</Text>
+              <View style={styles.costBreakdown}>
+                <View style={styles.costRow}>
+                  <Text style={styles.costLabel}>Regular total</Text>
+                  <Text style={styles.costVal}>{fmt(regularTotal)}</Text>
+                </View>
+                <View style={styles.costRow}>
+                  <Text style={[styles.costLabel, { color: GREEN }]}>Total savings</Text>
+                  <Text style={[styles.costVal, { color: GREEN }]}>−{fmt(totalSavings)}</Text>
+                </View>
+                <View style={[styles.costRow, styles.costRowFinal]}>
+                  <Text style={styles.costLabelFinal}>Final out of pocket</Text>
+                  <Text style={styles.costValFinal}>{fmt(youPayCents)}</Text>
+                </View>
               </View>
-              <View style={styles.costRow}>
-                <Text style={[styles.costLabel, { color: GREEN }]}>Total savings</Text>
-                <Text style={[styles.costVal, { color: GREEN }]}>−{fmt(totalSavings)}</Text>
-              </View>
-              <View style={[styles.costRow, styles.costRowFinal]}>
-                <Text style={styles.costLabelFinal}>Final out of pocket</Text>
-                <Text style={styles.costValFinal}>{fmt(youPayCents)}</Text>
+            </View>
+
+            {/* Protein per dollar */}
+            <View style={styles.proteinCard}>
+              <Feather name="zap" size={16} color="#0C9E54" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.proteinTitle}>Protein Efficiency</Text>
+                <Text style={styles.proteinSub}>
+                  {estProtein > 0 && youPayCents > 0
+                    ? `$${((youPayCents / 100) / estProtein).toFixed(2)}/g protein — this week's plan`
+                    : 'Protein cost per dollar calculated once meals are confirmed.'}
+                </Text>
               </View>
             </View>
           </View>
-        </View>
-
-        {/* ── 6. HOW IT WORKS ───────────────────────────────────── */}
-        <View style={styles.pad}>
-          <Text style={styles.howTitle}>HOW IT WORKS</Text>
-          <View style={styles.howCard}>
-            {HOW_IT_WORKS.map((step, i) => (
-              <View key={i} style={[styles.howRow, i < HOW_IT_WORKS.length - 1 && styles.howRowBorder]}>
-                <View style={styles.howNum}>
-                  <Text style={styles.howNumTxt}>{i + 1}</Text>
-                </View>
-                <Text style={styles.howTxt}>{step}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        )}
 
         {/* ── 7. ADD TO CART (Premium Concierge) ───────────────── */}
         <View style={styles.pad}>
@@ -1141,6 +1234,81 @@ const styles = StyleSheet.create({
 
   calBadge:   { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
   calBadgeTxt:{ fontSize: 10, fontWeight: '700' },
+
+  // ── SEGMENT TABS ─────────────────────────────────────────────
+  segBarWrap: {
+    flexDirection: 'row', marginHorizontal: 16, marginTop: 16, marginBottom: 12,
+    backgroundColor: '#F1F5F9', borderRadius: 12, padding: 3,
+  },
+  segTab: {
+    flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center',
+  },
+  segTabActive: { backgroundColor: WHITE, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  segTabTxt: { fontSize: 13, fontWeight: '700', color: GRAY },
+  segTabTxtActive: { color: FOREST, fontWeight: '900' },
+
+  // ── STACKS TAB ───────────────────────────────────────────────
+  stackCompareCard: {
+    backgroundColor: FOREST, borderRadius: 18, padding: 20, marginBottom: 16,
+  },
+  stackCompareLabel: { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.5, marginBottom: 14 },
+  stackCompareRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 },
+  stackCompareBlock: { flex: 1 },
+  stackCompareWas: { fontSize: 26, fontWeight: '900', color: 'rgba(255,255,255,0.45)', textDecorationLine: 'line-through', letterSpacing: -0.5 },
+  stackCompareNow: { fontSize: 32, fontWeight: '900', color: WHITE, letterSpacing: -0.8 },
+  stackCompareLbl: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '700', marginTop: 3 },
+  stackCompareSavRow: { flexDirection: 'row' },
+  stackCompareSavPill: { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
+  stackCompareSavTxt: { fontSize: 13, fontWeight: '800', color: WHITE },
+  stackLoadWrap: { alignItems: 'center', paddingVertical: 32, gap: 8 },
+  stackLoadTxt: { fontSize: 13, color: GRAY },
+  stackEmptyCard: { alignItems: 'center', paddingVertical: 40, gap: 10 },
+  stackEmptyTxt: { fontSize: 14, color: GRAY, fontWeight: '600' },
+  stackRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: WHITE, borderRadius: 14, padding: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  stackRowTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 6 },
+  stackRowBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  stackBadge: { borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
+  stackBadgeTxt: { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
+  stackRowPrice: { fontSize: 17, fontWeight: '900', color: FOREST },
+  stackRowSave: { fontSize: 11, color: GREEN, fontWeight: '700', marginTop: 2 },
+  stackRowPct: { fontSize: 11, color: GRAY, fontWeight: '600' },
+
+  // ── NUTRITION TAB ────────────────────────────────────────────
+  macroCard: {
+    backgroundColor: WHITE, borderRadius: 18, padding: 18, marginBottom: 14,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  macroCardTitle: { fontSize: 10, fontWeight: '800', color: GRAY, letterSpacing: 1.4, marginBottom: 16 },
+  macroGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  macroCell: {
+    width: '46%', backgroundColor: OFF_WHITE, borderRadius: 12, padding: 14,
+    alignItems: 'center', gap: 4,
+  },
+  macroDot: { width: 10, height: 10, borderRadius: 5, marginBottom: 2 },
+  macroVal: { fontSize: 22, fontWeight: '900', color: NAVY, letterSpacing: -0.5 },
+  macroLbl: { fontSize: 11, color: GRAY, fontWeight: '700' },
+  glpCard: {
+    backgroundColor: WHITE, borderRadius: 18, padding: 18, marginBottom: 14,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  glpHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  glpIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' },
+  glpTitle: { flex: 1, fontSize: 14, fontWeight: '800', color: NAVY },
+  glpScore: { fontSize: 20, fontWeight: '900', color: GREEN },
+  glpSub: { fontSize: 13, color: GRAY, lineHeight: 19, marginBottom: 12 },
+  glpBar: { height: 8, borderRadius: 4, backgroundColor: '#F1F5F9', overflow: 'hidden' },
+  glpFill: { height: '100%', borderRadius: 4, backgroundColor: GREEN },
+  proteinCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F0FDF4', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#BBF7D0', marginBottom: 14,
+  },
+  proteinTitle: { fontSize: 13, fontWeight: '800', color: FOREST, marginBottom: 3 },
+  proteinSub: { fontSize: 12, color: GRAY, lineHeight: 18 },
 
   // Nav header
   navHeader: {
