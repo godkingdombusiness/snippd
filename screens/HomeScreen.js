@@ -1011,11 +1011,13 @@ export default function HomeScreen({ navigation }) {
         {/* WEEK SAVINGS HERO */}
         <WeekSavingsHero
           weekRange={getWeekRange()}
+          baselineCents={hasCart && cartRegularCents > 0 ? cartRegularCents : weeklyBudgetCents}
+          optimizedCents={hasCart && cartSpendCents > 0 ? cartSpendCents : optimizedSpendCents}
+          savingsCents={hasCart ? cartSavingsCents : estimatedSavingsCents}
           budgetCents={weeklyBudgetCents}
-          optimizedCents={optimizedSpendCents}
-          savingsCents={estimatedSavingsCents}
           items={optimizedDeals}
           stores={storeCount}
+          hasCart={hasCart}
           onPress={goToSmartCart}
         />
 
@@ -1173,11 +1175,15 @@ function storeLogoColor(name) {
 
 // â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const WeekSavingsHero = ({ weekRange, budgetCents, optimizedCents, savingsCents, items, stores, onPress }) => {
-  const hasPlan = optimizedCents > 0 && optimizedCents < budgetCents;
-  const savePct = budgetCents > 0 && optimizedCents > 0
-    ? Math.min(99, Math.round(((budgetCents - optimizedCents) / budgetCents) * 100))
+const WeekSavingsHero = ({ weekRange, baselineCents, optimizedCents, savingsCents, budgetCents, items, stores, hasCart, onPress }) => {
+  // Pct saved vs retail (not vs budget — budget is a user input, not the price without deals)
+  const savePct = baselineCents > 0 && optimizedCents > 0 && optimizedCents < baselineCents
+    ? Math.min(99, Math.round(((baselineCents - optimizedCents) / baselineCents) * 100))
     : 0;
+  const budgetUsed = budgetCents > 0 && optimizedCents > 0
+    ? Math.min(1, optimizedCents / budgetCents)
+    : 0;
+  const overBudget = budgetCents > 0 && optimizedCents > budgetCents;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.93} style={{ marginBottom: 20 }}>
@@ -1189,19 +1195,21 @@ const WeekSavingsHero = ({ weekRange, budgetCents, optimizedCents, savingsCents,
       >
         <Text style={s.heroEyebrow}>{weekRange.toUpperCase()}</Text>
 
-        {hasPlan ? (
+        {hasCart && baselineCents > 0 ? (
+          /* Cart loaded — show retail price → deal price */
           <View style={s.heroPriceFlow}>
             <View style={s.heroPriceBlock}>
-              <Text style={s.heroPriceWas}>{fmtCents(budgetCents)}</Text>
-              <Text style={s.heroPriceLbl}>budget</Text>
+              <Text style={s.heroPriceWas}>{fmtCents(baselineCents)}</Text>
+              <Text style={s.heroPriceLbl}>full retail</Text>
             </View>
             <Feather name="arrow-right" size={22} color="rgba(255,255,255,0.45)" />
             <View style={s.heroPriceBlock}>
               <Text style={s.heroPriceNow}>{fmtCents(optimizedCents)}</Text>
-              <Text style={s.heroPriceLbl}>optimized</Text>
+              <Text style={s.heroPriceLbl}>with deals</Text>
             </View>
           </View>
         ) : (
+          /* No cart yet — show weekly budget as context */
           <View style={{ marginBottom: 16 }}>
             <Text style={s.heroNoPlanBig}>{fmtCents(budgetCents)}</Text>
             <Text style={s.heroNoPlanSub}>weekly budget  ·  Build your smart plan</Text>
@@ -1221,6 +1229,18 @@ const WeekSavingsHero = ({ weekRange, budgetCents, optimizedCents, savingsCents,
           {items > 0 && (
             <View style={s.heroChip}><Text style={s.heroChipTxt}>{items} item{items !== 1 ? 's' : ''}</Text></View>
           )}
+        </View>
+
+        {/* Budget progress — always shown */}
+        <View style={s.heroBudgetRow}>
+          <View style={s.heroBudgetTrack}>
+            <View style={[s.heroBudgetFill, { width: `${Math.round(budgetUsed * 100)}%`, backgroundColor: overBudget ? '#FCA5A5' : 'rgba(255,255,255,0.7)' }]} />
+          </View>
+          <Text style={[s.heroBudgetLbl, overBudget && { color: '#FCA5A5' }]}>
+            {hasCart && optimizedCents > 0
+              ? `${fmtCents(optimizedCents)} / ${fmtCents(budgetCents)} budget${overBudget ? ` · ${fmtCents(optimizedCents - budgetCents)} over` : ''}`
+              : `${fmtCents(budgetCents)} weekly budget`}
+          </Text>
         </View>
 
         <View style={s.heroAction}>
@@ -1333,7 +1353,11 @@ const s = StyleSheet.create({
   heroPriceLbl: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: 3, textTransform: 'uppercase', letterSpacing: 1.2 },
   heroNoPlanBig: { fontSize: 38, fontWeight: '900', color: '#FFFFFF', letterSpacing: -1, marginBottom: 4 },
   heroNoPlanSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
-  heroChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
+  heroChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  heroBudgetRow: { marginBottom: 16 },
+  heroBudgetTrack: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden', marginBottom: 5 },
+  heroBudgetFill: { height: '100%', borderRadius: 2 },
+  heroBudgetLbl: { fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: '700' },
   heroChip: { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5 },
   heroChipTxt: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
   heroAction: {

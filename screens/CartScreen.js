@@ -30,6 +30,7 @@ import {
   fmtSavings,
 } from '../src/services/CouponClippingService';
 import { readActiveCart } from '../src/services/cartStorage';
+import { fetchWeeklyBudgetCents } from '../lib/weeklyBudget';
 import { fetchTop3StoreEngine, engineTotalsForDisplay } from '../src/services/top3StoreEngine';
 import CartNutritionSummary from '../src/components/CartNutritionSummary';
 import { recordMemoryEvent } from '../src/lib/memoryEvents';
@@ -516,7 +517,8 @@ export default function CartScreen({ navigation }) {
   const [collapsedStores,  setCollapsedStores]  = useState({});
 
   // Nutrition summary state
-  const [userAllergies, setUserAllergies] = useState([]);
+  const [userAllergies,      setUserAllergies]      = useState([]);
+  const [weeklyBudgetCents,  setWeeklyBudgetCents]  = useState(15000); // $150 default
 
   // Per-user cart key so carts don't bleed across accounts on shared devices
   const cartKeyRef = useRef(CART_KEY);
@@ -538,6 +540,8 @@ export default function CartScreen({ navigation }) {
           .then(({ data }) => { if (data?.allergies) setUserAllergies(data.allergies); })
           .catch(() => {});
       }
+      // Load budget so we can show progress vs target (non-blocking)
+      fetchWeeklyBudgetCents().then(setWeeklyBudgetCents).catch(() => {});
       const { key, items } = await readActiveCart();
       cartKeyRef.current = key;
       const normalized = items;
@@ -781,6 +785,21 @@ export default function CartScreen({ navigation }) {
               <Text style={s.savingsHeroAmount}>{fmt(savingsCents)}</Text>
             </View>
           </View>
+          {weeklyBudgetCents > 0 && registerCents > 0 && (() => {
+            const pct = Math.min(100, Math.round((registerCents / weeklyBudgetCents) * 100));
+            const over = registerCents > weeklyBudgetCents;
+            return (
+              <View style={s.registerBudgetRow}>
+                <View style={s.registerBudgetTrack}>
+                  <View style={[s.registerBudgetFill, { width: `${pct}%`, backgroundColor: over ? '#FCA5A5' : 'rgba(255,255,255,0.7)' }]} />
+                </View>
+                <Text style={[s.registerBudgetLbl, over && { color: '#FCA5A5' }]}>
+                  {fmt(registerCents)} / {fmt(weeklyBudgetCents)} budget
+                  {over ? ` · ${fmt(registerCents - weeklyBudgetCents)} over` : ` · ${fmt(weeklyBudgetCents - registerCents)} under`}
+                </Text>
+              </View>
+            );
+          })()}
           <Text style={s.registerHeroMeta}>
             {personalItems.length} item{personalItems.length !== 1 ? 's' : ''} • {storeGroups.length} store{storeGroups.length !== 1 ? 's' : ''}
           </Text>
@@ -988,6 +1007,17 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.78)',
     fontSize: 12,
     lineHeight: 18,
+  },
+  registerBudgetRow: { marginTop: 10, marginBottom: 2 },
+  registerBudgetTrack: {
+    height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 6, overflow: 'hidden',
+  },
+  registerBudgetFill: { height: '100%', borderRadius: 2 },
+  registerBudgetLbl: {
+    fontSize: 12, fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
   },
 
   // Summary bar

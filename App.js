@@ -367,7 +367,6 @@ function TrialBanner() {
 function MainTabs() {
   const tabs = filterEnabledItems([
     { name: 'HomeTab', component: HomeStack, label: 'Home', iconName: 'home' },
-    { name: 'DiscoverTab', component: DiscoverStack, label: 'Explore', iconName: 'compass' },
     { name: 'PlanTab', component: PlanStack, label: 'Plan', iconName: 'calendar' },
     { name: 'SnippdTab', component: CartStack, isCart: true },
     studioTab(StudioStack),

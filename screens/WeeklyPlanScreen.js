@@ -24,6 +24,7 @@ import { tracker } from '../src/lib/eventTracker';
 import { AgenticLedger, DecisionType } from '../src/services/agenticLedger';
 import { addItemsToActiveCart } from '../src/services/cartStorage';
 import { fetchTop3StoreEngine, engineTotalsForDisplay } from '../src/services/top3StoreEngine';
+import { fetchWeeklyBudgetCents } from '../lib/weeklyBudget';
 import { generateStacks, loadVerifiedStacks } from '../src/lib/generateStacks';
 
 const { width } = Dimensions.get('window');
@@ -453,7 +454,8 @@ export default function WeeklyPlanScreen({ navigation, route }) {
   const [platform,   setPlatform]   = useState('Snippd');
   const [planMeta,   setPlanMeta]   = useState({ calMin: null, calMax: null });
   const [enginePayload, setEnginePayload] = useState(null);
-  const [planTab,       setPlanTab]       = useState('meals');
+  const [planTab,            setPlanTab]            = useState('meals');
+  const [weeklyBudgetCents,  setWeeklyBudgetCents]  = useState(15000); // $150 default
 
   // ── Store selector + live deal state ──────────────────────────────────────
   const [selectedStore,   setSelectedStore]   = useState('best_overall');
@@ -590,7 +592,12 @@ export default function WeeklyPlanScreen({ navigation, route }) {
     } catch {}
   }, []);
 
-  useEffect(() => { load(); loadStoreDeals('best_overall'); loadAllStorePrices(); }, []);
+  useEffect(() => {
+    load();
+    loadStoreDeals('best_overall');
+    loadAllStorePrices();
+    fetchWeeklyBudgetCents().then(setWeeklyBudgetCents).catch(() => {});
+  }, []);
 
   const onRefresh = () => { setRefreshing(true); load(true); loadStoreDeals(selectedStore); };
 
@@ -854,25 +861,58 @@ export default function WeeklyPlanScreen({ navigation, route }) {
         {planTab === 'stacks' && (
           <View style={styles.pad}>
             {/* Comparison card */}
-            <View style={styles.stackCompareCard}>
-              <Text style={styles.stackCompareLabel}>THIS WEEK'S SAVINGS</Text>
-              <View style={styles.stackCompareRow}>
-                <View style={styles.stackCompareBlock}>
-                  <Text style={styles.stackCompareWas}>{fmt(regularTotal || youPayCents + youSaveCents)}</Text>
-                  <Text style={styles.stackCompareLbl}>without Snippd</Text>
+            {(() => {
+              const planRetail   = regularTotal || (youPayCents + youSaveCents);
+              const planPay      = youPayCents;
+              const budgetDiff   = planPay - weeklyBudgetCents;
+              const overBudget   = budgetDiff > 0;
+              const budgetUsedPct = weeklyBudgetCents > 0 ? Math.min(100, Math.round((planPay / weeklyBudgetCents) * 100)) : 0;
+              return (
+                <View style={styles.stackCompareCard}>
+                  <Text style={styles.stackCompareLabel}>THIS WEEK — RETAIL VS DEAL PRICE</Text>
+                  <View style={styles.stackCompareRow}>
+                    <View style={styles.stackCompareBlock}>
+                      <Text style={styles.stackCompareWas}>{fmt(planRetail)}</Text>
+                      <Text style={styles.stackCompareLbl}>full retail</Text>
+                    </View>
+                    <Feather name="arrow-right" size={20} color="rgba(255,255,255,0.45)" />
+                    <View style={styles.stackCompareBlock}>
+                      <Text style={styles.stackCompareNow}>{fmt(planPay)}</Text>
+                      <Text style={styles.stackCompareLbl}>with deals</Text>
+                    </View>
+                  </View>
+
+                  {/* Savings pill + budget status */}
+                  <View style={styles.stackCompareSavRow}>
+                    {youSaveCents > 0 && (
+                      <View style={styles.stackCompareSavPill}>
+                        <Text style={styles.stackCompareSavTxt}>Save {fmt(youSaveCents)} off retail</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Budget progress bar */}
+                  <View style={styles.stackBudgetSection}>
+                    <View style={styles.stackBudgetTrack}>
+                      <View style={[
+                        styles.stackBudgetFill,
+                        { width: `${budgetUsedPct}%`, backgroundColor: overBudget ? '#FCA5A5' : '#86EFAC' },
+                      ]} />
+                    </View>
+                    <View style={styles.stackBudgetFooter}>
+                      <Text style={styles.stackBudgetLbl}>
+                        {fmt(planPay)} / {fmt(weeklyBudgetCents)} weekly budget
+                      </Text>
+                      <Text style={[styles.stackBudgetStatus, { color: overBudget ? '#FCA5A5' : '#86EFAC' }]}>
+                        {overBudget
+                          ? `${fmt(budgetDiff)} over`
+                          : `${fmt(-budgetDiff)} under`}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-                <Feather name="arrow-right" size={20} color="rgba(255,255,255,0.45)" />
-                <View style={styles.stackCompareBlock}>
-                  <Text style={styles.stackCompareNow}>{fmt(youPayCents)}</Text>
-                  <Text style={styles.stackCompareLbl}>with Snippd</Text>
-                </View>
-              </View>
-              <View style={styles.stackCompareSavRow}>
-                <View style={styles.stackCompareSavPill}>
-                  <Text style={styles.stackCompareSavTxt}>You save {fmt(youSaveCents)}</Text>
-                </View>
-              </View>
-            </View>
+              );
+            })()}
 
             {/* Store filter tabs */}
             <ScrollView
@@ -1015,6 +1055,10 @@ export default function WeeklyPlanScreen({ navigation, route }) {
           <TouchableOpacity
             style={styles.lockBtn}
             onPress={async () => {
+              // Derive resolved store FIRST so cart + DB write use the same value
+              const resolvedStore = selectedStore === 'best_overall' ? 'publix' : selectedStore;
+              const resolvedStoreLabel = resolvedStore.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
               const cartItems = allPlanMeals.flatMap((meal) =>
                 meal.ingredients
                   .filter(i => i.name)
@@ -1028,11 +1072,10 @@ export default function WeeklyPlanScreen({ navigation, route }) {
                     source:       'meal_plan',
                     day:          meal.day,
                     meal_name:    meal.name,
-                    retailer:     platform || 'Snippd',
+                    retailer:     resolvedStoreLabel,
+                    retailer_key: resolvedStore,
                   }))
               );
-              const storeKey = String(platform || 'publix').toLowerCase().replace(/\s+/g, '_');
-              const resolvedStore = storeKey === 'snippd' ? 'publix' : storeKey;
               const listRows = allPlanMeals.flatMap((meal) =>
                 meal.ingredients
                   .filter(i => i.name && (i.sale_cents || 0) > 0)
@@ -1257,9 +1300,15 @@ const styles = StyleSheet.create({
   stackCompareWas: { fontSize: 26, fontWeight: '900', color: 'rgba(255,255,255,0.45)', textDecorationLine: 'line-through', letterSpacing: -0.5 },
   stackCompareNow: { fontSize: 32, fontWeight: '900', color: WHITE, letterSpacing: -0.8 },
   stackCompareLbl: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '700', marginTop: 3 },
-  stackCompareSavRow: { flexDirection: 'row' },
+  stackCompareSavRow: { flexDirection: 'row', marginBottom: 14 },
   stackCompareSavPill: { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
   stackCompareSavTxt: { fontSize: 13, fontWeight: '800', color: WHITE },
+  stackBudgetSection: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)', paddingTop: 12 },
+  stackBudgetTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginBottom: 7 },
+  stackBudgetFill: { height: '100%', borderRadius: 3 },
+  stackBudgetFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  stackBudgetLbl: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '700' },
+  stackBudgetStatus: { fontSize: 13, fontWeight: '900' },
   stackLoadWrap: { alignItems: 'center', paddingVertical: 32, gap: 8 },
   stackLoadTxt: { fontSize: 13, color: GRAY },
   stackEmptyCard: { alignItems: 'center', paddingVertical: 40, gap: 10 },
