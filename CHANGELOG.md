@@ -4,6 +4,12 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — SignInScreen: ADAPTIVE HOUSEHOLD INTELLIGENCE landing page (2026-05-08)
+- `screens/SignInScreen.js` — Complete redesign. New premium DTC landing page with: "ADAPTIVE HOUSEHOLD INTELLIGENCE" overline, hero headline "The grocery industry was built for a different generation." with green accent, 34%/84%/$47 stat cards, collapsible pain-point section, 4 feature rows (Ionicons), $2,028 annual savings green gradient card with 4 savings line-items, "Cost of Doing Nothing" 3-column urgency block, 2.1-hr time recovered stat, personalized grocery insights list. Sign-up flow now has 2 onboarding questions (household size → grocery goal) before email/password — 3-step wizard with progress dots. Sign-in tab unaffected.
+
+### Changed — ProfileScreen: premium redesign (2026-05-08)
+- `screens/ProfileScreen.js` — Full redesign. Green gradient hero card shows avatar initials, display name, AI shopper persona label (from preferences.persona_type), lifetime saved, velocity, and credits in a 3-stat bar. Loyalty Accounts section: 4 stores (Publix/Kroger/Target/Walmart) — connected stores show clipped coupon count badge, unconnected stores show "Connect" button routing to PreferredStores. Nutrition Goals: all 8 goal pills are tap-to-toggle with live Supabase write. Receipt History: last 3 APPROVED checkout_math_snapshots with store, date, "Saved $X" badge, and "You paid $X". Account Settings: 6 rows with Ionicons. Added checkout_math_snapshots fetch and clip_session_items coupon count fetch.
+
 ### Added — User flow and coupon validation documentation (2026-05-07)
 - `docs/USER_FLOW_AND_COUPON_VALIDATION.md` — Complete user journey from cold-start through verified savings: all 10 stages (app open, sign in, quick onboarding, deep brief, home screen, discover, clip session build, checkout, receipt upload/verification, wins screen). Full coupon validation pipeline: 4 pipelines (deal ingestion + 33 validation rules + publish gate, cart-based coupon matching service, stack spec engine 12-rule validator, receipt HMAC verification). Data written at every stage, all DB tables touched, 8 known engineer action items.
 

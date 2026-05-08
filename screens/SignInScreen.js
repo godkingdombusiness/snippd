@@ -1,984 +1,878 @@
 /**
- * SignInScreen — SNIPPD_BETA_HERO_REBUILD_V1
- *
- * Tablet (width > 768): dark hero left panel + white form right panel.
- * Phone: dark gradient hero header + floating white auth card.
- *
- * Auth wiring unchanged:
- *   Google / Apple → supabase.auth.signInWithOAuth (opens browser)
- *   Email → supabase.auth.signInWithPassword / signUp
- *   On success: App.js onAuthStateChange handles routing.
+ * SignInScreen — ADAPTIVE_HOUSEHOLD_INTELLIGENCE_V1
+ * Premium landing page + multi-step sign-up onboarding.
+ * Zero emojis. Brand green #0C9E54. Dark theme rejected.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ActivityIndicator, useWindowDimensions, Platform,
-  Animated, KeyboardAvoidingView, ScrollView, StatusBar,
+  ActivityIndicator, ScrollView, StatusBar, Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
-import { tracker } from '../src/lib/eventTracker';
 
-WebBrowser.maybeCompleteAuthSession();
-
-// ── Client-side rate limiter ──────────────────────────────────────────────────
-// Persisted across sessions so a page reload doesn't reset the lockout.
-const RL_KEY        = '@snippd/auth_attempts';
-const RL_MAX        = 5;   // failed attempts before lockout
-const RL_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
-
-async function rl_check() {
-  try {
-    const raw = await AsyncStorage.getItem(RL_KEY);
-    if (!raw) return { blocked: false, remaining: RL_MAX };
-    const { count, lockedUntil } = JSON.parse(raw);
-    if (lockedUntil && Date.now() < lockedUntil) {
-      return { blocked: true, secsLeft: Math.ceil((lockedUntil - Date.now()) / 1000) };
-    }
-    if (lockedUntil && Date.now() >= lockedUntil) {
-      await AsyncStorage.removeItem(RL_KEY);
-      return { blocked: false, remaining: RL_MAX };
-    }
-    return { blocked: false, remaining: Math.max(0, RL_MAX - count) };
-  } catch {
-    return { blocked: false, remaining: RL_MAX };
-  }
-}
-
-async function rl_record(success) {
-  try {
-    if (success) { await AsyncStorage.removeItem(RL_KEY); return; }
-    const raw = await AsyncStorage.getItem(RL_KEY);
-    const prev = raw ? JSON.parse(raw) : { count: 0, lockedUntil: null };
-    const count = prev.count + 1;
-    const lockedUntil = count >= RL_MAX ? Date.now() + RL_LOCKOUT_MS : null;
-    await AsyncStorage.setItem(RL_KEY, JSON.stringify({ count, lockedUntil }));
-  } catch {}
-}
-
-// ── Palette ───────────────────────────────────────────────────────────────────
 const GREEN      = '#0C9E54';
-const GREEN_DARK = '#07652F';
-const NAVY       = '#172250';
-const NAVY_DEEP  = '#0E1634';
-const NAVY_MID   = '#1A2E6B';
-const ACCENT     = '#C5FFBC';
-const ALERT      = '#FB5B5B';
+const GREEN_DARK = '#0A8040';
+const NAVY       = '#111827';
 const WHITE      = '#FFFFFF';
-const INK        = '#0D1217';
+const BG         = '#F8FAF9';
 const MUTED      = '#6B7280';
-const BORDER     = 'rgba(23,34,80,0.10)';
-const GLASS      = 'rgba(255,255,255,0.97)';
+const BORDER     = '#E5E7EB';
+const ERROR      = '#EF4444';
+const CARD_BG    = '#FFFFFF';
 
-// ── Google icon ───────────────────────────────────────────────────────────────
-const GOOGLE_COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335'];
-function GoogleIcon({ size = 18 }) {
-  return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', flexDirection: 'row', flexWrap: 'wrap' }}>
-      {GOOGLE_COLORS.map((c, i) => (
-        <View key={i} style={{ width: size / 2, height: size / 2, backgroundColor: c }} />
-      ))}
-    </View>
-  );
-}
+const FEATURES = [
+  { icon: 'resize-outline',  label: 'Right-sized grocery optimization' },
+  { icon: 'pulse-outline',   label: 'Adaptive consumption intelligence' },
+  { icon: 'leaf-outline',    label: 'Wellness-aware household planning' },
+  { icon: 'sync-outline',    label: 'Behavioral grocery orchestration' },
+];
 
-// ── Animated background blobs ─────────────────────────────────────────────────
-function HeroBg() {
-  const a1 = useRef(new Animated.Value(0)).current;
-  const a2 = useRef(new Animated.Value(0)).current;
-  const a3 = useRef(new Animated.Value(0)).current;
+const SAVINGS_ROWS = [
+  { label: 'Right-sized packages', amount: '$624/yr' },
+  { label: 'Coupon optimization',  amount: '$480/yr' },
+  { label: 'Waste reduction',      amount: '$624/yr' },
+  { label: 'Time value recovered', amount: '$300/yr' },
+];
 
-  useEffect(() => {
-    const loop = (val, dur) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(val, { toValue: 1, duration: dur, useNativeDriver: Platform.OS !== 'web' }),
-          Animated.timing(val, { toValue: 0, duration: dur, useNativeDriver: Platform.OS !== 'web' }),
-        ])
-      );
-    loop(a1, 7000).start();
-    loop(a2, 9500).start();
-    loop(a3, 12000).start();
-  }, [a1, a2, a3]);
+const PAIN_POINTS = [
+  'You buy the family pack, eat half, and toss the rest.',
+  'You clip coupons for things you never needed.',
+  'You spend Sunday planning meals you will not make.',
+];
 
-  const t1 = a1.interpolate({ inputRange: [0, 1], outputRange: [0, 40] });
-  const t2 = a2.interpolate({ inputRange: [0, 1], outputRange: [0, -28] });
-  const t3 = a3.interpolate({ inputRange: [0, 1], outputRange: [0, 22] });
+const HOUSEHOLD_SIZES = ['Just me', '2 people', '3 people', '4+ people'];
+const GROCERY_GOALS   = ['Save money', 'Reduce waste', 'Eat healthier', 'All of these'];
 
-  return (
-    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none', overflow: 'hidden' }]}>
-      <Animated.View style={[blobSt(360, 360, -100, -100, 'rgba(12,158,84,0.13)'), { transform: [{ translateX: t1 }, { translateY: t1 }] }]} />
-      <Animated.View style={[blobSt(240, 240, undefined, -60, 'rgba(12,158,84,0.07)', 120), { transform: [{ translateX: t2 }] }]} />
-      <Animated.View style={[blobSt(180, 180, 220, undefined, 'rgba(12,158,84,0.09)', undefined, 40), { transform: [{ translateY: t3 }] }]} />
-    </View>
-  );
-}
+export default function SignInScreen() {
+  const scrollRef   = useRef(null);
+  const authRef     = useRef(null);
 
-function blobSt(w, h, top, right, bg, bottom, left) {
-  return { position: 'absolute', width: w, height: h, borderRadius: w / 2, backgroundColor: bg, top, right, bottom, left };
-}
+  const [tab,           setTab]           = useState('signup');
+  const [signupStep,    setSignupStep]    = useState(0);
+  const [householdSize, setHouseholdSize] = useState(null);
+  const [groceryGoal,   setGroceryGoal]   = useState(null);
+  const [email,         setEmail]         = useState('');
+  const [password,      setPassword]      = useState('');
+  const [loading,       setLoading]       = useState(false);
+  const [errorMsg,      setErrorMsg]      = useState('');
+  const [painExpanded,  setPainExpanded]  = useState(false);
 
-// ── Value block (hero section) ────────────────────────────────────────────────
-function ValueBlock({ icon, title, text, compact = false }) {
-  if (compact) {
-    return (
-      <View style={vb.chipWrap}>
-        <Feather name={icon} size={13} color={GREEN} />
-        <Text style={vb.chipTitle}>{title}</Text>
-      </View>
+  const scrollToAuth = () => {
+    authRef.current?.measureLayout(
+      scrollRef.current?.getInnerViewNode?.() ?? null,
+      (_x, y) => scrollRef.current?.scrollTo({ y: y - 20, animated: true }),
+      () => {},
     );
-  }
-  return (
-    <View style={vb.blockWrap}>
-      <View style={vb.iconWrap}>
-        <Feather name={icon} size={16} color={GREEN} />
-      </View>
-      <Text style={vb.blockTitle}>{title}</Text>
-      <Text style={vb.blockText}>{text}</Text>
-    </View>
-  );
-}
+  };
 
-const vb = StyleSheet.create({
-  // Full blocks (tablet left panel)
-  blockWrap:  { flex: 1, gap: 6 },
-  iconWrap:   { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(12,158,84,0.18)', alignItems: 'center', justifyContent: 'center' },
-  blockTitle: { fontSize: 13, fontWeight: '800', color: WHITE, letterSpacing: -0.2 },
-  blockText:  { fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 15 },
+  const handleGetStarted = () => {
+    setTab('signup');
+    setSignupStep(0);
+    setTimeout(scrollToAuth, 150);
+  };
 
-  // Compact chips (mobile)
-  chipWrap:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(12,158,84,0.14)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(12,158,84,0.30)' },
-  chipTitle: { fontSize: 11, fontWeight: '700', color: GREEN, letterSpacing: 0.2 },
-});
+  const switchTab = (t) => {
+    setTab(t);
+    setSignupStep(0);
+    setErrorMsg('');
+  };
 
-// ── AI Mockup card (tablet right decoration) ──────────────────────────────────
-function AIMockup() {
-  const pulse = useRef(new Animated.Value(1)).current;
-  const dotFade = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.015, duration: 2200, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 2200, useNativeDriver: true }),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(dotFade, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(dotFade, { toValue: 0.4, duration: 900, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [pulse, dotFade]);
-
-  const ITEMS = [
-    { name: 'Organic Chicken Breast 2lb', store: 'Publix',  save: '−$3.10', tag: 'Matched',   tagColor: GREEN },
-    { name: 'Whole Grain Bread',          store: 'Walmart', save: '−$1.20', tag: 'Coupon',    tagColor: '#3B82F6' },
-    { name: 'Greek Yogurt 32oz',          store: 'Aldi',    save: '−$2.00', tag: 'Best Price', tagColor: '#8B5CF6' },
-  ];
-
-  return (
-    <Animated.View style={[mock.card, { transform: [{ scale: pulse }] }]}>
-      <View style={mock.headerRow}>
-        <Animated.View style={[mock.dot, { opacity: dotFade }]} />
-        <Text style={mock.headerTxt}>Optimizing your cart…</Text>
-        <ActivityIndicator size="small" color={GREEN} style={{ marginLeft: 'auto' }} />
-      </View>
-
-      {ITEMS.map((item, i) => (
-        <View key={i} style={mock.itemRow}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={mock.itemName} numberOfLines={1}>{item.name}</Text>
-            <Text style={mock.itemStore}>{item.store}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end', gap: 4 }}>
-            <Text style={mock.itemSave}>{item.save}</Text>
-            <View style={[mock.tag, { backgroundColor: item.tagColor + '20' }]}>
-              <Text style={[mock.tagTxt, { color: item.tagColor }]}>{item.tag}</Text>
-            </View>
-          </View>
-        </View>
-      ))}
-
-      <View style={mock.footer}>
-        <Text style={mock.footerLabel}>Saved this week</Text>
-        <Text style={mock.footerVal}>$6.30</Text>
-      </View>
-
-      <View style={mock.insight}>
-        <Feather name="zap" size={11} color={GREEN} />
-        <Text style={mock.insightTxt}>Switching to Aldi for dairy saves ~$14/mo</Text>
-      </View>
-    </Animated.View>
-  );
-}
-
-const mock = StyleSheet.create({
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(12,158,84,0.20)',
-    padding: 16,
-    gap: 10,
-  },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN },
-  headerTxt: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.2 },
-
-  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
-  itemName: { fontSize: 12, fontWeight: '600', color: WHITE },
-  itemStore: { fontSize: 10, color: 'rgba(255,255,255,0.35)' },
-  itemSave: { fontSize: 13, fontWeight: '800', color: GREEN },
-  tag: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  tagTxt: { fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
-
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(12,158,84,0.20)' },
-  footerLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
-  footerVal: { fontSize: 18, fontWeight: '900', color: GREEN, letterSpacing: -0.5 },
-
-  insight: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(12,158,84,0.10)', borderRadius: 10, padding: 8 },
-  insightTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)', flex: 1, lineHeight: 15 },
-});
-
-// ── Social button ─────────────────────────────────────────────────────────────
-function SocialBtn({ icon, label, onPress, disabled }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <TouchableOpacity
-        style={[form.socialBtn, disabled && { opacity: 0.5 }]}
-        onPress={() => {
-          Animated.sequence([
-            Animated.timing(scale, { toValue: 0.97, duration: 80, useNativeDriver: true }),
-            Animated.timing(scale, { toValue: 1,    duration: 120, useNativeDriver: true }),
-          ]).start();
-          onPress?.();
-        }}
-        activeOpacity={0.88}
-        disabled={disabled}
-      >
-        <View style={form.socialIcon}>{icon}</View>
-        <Text style={form.socialLabel}>{label}</Text>
-        <View style={{ width: 22 }} />
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
-
-// ── Field ─────────────────────────────────────────────────────────────────────
-function Field({ label, value, onChangeText, secureTextEntry, keyboardType,
-                 autoCapitalize, placeholder, rightEl, onFocus, onBlur, focused,
-                 autoComplete }) {
-  return (
-    <View style={form.fieldWrap}>
-      <Text style={form.fieldLabel}>{label}</Text>
-      <View style={[form.inputWrap, focused && form.inputWrapFocused]}>
-        <TextInput
-          style={form.input}
-          value={value}
-          onChangeText={onChangeText}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType || 'default'}
-          autoCapitalize={autoCapitalize || 'none'}
-          placeholder={placeholder}
-          placeholderTextColor="rgba(107,114,128,0.40)"
-          onFocus={onFocus}
-          onBlur={onBlur}
-          autoCorrect={false}
-          autoComplete={autoComplete || 'off'}
-          selectionColor={GREEN}
-          cursorColor={GREEN}
-        />
-        {rightEl}
-      </View>
-    </View>
-  );
-}
-
-// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
-export default function SignInScreen({ navigation }) {
-  const { width } = useWindowDimensions();
-  const isTablet  = width > 768;
-
-  const [tab,          setTab]          = useState('signin');
-  const [email,        setEmail]        = useState('');
-  const [password,     setPassword]     = useState('');
-  const [showPw,       setShowPw]       = useState(false);
-  const [loading,      setLoading]      = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(null);
-  const [errorMsg,     setErrorMsg]     = useState('');
-  const [focusedField, setFocusedField] = useState(null);
-  const [rlBlocked,    setRlBlocked]    = useState(false);
-  const [rlSecsLeft,   setRlSecsLeft]   = useState(0);
-  const rlTimerRef = useRef(null);
-
-  const cardFade  = useRef(new Animated.Value(0)).current;
-  const cardSlide = useRef(new Animated.Value(24)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(cardFade,  { toValue: 1, duration: 750, delay: 200, useNativeDriver: true }),
-      Animated.timing(cardSlide, { toValue: 0, duration: 750, delay: 200, useNativeDriver: true }),
-    ]).start();
-    // Restore any active lockout from a previous session
-    rl_check().then(s => {
-      if (s.blocked) startLockoutTimer(s.secsLeft);
-    });
-    return () => clearInterval(rlTimerRef.current);
-  }, []);
-
-  function startLockoutTimer(secsLeft) {
-    setRlBlocked(true);
-    setRlSecsLeft(secsLeft);
-    clearInterval(rlTimerRef.current);
-    rlTimerRef.current = setInterval(() => {
-      setRlSecsLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(rlTimerRef.current);
-          setRlBlocked(false);
-          AsyncStorage.removeItem(RL_KEY).catch(() => {});
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }
-
-  const clearError = () => setErrorMsg('');
-
-  // ── Email auth ────────────────────────────────────────────────────────────
-  const handleEmail = useCallback(async () => {
-    clearError();
-
-    // Client-side rate limit check
-    const rl = await rl_check();
-    if (rl.blocked) { startLockoutTimer(rl.secsLeft); return; }
-
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setErrorMsg('Enter a valid email address.');
-      return;
-    }
-    if (password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters.');
+  const handleAuth = async () => {
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Please enter your email and password.');
       return;
     }
     setLoading(true);
+    setErrorMsg('');
     try {
-      if (tab === 'signin') {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
-        if (error) throw error;
-        await rl_record(true);
-        if (data?.session?.access_token) tracker.setAccessToken(data.session.access_token);
-        // App.js onAuthStateChange fires SIGNED_IN → resolveUserStatus → navigates.
-      } else {
-        const { data, error } = await supabase.auth.signUp({ email: trimmedEmail, password });
-        if (error) throw error;
-        await rl_record(true);
-        if (data?.user) {
-          await supabase.from('profiles').upsert({
-            user_id:       data.user.id,
-            email:         data.user.email,
-            full_name:     data.user.email?.split('@')[0],
-            weekly_budget: 15000,
-          }, { onConflict: 'user_id', ignoreDuplicates: true });
-          if (data.session) {
-            tracker.setAccessToken(data.session.access_token);
-          } else {
-            navigation.navigate('ConciergeOnboarding');
-          }
-        }
-      }
-    } catch (err) {
-      // Record the failed attempt and warn user of remaining tries
-      await rl_record(false);
-      const after = await rl_check();
-      if (after.blocked) {
-        startLockoutTimer(after.secsLeft);
-        setErrorMsg('Too many failed attempts. Please wait 15 minutes before trying again.');
-      } else {
-        const remaining = after.remaining ?? 0;
-        const suffix = remaining > 0 ? ` (${remaining} attempt${remaining !== 1 ? 's' : ''} left)` : '';
-        setErrorMsg((err.message || 'Authentication failed.') + suffix);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [tab, email, password]);
-
-  // ── OAuth ─────────────────────────────────────────────────────────────────
-  const handleOAuth = useCallback(async (provider) => {
-    clearError();
-    setOauthLoading(provider);
-    try {
-      if (Platform.OS === 'web') {
-        // Web: let Supabase redirect the browser to Google and back.
-        // The SPA rewrite in vercel.json sends every URL back to index.html,
-        // and App.js startup code calls exchangeCodeForSession on the callback URL.
-        const redirectTo = typeof window !== 'undefined'
-          ? `${window.location.origin}/auth/callback`
-          : undefined;
-        const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
-        if (error) throw error;
-        // Browser will navigate — no further action needed in this callback.
-      } else {
-        // Native (iOS / Android): open Google in a managed browser session,
-        // intercept the snippd://auth/callback redirect, exchange the code.
-        const redirectTo = makeRedirectUri({ scheme: 'snippd', path: 'auth/callback' });
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: { redirectTo, skipBrowserRedirect: true },
-        });
-        if (error) throw error;
-        if (data?.url) {
-          const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-          if (result.type === 'success' && result.url) {
-            const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(result.url);
-            if (exchangeErr) throw exchangeErr;
-            // onAuthStateChange in App.js fires SIGNED_IN and routes the user.
-          }
-          // result.type === 'cancel' means the user closed the browser — silent, no error.
-        }
-      }
-    } catch (err) {
-      const name = provider === 'google' ? 'Google' : 'Apple';
-      setErrorMsg(`${name} sign-in failed. Check your internet connection or try email instead.`);
-    } finally {
-      setOauthLoading(null);
-    }
-  }, []);
-
-  const handleForgotPassword = useCallback(async () => {
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setErrorMsg('Enter your email above, then tap Forgot password?');
-      return;
-    }
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail);
+      const { error } = tab === 'signin'
+        ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
+        : await supabase.auth.signUp({ email: email.trim(), password });
       if (error) throw error;
-      setErrorMsg(`Reset link sent to ${trimmedEmail}`);
     } catch (err) {
       setErrorMsg(err.message);
     } finally {
       setLoading(false);
     }
-  }, [email]);
-
-  const switchTab = (t) => { setTab(t); clearError(); };
-
-  // ── Shared form body (everything inside the white card) ───────────────────
-  const FormBody = () => (
-    <>
-      {/* Rate-limit lockout banner */}
-      {rlBlocked && (
-        <View style={form.lockoutBanner}>
-          <Feather name="lock" size={14} color={ALERT} />
-          <Text style={form.lockoutTxt}>
-            Too many attempts.{' '}
-            <Text style={{ fontWeight: '800' }}>
-              Try again in {Math.floor(rlSecsLeft / 60)}:{String(rlSecsLeft % 60).padStart(2, '0')}
-            </Text>
-          </Text>
-        </View>
-      )}
-
-      {/* Card header */}
-      <View style={form.cardHead}>
-        <Text style={form.cardEyebrow}>
-          {tab === 'signin' ? 'Welcome back to smarter shopping.' : 'Start saving smarter today.'}
-        </Text>
-        <Text style={form.cardSub}>
-          {tab === 'signin'
-            ? 'Sign in to continue building smarter carts and personalized savings plans.'
-            : 'Join the beta and let Snippd quietly handle the savings work.'}
-        </Text>
-      </View>
-
-      {/* Tab toggle */}
-      <View style={form.tabToggle}>
-        <TouchableOpacity
-          style={[form.tabBtn, tab === 'signin' && form.tabBtnActive]}
-          onPress={() => switchTab('signin')}
-        >
-          <Text style={[form.tabBtnTxt, tab === 'signin' && form.tabBtnTxtActive]}>Sign In</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[form.tabBtn, tab === 'signup' && form.tabBtnActive]}
-          onPress={() => switchTab('signup')}
-        >
-          <Text style={[form.tabBtnTxt, tab === 'signup' && form.tabBtnTxtActive]}>Join Beta</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Fields */}
-      <View style={form.fieldGroup}>
-        <Field
-          label="Email"
-          value={email}
-          onChangeText={t => { setEmail(t); clearError(); }}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          placeholder="you@example.com"
-          focused={focusedField === 'email'}
-          onFocus={() => setFocusedField('email')}
-          onBlur={() => setFocusedField(null)}
-        />
-        <Field
-          label="Password"
-          value={password}
-          onChangeText={t => { setPassword(t); clearError(); }}
-          secureTextEntry={!showPw}
-          autoComplete={tab === 'signin' ? 'current-password' : 'new-password'}
-          placeholder="••••••••"
-          focused={focusedField === 'pw'}
-          onFocus={() => setFocusedField('pw')}
-          onBlur={() => setFocusedField(null)}
-          rightEl={
-            <TouchableOpacity style={form.eyeBtn} onPress={() => setShowPw(v => !v)}>
-              <Feather name={showPw ? 'eye-off' : 'eye'} size={15} color={MUTED} />
-            </TouchableOpacity>
-          }
-        />
-      </View>
-
-      {/* Forgot password */}
-      {tab === 'signin' && (
-        <TouchableOpacity style={form.forgotWrap} onPress={handleForgotPassword} disabled={loading}>
-          <Text style={form.forgotTxt}>Forgot password?</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Error */}
-      {!!errorMsg && (
-        <View style={form.errorWrap}>
-          <Feather name="alert-circle" size={13} color={ALERT} />
-          <Text style={form.errorTxt}>{errorMsg}</Text>
-        </View>
-      )}
-
-      {/* Submit */}
-      <TouchableOpacity
-        style={[form.submitBtn, (loading || rlBlocked) && form.submitBtnDisabled]}
-        onPress={handleEmail}
-        disabled={loading || rlBlocked}
-        activeOpacity={0.88}
-      >
-        {loading ? (
-          <ActivityIndicator color={WHITE} />
-        ) : (
-          <Text style={form.submitBtnTxt}>
-            {tab === 'signin' ? 'Continue' : 'Join Beta'}
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      {/* Bottom link */}
-      <Text style={form.bottomLink}>
-        {tab === 'signin'
-          ? <Text>New to Snippd?{' '}<Text style={form.bottomLinkA} onPress={() => switchTab('signup')}>Join the beta →</Text></Text>
-          : <Text>Already have an account?{' '}<Text style={form.bottomLinkA} onPress={() => switchTab('signin')}>Sign in</Text></Text>
-        }
-      </Text>
-    </>
-  );
-
-  // ── LEFT PANEL (tablet hero) ──────────────────────────────────────────────
-  const LeftPanel = () => (
-    <LinearGradient
-      colors={[NAVY_DEEP, NAVY, NAVY_MID]}
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
-      style={layout.leftPanel}
-    >
-      <HeroBg />
-      <SafeAreaView style={layout.leftInner} edges={['top', 'bottom']}>
-
-        {/* Wordmark */}
-        <Text style={hero.wordmark}>
-          snipp<Text style={{ color: GREEN }}>d</Text>
-        </Text>
-
-        {/* Headline */}
-        <View style={hero.headlineWrap}>
-          <Text style={hero.headline}>
-            {'Groceries got\nexpensive.'}
-          </Text>
-          <Text style={[hero.headline, { color: GREEN }]}>
-            {'Your cart got\nsmarter.'}
-          </Text>
-        </View>
-
-        {/* Sub */}
-        <Text style={hero.sub}>
-          Snippd automatically finds better deals, personalized savings, and smarter shopping plans before you check out — so your money goes further without the extra work.
-        </Text>
-
-        {/* Value blocks */}
-        <View style={hero.valueRow}>
-          <ValueBlock icon="clock"         title="Save Time"          text="Skip the spreadsheets and store hopping." />
-          <ValueBlock icon="shopping-cart" title="Smarter Carts"      text="Built around your real shopping habits." />
-          <ValueBlock icon="trending-up"   title="Gets Smarter"       text="The more you use it, the better it gets." />
-        </View>
-
-        {/* AI Mockup */}
-        <AIMockup />
-      </SafeAreaView>
-    </LinearGradient>
-  );
-
-  // ── RIGHT PANEL (tablet form) ─────────────────────────────────────────────
-  const RightPanel = () => (
-    <View style={layout.rightPanel}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <ScrollView
-            contentContainerStyle={layout.rightScroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Animated.View
-              style={[layout.formCard, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
-            >
-              {FormBody()}
-            </Animated.View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </View>
-  );
-
-  // ── PHONE LAYOUT ──────────────────────────────────────────────────────────
-  const PhoneLayout = () => (
-    <LinearGradient
-      colors={[NAVY_DEEP, NAVY, NAVY_MID]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0.3, y: 1 }}
-      style={{ flex: 1 }}
-    >
-      <HeroBg />
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <ScrollView
-            contentContainerStyle={layout.phoneScroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Hero header */}
-            <View style={hero.phoneHero}>
-              <Text style={hero.wordmarkPhone}>
-                snipp<Text style={{ color: GREEN }}>d</Text>
-              </Text>
-              <Text style={hero.phoneHeadline}>
-                {'Groceries got expensive.\n'}
-                <Text style={{ color: GREEN }}>Your cart got smarter.</Text>
-              </Text>
-              <Text style={hero.phoneSub}>
-                AI-powered savings that works quietly in the background — personalized to how you actually shop.
-              </Text>
-              {/* Value chips */}
-              <View style={hero.chipRow}>
-                <ValueBlock icon="clock"         title="Save Time"      compact />
-                <ValueBlock icon="shopping-cart" title="Smart Carts"    compact />
-                <ValueBlock icon="trending-up"   title="Personalized"   compact />
-              </View>
-            </View>
-
-            {/* Floating auth card */}
-            <Animated.View
-              style={[layout.phoneCard, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
-            >
-              {FormBody()}
-            </Animated.View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </LinearGradient>
-  );
+  };
 
   return (
-    <View style={{ flex: 1 }}>
-      <StatusBar barStyle="light-content" />
-      {isTablet ? (
-        <View style={layout.tabletRow}>
-          {LeftPanel()}
-          {RightPanel()}
-        </View>
-      ) : PhoneLayout()}
+    <View style={s.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <ScrollView
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={s.scroll}
+            keyboardShouldPersistTaps="handled"
+          >
+
+            {/* ── HERO ─────────────────────────────────── */}
+            <View style={s.hero}>
+              <Text style={s.logo}>snipp<Text style={{ color: GREEN }}>d</Text></Text>
+              <Text style={s.overline}>ADAPTIVE HOUSEHOLD INTELLIGENCE</Text>
+              <Text style={s.headline}>
+                The grocery industry was built for a{' '}
+                <Text style={{ color: GREEN }}>different generation.</Text>
+              </Text>
+
+              <View style={s.statRow}>
+                {[
+                  { num: '34%', label: 'Less Waste\naverage' },
+                  { num: '84%', label: 'Right-Sized\nmatch score' },
+                  { num: '$47', label: 'Saved\nper week avg', green: true },
+                ].map(({ num, label, green }) => (
+                  <View key={num} style={s.statCard}>
+                    <Text style={[s.statNum, green && { color: GREEN }]}>{num}</Text>
+                    <Text style={s.statLabel}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <Text style={s.trust}>Trusted by 50,000+ modern households</Text>
+
+              <TouchableOpacity style={s.heroCta} onPress={handleGetStarted} activeOpacity={0.9}>
+                <Text style={s.heroCtaText}>Build My Smart Grocery Plan</Text>
+                <Ionicons name="arrow-forward" size={16} color={WHITE} style={{ marginLeft: 8 }} />
+              </TouchableOpacity>
+            </View>
+
+            {/* ── WHY GROCERIES FEEL BROKEN ─────────────── */}
+            <View style={s.section}>
+              <TouchableOpacity
+                style={s.collapseRow}
+                onPress={() => setPainExpanded(v => !v)}
+                activeOpacity={0.8}
+              >
+                <Text style={s.sectionTitle}>WHY GROCERIES FEEL SO BROKEN</Text>
+                <Ionicons
+                  name={painExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+                  size={18}
+                  color={MUTED}
+                />
+              </TouchableOpacity>
+              {painExpanded && PAIN_POINTS.map((pt, i) => (
+                <View key={i} style={s.painRow}>
+                  <View style={s.painDot} />
+                  <Text style={s.painText}>{pt}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* ── BUILT FOR HOW YOU ACTUALLY LIVE ──────── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>BUILT FOR HOW YOU ACTUALLY LIVE</Text>
+              {FEATURES.map((f, i) => (
+                <View key={i} style={s.featureRow}>
+                  <View style={s.featureIcon}>
+                    <Ionicons name={f.icon} size={18} color={GREEN} />
+                  </View>
+                  <Text style={s.featureLabel}>{f.label}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* ── $2,028 ANNUAL SAVINGS ─────────────────── */}
+            <LinearGradient colors={[GREEN, GREEN_DARK]} style={s.savingsCard}>
+              <Text style={s.savingsOverline}>
+                ANNUAL SAVINGS POTENTIAL{'\n'}WITH SNIPPD
+              </Text>
+              <Text style={s.savingsTotal}>$2,028</Text>
+              <Text style={s.savingsSub}>potential savings per year, per household</Text>
+              <View style={s.savingsDivider} />
+              {SAVINGS_ROWS.map((row, i) => (
+                <View key={i} style={s.savingsRow}>
+                  <Text style={s.savingsItem}>{row.label}</Text>
+                  <Text style={s.savingsAmt}>{row.amount}</Text>
+                </View>
+              ))}
+            </LinearGradient>
+
+            {/* ── COST OF DOING NOTHING ─────────────────── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>COST OF DOING NOTHING</Text>
+              <Text style={s.sectionSub}>Without Snippd, this is what continues</Text>
+              <View style={s.costRow}>
+                {[
+                  { num: '$2,028', label: '/year in grocery overspend' },
+                  { num: '25+',    label: 'hrs/month of planning time wasted' },
+                  { num: '4.8',    label: 'lbs/week food waste generated' },
+                ].map(({ num, label }) => (
+                  <View key={num} style={s.costCard}>
+                    <Text style={s.costNum}>{num}</Text>
+                    <Text style={s.costLabel}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={s.costCallout}>
+                That is $2,028 per year and 25+ hours per month — handed back to you by Snippd.
+              </Text>
+            </View>
+
+            {/* ── MONTHLY TIME RECOVERED ────────────────── */}
+            <View style={[s.section, s.timeCard]}>
+              <Text style={s.sectionTitle}>MONTHLY TIME RECOVERED</Text>
+              <Text style={s.timeStat}>2.1 hrs</Text>
+              <Text style={s.timeSub}>saved per month vs. manual grocery planning</Text>
+            </View>
+
+            {/* ── PERSONALIZED INSIGHTS ─────────────────── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>PERSONALIZED GROCERY INSIGHTS</Text>
+              {[
+                'Your household overspends by ~$39/week on wrong package sizes',
+                'Right-sized protein bundles save 28% vs. family packs',
+                'Snippd users reduce waste by 34% in the first 30 days',
+              ].map((insight, i) => (
+                <View key={i} style={s.insightRow}>
+                  <Ionicons name="checkmark-circle" size={16} color={GREEN} style={{ marginTop: 2 }} />
+                  <Text style={s.insightText}>{insight}</Text>
+                </View>
+              ))}
+              <Text style={s.insightCta}>Snippd already figured this out for you.</Text>
+              <Text style={s.insightSub}>Start in 2 minutes. No setup. No spreadsheets.</Text>
+            </View>
+
+            {/* ── AUTH CARD ─────────────────────────────── */}
+            <View ref={authRef} style={s.authCard} collapsable={false}>
+
+              {/* Tab row */}
+              <View style={s.tabRow}>
+                {[
+                  { id: 'signup', label: 'Get Started' },
+                  { id: 'signin', label: 'Sign In' },
+                ].map(({ id, label }) => (
+                  <TouchableOpacity
+                    key={id}
+                    style={[s.tabBtn, tab === id && s.tabActive]}
+                    onPress={() => switchTab(id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[s.tabText, tab === id && s.tabTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* ── SIGN IN ── */}
+              {tab === 'signin' && (
+                <View>
+                  <Text style={s.cardTitle}>Welcome back</Text>
+                  <View style={s.inputGroup}>
+                    <TextInput
+                      style={s.input}
+                      placeholder="Email address"
+                      placeholderTextColor={MUTED}
+                      value={email}
+                      onChangeText={setEmail}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      autoComplete="email"
+                    />
+                    <TextInput
+                      style={s.input}
+                      placeholder="Password"
+                      placeholderTextColor={MUTED}
+                      secureTextEntry
+                      value={password}
+                      onChangeText={setPassword}
+                    />
+                  </View>
+                  {!!errorMsg && <Text style={s.error}>{errorMsg}</Text>}
+                  <TouchableOpacity style={s.primaryBtn} onPress={handleAuth} activeOpacity={0.9}>
+                    {loading
+                      ? <ActivityIndicator color={WHITE} />
+                      : <Text style={s.primaryBtnText}>Continue</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* ── SIGN UP — STEP 0: HOUSEHOLD SIZE ── */}
+              {tab === 'signup' && signupStep === 0 && (
+                <View>
+                  <Text style={s.cardTitle}>How many people do you shop for?</Text>
+                  <Text style={s.cardSub}>Snippd right-sizes your grocery plan for your household.</Text>
+                  <View style={s.choiceGrid}>
+                    {HOUSEHOLD_SIZES.map(size => (
+                      <TouchableOpacity
+                        key={size}
+                        style={[s.choiceBtn, householdSize === size && s.choiceActive]}
+                        onPress={() => setHouseholdSize(size)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[s.choiceText, householdSize === size && s.choiceTextActive]}>
+                          {size}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity
+                    style={[s.primaryBtn, !householdSize && s.btnDisabled]}
+                    onPress={() => householdSize && setSignupStep(1)}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={s.primaryBtnText}>Next</Text>
+                  </TouchableOpacity>
+                  <View style={s.stepDots}>
+                    {[0, 1, 2].map(i => (
+                      <View key={i} style={[s.dot, i === 0 && s.dotActive]} />
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* ── SIGN UP — STEP 1: GROCERY GOAL ── */}
+              {tab === 'signup' && signupStep === 1 && (
+                <View>
+                  <Text style={s.cardTitle}>What is your main grocery goal?</Text>
+                  <Text style={s.cardSub}>Snippd optimizes differently for each goal.</Text>
+                  <View style={s.choiceGrid}>
+                    {GROCERY_GOALS.map(goal => (
+                      <TouchableOpacity
+                        key={goal}
+                        style={[s.choiceBtn, groceryGoal === goal && s.choiceActive]}
+                        onPress={() => setGroceryGoal(goal)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[s.choiceText, groceryGoal === goal && s.choiceTextActive]}>
+                          {goal}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity
+                    style={[s.primaryBtn, !groceryGoal && s.btnDisabled]}
+                    onPress={() => groceryGoal && setSignupStep(2)}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={s.primaryBtnText}>Next</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setSignupStep(0)} style={s.backBtn}>
+                    <Text style={s.backText}>Back</Text>
+                  </TouchableOpacity>
+                  <View style={s.stepDots}>
+                    {[0, 1, 2].map(i => (
+                      <View key={i} style={[s.dot, i === 1 && s.dotActive]} />
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* ── SIGN UP — STEP 2: EMAIL + PASSWORD ── */}
+              {tab === 'signup' && signupStep === 2 && (
+                <View>
+                  <Text style={s.cardTitle}>Create your account</Text>
+                  <Text style={s.cardSub}>
+                    {householdSize} · {groceryGoal}
+                  </Text>
+                  <View style={s.inputGroup}>
+                    <TextInput
+                      style={s.input}
+                      placeholder="Email address"
+                      placeholderTextColor={MUTED}
+                      value={email}
+                      onChangeText={setEmail}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      autoComplete="email"
+                    />
+                    <TextInput
+                      style={s.input}
+                      placeholder="Password"
+                      placeholderTextColor={MUTED}
+                      secureTextEntry
+                      value={password}
+                      onChangeText={setPassword}
+                    />
+                  </View>
+                  {!!errorMsg && <Text style={s.error}>{errorMsg}</Text>}
+                  <TouchableOpacity style={s.primaryBtn} onPress={handleAuth} activeOpacity={0.9}>
+                    {loading
+                      ? <ActivityIndicator color={WHITE} />
+                      : <Text style={s.primaryBtnText}>Start Saving with Snippd</Text>
+                    }
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setSignupStep(1)} style={s.backBtn}>
+                    <Text style={s.backText}>Back</Text>
+                  </TouchableOpacity>
+                  <View style={s.stepDots}>
+                    {[0, 1, 2].map(i => (
+                      <View key={i} style={[s.dot, i === 2 && s.dotActive]} />
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <Text style={s.disclaimer}>256-bit encryption · No credit card required</Text>
+            </View>
+
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 }
 
-// ── Hero styles ───────────────────────────────────────────────────────────────
-const hero = StyleSheet.create({
-  // Tablet left panel
-  wordmark: {
-    fontFamily: 'Sublima-ExtraBold',
-    fontSize: 28,
+const s = StyleSheet.create({
+  root:   { flex: 1, backgroundColor: BG },
+  scroll: { paddingBottom: 60 },
+
+  // ── Hero ──
+  hero: {
+    backgroundColor: WHITE,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  logo: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: NAVY,
+    letterSpacing: -1,
+    marginBottom: 20,
+  },
+  overline: {
+    fontSize: 11,
+    fontWeight: '800',
     color: GREEN,
-    letterSpacing: -0.5,
-    marginBottom: 32,
+    letterSpacing: 1.2,
+    marginBottom: 12,
   },
-  headlineWrap: { gap: 0, marginBottom: 20 },
   headline: {
-    fontFamily: 'Sublima-ExtraBold',
-    fontSize: 44,
-    lineHeight: 48,
-    color: WHITE,
-    letterSpacing: -1.8,
-  },
-  sub: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.45)',
-    lineHeight: 22,
-    fontWeight: '300',
-    maxWidth: 340,
-    marginBottom: 28,
-  },
-  valueRow: {
-    flexDirection: 'row',
-    gap: 16,
+    fontSize: 36,
+    fontWeight: '800',
+    color: NAVY,
+    lineHeight: 44,
+    letterSpacing: -1,
     marginBottom: 28,
   },
 
-  // Phone
-  phoneHero: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 28,
-    gap: 12,
+  // Stat cards
+  statRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
   },
-  wordmarkPhone: {
-    fontFamily: 'Sublima-ExtraBold',
-    fontSize: 24,
-    color: GREEN,
+  statCard: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: 'center',
+  },
+  statNum: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: NAVY,
     letterSpacing: -0.5,
-    marginBottom: 8,
   },
-  phoneHeadline: {
-    fontFamily: 'Sublima-ExtraBold',
-    fontSize: 34,
-    lineHeight: 38,
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: MUTED,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 14,
+  },
+
+  trust: {
+    fontSize: 12,
+    color: MUTED,
+    fontWeight: '500',
+    marginBottom: 20,
+  },
+  heroCta: {
+    backgroundColor: GREEN,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: GREEN,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  heroCtaText: {
     color: WHITE,
-    letterSpacing: -1.5,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
-  phoneSub: {
+
+  // ── Sections ──
+  section: {
+    backgroundColor: WHITE,
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: BORDER,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: NAVY,
+    letterSpacing: 1.2,
+    marginBottom: 14,
+  },
+  sectionSub: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.40)',
-    lineHeight: 20,
-    fontWeight: '300',
+    color: MUTED,
+    marginTop: -8,
+    marginBottom: 16,
+    fontWeight: '500',
   },
-  chipRow: {
+
+  // Collapsible pain points
+  collapseRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  painRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 12,
+  },
+  painDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GREEN,
+    marginTop: 7,
+    flexShrink: 0,
+  },
+  painText: {
+    fontSize: 14,
+    color: NAVY,
+    lineHeight: 22,
+    flex: 1,
+  },
+
+  // Features
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  featureIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F0FBF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  featureLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: NAVY,
+  },
+
+  // Savings card
+  savingsCard: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+  },
+  savingsOverline: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+  savingsTotal: {
+    fontSize: 52,
+    fontWeight: '900',
+    color: WHITE,
+    letterSpacing: -2,
+    lineHeight: 58,
+  },
+  savingsSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '500',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  savingsDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 16,
+  },
+  savingsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  savingsItem: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '500',
+  },
+  savingsAmt: {
+    fontSize: 14,
+    color: WHITE,
+    fontWeight: '700',
+  },
+
+  // Cost of doing nothing
+  costRow: {
     flexDirection: 'row',
     gap: 8,
-    flexWrap: 'wrap',
-    marginTop: 4,
+    marginBottom: 16,
   },
-});
-
-// ── Form / card styles ────────────────────────────────────────────────────────
-const form = StyleSheet.create({
-  lockoutBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF1F1', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(251,91,91,0.20)' },
-  lockoutTxt: { flex: 1, fontSize: 12, color: ALERT, lineHeight: 17 },
-
-  cardHead: { marginBottom: 20, gap: 6 },
-  cardEyebrow: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: INK,
-    letterSpacing: -0.3,
+  costCard: {
+    flex: 1,
+    backgroundColor: '#FEF3F2',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    alignItems: 'center',
+  },
+  costNum: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#DC2626',
+    letterSpacing: -0.5,
+  },
+  costLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 14,
+    fontWeight: '500',
+  },
+  costCallout: {
+    fontSize: 13,
+    color: NAVY,
     lineHeight: 20,
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+
+  // Time recovered
+  timeCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  timeStat: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: GREEN,
+    letterSpacing: -2,
+    marginVertical: 8,
+  },
+  timeSub: {
+    fontSize: 14,
+    color: MUTED,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
+  // Insights
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 12,
+  },
+  insightText: {
+    fontSize: 14,
+    color: NAVY,
+    lineHeight: 22,
+    flex: 1,
+    fontWeight: '500',
+  },
+  insightCta: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: NAVY,
+    marginTop: 8,
+    marginBottom: 6,
+    letterSpacing: -0.3,
+  },
+  insightSub: {
+    fontSize: 14,
+    color: MUTED,
+    fontWeight: '500',
+  },
+
+  // ── Auth card ──
+  authCard: {
+    backgroundColor: CARD_BG,
+    marginTop: 8,
+    marginHorizontal: 16,
+    borderRadius: 24,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 24,
+    elevation: 6,
+    marginBottom: 8,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 28,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabActive: {
+    backgroundColor: WHITE,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: MUTED,
+  },
+  tabTextActive: {
+    color: GREEN,
+  },
+
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: NAVY,
+    marginBottom: 6,
+    letterSpacing: -0.4,
   },
   cardSub: {
     fontSize: 13,
     color: MUTED,
-    lineHeight: 19,
-    fontWeight: '300',
+    fontWeight: '500',
+    marginBottom: 20,
   },
 
-  // Tab toggle
-  tabToggle: {
+  // Choice grid (onboarding questions)
+  choiceGrid: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(23,34,80,0.05)',
-    borderRadius: 14,
-    padding: 4,
+    flexWrap: 'wrap',
+    gap: 10,
     marginBottom: 24,
   },
-  tabBtn: {
-    flex: 1, paddingVertical: 10,
-    borderRadius: 11,
-    alignItems: 'center',
-  },
-  tabBtnActive: {
-    backgroundColor: WHITE,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  tabBtnTxt:       { fontSize: 13, fontWeight: '500', color: MUTED },
-  tabBtnTxtActive: { fontSize: 13, fontWeight: '800', color: NAVY },
-
-  // Social
-  socialGroup: { gap: 10, marginBottom: 20 },
-  socialBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
+  choiceBtn: {
+    paddingVertical: 12,
     paddingHorizontal: 18,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: BORDER,
-    borderRadius: 16,
-    backgroundColor: GLASS,
-    gap: 12,
+    backgroundColor: '#F9FAFB',
   },
-  socialIcon:  { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
-  socialLabel: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '500', color: INK },
-
-  // Divider
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(23,34,80,0.08)' },
-  dividerTxt: {
-    fontSize: 10, fontWeight: '600',
-    color: MUTED, letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-
-  // Fields
-  fieldGroup: { gap: 12, marginBottom: 6 },
-  fieldWrap:  {},
-  fieldLabel: {
-    fontSize: 11, fontWeight: '700',
-    color: MUTED, letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: BORDER,
-    borderRadius: 14,
-    backgroundColor: WHITE,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-  },
-  inputWrapFocused: {
+  choiceActive: {
     borderColor: GREEN,
-    ...Platform.select({
-      web:     { boxShadow: '0 0 0 3px rgba(12,158,84,0.20), 0 0 0 1.5px #0C9E54' },
-      default: { shadowColor: GREEN, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 5, elevation: 2 },
-    }),
+    backgroundColor: '#F0FBF5',
   },
+  choiceText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: NAVY,
+  },
+  choiceTextActive: {
+    color: GREEN,
+  },
+
+  // Inputs
+  inputGroup: { gap: 14, marginBottom: 24 },
   input: {
-    flex: 1,
+    height: 52,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    paddingHorizontal: 16,
     fontSize: 15,
-    color: INK,
-    backgroundColor: WHITE,
-    underlineColorAndroid: 'transparent',
-    paddingVertical: 0,
-    ...Platform.select({
-      web: {
-        outline: 'none',
-        outlineWidth: 0,
-        outlineStyle: 'none',
-        borderWidth: 0,
-        // Covers browser autofill dark/yellow background — 1000px guarantees full fill
-        WebkitBoxShadow: '0 0 0 1000px #FFFFFF inset',
-        WebkitTextFillColor: '#0D1217',
-        caretColor: GREEN,
-      },
-    }),
+    borderWidth: 1,
+    borderColor: BORDER,
+    color: NAVY,
   },
-  eyeBtn: { padding: 4 },
 
-  // Forgot
-  forgotWrap: { alignItems: 'flex-end', marginBottom: 14, marginTop: 4 },
-  forgotTxt:  { fontSize: 12, color: GREEN, fontWeight: '500' },
-
-  // Error
-  errorWrap: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12, backgroundColor: '#FFF5F5', borderRadius: 10, padding: 10 },
-  errorTxt:  { flex: 1, fontSize: 12, color: ALERT, fontWeight: '500', lineHeight: 17 },
-
-  // Submit
-  submitBtn: {
-    width: '100%',
-    paddingVertical: 16,
-    borderRadius: 16,
+  // Buttons
+  primaryBtn: {
     backgroundColor: GREEN,
-    alignItems: 'center',
+    height: 54,
+    borderRadius: 14,
     justifyContent: 'center',
-    marginBottom: 16,
+    alignItems: 'center',
     shadowColor: GREEN,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
     elevation: 5,
   },
-  submitBtnDisabled: { opacity: 0.6 },
-  submitBtnTxt: {
+  btnDisabled: { opacity: 0.4 },
+  primaryBtnText: {
     color: WHITE,
     fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.1,
+    fontWeight: '900',
   },
+  backBtn: { alignItems: 'center', marginTop: 14 },
+  backText: { fontSize: 14, color: MUTED, fontWeight: '600' },
 
-  // Bottom link
-  bottomLink:  { textAlign: 'center', fontSize: 13, color: MUTED },
-  bottomLinkA: { color: GREEN, fontWeight: '700' },
-});
-
-// ── Layout styles ─────────────────────────────────────────────────────────────
-const layout = StyleSheet.create({
-  tabletRow: { flex: 1, flexDirection: 'row' },
-
-  leftPanel:  { flex: 1, overflow: 'hidden' },
-  leftInner:  { flex: 1, padding: 48, justifyContent: 'space-between' },
-
-  rightPanel: { flex: 1, backgroundColor: '#F8FAFB' },
-  rightScroll: { flexGrow: 1, justifyContent: 'center', padding: 48 },
-  formCard: {
-    backgroundColor: WHITE,
-    borderRadius: 28,
-    padding: 32,
-    maxWidth: 420,
-    width: '100%',
-    alignSelf: 'center',
-    shadowColor: NAVY,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.10,
-    shadowRadius: 32,
-    elevation: 8,
-    ...Platform.select({ web: { boxShadow: '0px 12px 40px rgba(23,34,80,0.10)' } }),
+  // Step dots
+  stepDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
   },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E5E7EB',
+  },
+  dotActive: { backgroundColor: GREEN, width: 20 },
 
-  phoneScroll: { flexGrow: 1, paddingBottom: 40 },
-  phoneCard: {
-    marginHorizontal: 16,
-    marginTop: 4,
-    backgroundColor: WHITE,
-    borderRadius: 32,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.18,
-    shadowRadius: 40,
-    elevation: 12,
-    ...Platform.select({ web: { boxShadow: '0px 16px 48px rgba(0,0,0,0.16)' } }),
+  error: {
+    color: ERROR,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  disclaimer: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 11,
+    color: MUTED,
+    fontWeight: '500',
   },
 });

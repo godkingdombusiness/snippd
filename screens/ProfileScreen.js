@@ -1,111 +1,121 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, Dimensions,
-  ActivityIndicator, RefreshControl, StatusBar,
+  TouchableOpacity, Alert, ActivityIndicator,
+  RefreshControl, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { resetToScreen } from '../lib/navigationRef';
 import { clearEncryptionKeyCache } from '../lib/fieldEncryption';
-import { filterEnabledItems } from '../src/features/registry';
 
-const { width } = Dimensions.get('window');
-const GREEN = '#0C9E54';
-const NAVY = '#0D1B4B';
-const WHITE = '#FFFFFF';
-const GRAY = '#8A8F9E';
-const OFF_WHITE = '#F8F9FA';
-const BORDER = '#F0F1F3';
-const RED = '#EF4444';
+const GREEN      = '#0C9E54';
+const GREEN_DARK = '#0A8040';
+const NAVY       = '#111827';
+const WHITE      = '#FFFFFF';
+const BG         = '#F8FAF9';
+const MUTED      = '#6B7280';
+const BORDER     = '#E5E7EB';
+const RED        = '#EF4444';
 
-const SHADOW = {
-  shadowColor: '#0D1B4B',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.08,
-  shadowRadius: 16,
-  elevation: 4,
-};
-
-const MENU_SECTIONS = [
-  {
-    title: 'My Account',
-    items: [
-      { label: 'Edit Profile',        screen: 'EditProfile' },
-      { label: 'Preferred Stores',    screen: 'PreferredStores' },
-      { label: 'Budget Preferences',  screen: 'BudgetPreferences' },
-      { label: 'Nutrition profile',   screen: 'NutritionProfile' },
-    ],
-  },
-  {
-    title: 'Security',
-    items: [
-      { label: 'Two-Factor Authentication', screen: 'MFASetup' },
-    ],
-  },
-  {
-    title: 'Savings',
-    items: [
-      { label: 'Wealth Momentum',    screen: 'WealthMomentum' },
-      { label: 'Stash Credits Store', screen: 'CreditsStore' },
-    ],
-  },
-  {
-    title: 'Community',
-    items: [
-      { label: 'Invite Friends',  screen: 'InviteFriends' },
-    ],
-  },
-  {
-    title: 'Support',
-    items: [
-      { label: 'Help and Support', screen: 'Help' },
-      { label: 'Privacy Policy',   screen: 'PrivacyPolicy' },
-      { label: 'Terms of Use',     screen: 'TermsOfUse' },
-    ],
-  },
+const LOYALTY_STORES = [
+  { key: 'publix',  name: 'Publix',  color: '#007A3D' },
+  { key: 'kroger',  name: 'Kroger',  color: '#CF0024' },
+  { key: 'target',  name: 'Target',  color: '#CC0000' },
+  { key: 'walmart', name: 'Walmart', color: '#0071CE' },
 ];
 
-export default function ProfileScreen({ navigation }) {
-  const [profile, setProfile]   = useState(null);
-  const [authEmail, setAuthEmail] = useState('');
-  const [loading, setLoading]   = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [wealthData, setWealthData] = useState(null);
-  const menuSections = MENU_SECTIONS.map(section => ({
-    ...section,
-    items: filterEnabledItems(section.items),
-  })).filter(section => section.items.length > 0);
+const PERSONA_LABELS = {
+  precision_nurturer:   'The Precision Nurturer',
+  wellness_optimizer:   'The Wellness Optimizer',
+  speed_strategist:     'The Speed Strategist',
+  culinary_value_hunter:'The Culinary Value Hunter',
+  efficiency_machine:   'The Efficiency Machine',
+  conscious_saver:      'The Conscious Saver',
+  selective_maximizer:  'The Selective Maximizer',
+  balanced_strategist:  'The Balanced Strategist',
+};
 
-  const performGlobalReset = () => resetToScreen('Auth');
+const ALL_NUTRITION_GOALS = [
+  'High Protein', 'Low Carb', 'Gluten-Free', 'Dairy-Free',
+  'GLP-1', 'Keto', 'Vegan', 'Low Sodium',
+];
+
+function getPersonaLabel(personaType) {
+  if (!personaType) return 'The Balanced Strategist';
+  const key = personaType.toLowerCase().replace(/ /g, '_');
+  return PERSONA_LABELS[key] ?? personaType;
+}
+
+export default function ProfileScreen({ navigation }) {
+  const [profile,     setProfile]     = useState(null);
+  const [authEmail,   setAuthEmail]   = useState('');
+  const [loading,     setLoading]     = useState(true);
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [signingOut,  setSigningOut]  = useState(false);
+  const [deleting,    setDeleting]    = useState(false);
+  const [wealthData,  setWealthData]  = useState(null);
+  const [receipts,    setReceipts]    = useState([]);
+  const [couponCounts, setCouponCounts] = useState({});
+  const [activeGoals, setActiveGoals] = useState([]);
 
   const fetchProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      // Capture auth email as reliable fallback
       setAuthEmail(user.email ?? '');
+
       const { data: profileRes } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .single();
-      if (profileRes) setProfile(profileRes);
 
-      // Fetch wealth momentum summary
+      if (profileRes) {
+        setProfile(profileRes);
+        const constraints = profileRes.preferences?.health_constraints ?? [];
+        setActiveGoals(constraints);
+      }
+
+      // Fetch last 3 approved receipts
+      const { data: receiptRows } = await supabase
+        .from('checkout_math_snapshots')
+        .select('id, computed_at, response_payload, request_payload')
+        .eq('user_id', user.id)
+        .eq('status', 'APPROVED')
+        .order('computed_at', { ascending: false })
+        .limit(3);
+
+      if (receiptRows) setReceipts(receiptRows);
+
+      // Wealth momentum
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         try {
           const resp = await fetch(`${SUPABASE_URL}/functions/v1/get-wealth-momentum`, {
-            headers: { 'Authorization': `Bearer ${session.access_token}` },
+            headers: { Authorization: `Bearer ${session.access_token}` },
           });
-          if (resp.ok) {
-            const wm = await resp.json();
-            setWealthData(wm);
+          if (resp.ok) setWealthData(await resp.json());
+        } catch { /* non-critical */ }
+
+        // Coupon counts per store
+        try {
+          const { data: clipData } = await supabase
+            .from('clip_session_items')
+            .select('retailer_key')
+            .eq('user_id', user.id)
+            .eq('status', 'done');
+          if (clipData) {
+            const counts = clipData.reduce((acc, row) => {
+              const k = (row.retailer_key ?? 'other').toLowerCase();
+              acc[k] = (acc[k] ?? 0) + 1;
+              return acc;
+            }, {});
+            setCouponCounts(counts);
           }
-        } catch { /* wealth data is non-critical */ }
+        } catch { /* non-critical */ }
       }
     } catch (e) {
       console.error(e);
@@ -117,17 +127,17 @@ export default function ProfileScreen({ navigation }) {
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchProfile();
-  };
+  const onRefresh = () => { setRefreshing(true); fetchProfile(); };
 
   const handleSignOut = async () => {
+    setSigningOut(true);
     try {
       clearEncryptionKeyCache();
       await supabase.auth.signOut({ scope: 'global' });
     } catch (e) {
       console.warn('signOut error', e);
+    } finally {
+      setSigningOut(false);
     }
   };
 
@@ -141,10 +151,9 @@ export default function ProfileScreen({ navigation }) {
           text: 'Delete Forever',
           style: 'destructive',
           onPress: () => {
-            // Second confirmation — destructive action
             Alert.alert(
               'Are you sure?',
-              'Your savings history, waitlist position, and all data will be gone permanently.',
+              'Your savings history and all data will be gone permanently.',
               [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -157,136 +166,251 @@ export default function ProfileScreen({ navigation }) {
                       const { data, error } = await supabase.functions.invoke('delete-account');
                       if (error) throw error;
                       if (data?.error) throw new Error(data.error);
-                      // Clear local session — auth state change will handle routing
                       await supabase.auth.signOut({ scope: 'local' });
-                      // Belt-and-suspenders: force navigation to Auth
-                      performGlobalReset();
+                      resetToScreen('Auth');
                     } catch (e) {
                       setDeleting(false);
                       Alert.alert('Error', e?.message ?? 'Could not delete account. Try again.');
                     }
                   },
                 },
-              ]
+              ],
             );
           },
         },
-      ]
+      ],
     );
   };
 
+  const toggleGoal = async (goal) => {
+    const next = activeGoals.includes(goal)
+      ? activeGoals.filter(g => g !== goal)
+      : [...activeGoals, goal];
+    setActiveGoals(next);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase
+        .from('profiles')
+        .update({ preferences: { ...(profile?.preferences ?? {}), health_constraints: next } })
+        .eq('user_id', user.id);
+    } catch { /* non-critical */ }
+  };
+
   if (loading) return (
-    <View style={styles.center}>
+    <View style={s.center}>
       <ActivityIndicator size="large" color={GREEN} />
     </View>
   );
 
-  const displayName = profile?.full_name || 'Snippd User';
-  const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase();
+  const displayName  = profile?.full_name || authEmail.split('@')[0] || 'Snippd User';
+  const initials     = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const personaLabel = getPersonaLabel(profile?.preferences?.persona_type);
+  const credits      = profile?.credits_balance ?? 0;
+  const preferredStores = profile?.preferred_stores ?? [];
+
+  const lifetimeSaved = ((wealthData?.lifetime_wealth_created ?? 0) / 100).toFixed(2);
+  const velocity      = ((wealthData?.current_velocity ?? 0) / 100).toFixed(2);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scroll} 
+    <SafeAreaView style={s.container} edges={['top']}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GREEN} />}
       >
-        
-        <View style={styles.header}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarTxt}>{initials}</Text>
+
+        {/* ── PROFILE HERO CARD ─────────────────────── */}
+        <LinearGradient colors={[GREEN, GREEN_DARK]} style={s.heroCard}>
+          <View style={s.heroRow}>
+            <View style={s.avatar}>
+              <Text style={s.avatarText}>{initials}</Text>
             </View>
-            <View style={{marginTop: 15, alignItems: 'center'}}>
-                <Text style={styles.headerName}>{displayName}</Text>
-                <Text style={styles.headerEmail}>{profile?.email || authEmail || '—'}</Text>
+            <View style={s.heroInfo}>
+              <Text style={s.heroName}>{displayName}</Text>
+              <Text style={s.heroPersona}>{personaLabel}</Text>
             </View>
+          </View>
+
+          <View style={s.heroStats}>
+            <View style={s.heroStat}>
+              <Text style={s.heroStatNum}>${lifetimeSaved}</Text>
+              <Text style={s.heroStatLabel}>Lifetime Saved</Text>
+            </View>
+            <View style={s.heroStatDivider} />
+            <View style={s.heroStat}>
+              <Text style={s.heroStatNum}>${velocity}/wk</Text>
+              <Text style={s.heroStatLabel}>Velocity</Text>
+            </View>
+            <View style={s.heroStatDivider} />
+            <View style={s.heroStat}>
+              <Text style={s.heroStatNum}>{credits}</Text>
+              <Text style={s.heroStatLabel}>Credits</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* ── LOYALTY ACCOUNTS ─────────────────────── */}
+        <View style={s.card}>
+          <Text style={s.cardLabel}>LOYALTY ACCOUNTS</Text>
+          {LOYALTY_STORES.map((store, i) => {
+            const connected = preferredStores
+              .map(x => x.toLowerCase())
+              .includes(store.key);
+            const count = couponCounts[store.key] ?? 0;
+            const isLast = i === LOYALTY_STORES.length - 1;
+            return (
+              <View key={store.key} style={[s.loyaltyRow, isLast && s.noBorder]}>
+                <View style={[s.storeCircle, { backgroundColor: store.color }]}>
+                  <Text style={s.storeInitial}>{store.name[0]}</Text>
+                </View>
+                <View style={s.loyaltyInfo}>
+                  <Text style={s.loyaltyName}>{store.name}</Text>
+                  {connected
+                    ? <Text style={s.loyaltyConnected}>{count > 0 ? `${count} coupons clipped` : 'Connected'}</Text>
+                    : <Text style={s.loyaltyDisconnected}>Not connected</Text>
+                  }
+                </View>
+                {connected ? (
+                  <View style={s.connectedBadge}>
+                    <Ionicons name="checkmark-circle" size={14} color={GREEN} />
+                    <Text style={s.connectedText}>Connected</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={s.connectBtn}
+                    onPress={() => navigation.navigate('PreferredStores')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={s.connectBtnText}>Connect</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
         </View>
 
-        {wealthData && (
-          <View style={styles.wealthCard}>
-            <Text style={styles.wealthTitle}>Wealth Momentum</Text>
-            <View style={styles.wealthRow}>
-              <View style={styles.wealthStat}>
-                <Text style={styles.wealthValue}>
-                  ${((wealthData.lifetime_wealth_created ?? 0) / 100).toFixed(2)}
-                </Text>
-                <Text style={styles.wealthLabel}>Lifetime Saved</Text>
-              </View>
-              <View style={styles.wealthDivider} />
-              <View style={styles.wealthStat}>
-                <Text style={[styles.wealthValue, { color: GREEN }]}>
-                  ${((wealthData.current_velocity ?? 0) / 100).toFixed(2)}/wk
-                </Text>
-                <Text style={styles.wealthLabel}>Velocity</Text>
-              </View>
-              <View style={styles.wealthDivider} />
-              <View style={styles.wealthStat}>
-                <Text style={styles.wealthValue}>
-                  ${((wealthData.inflation_shield_total ?? 0) / 100).toFixed(2)}
-                </Text>
-                <Text style={styles.wealthLabel}>Inflation Shield</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {menuSections.map(section => (
-          <View key={section.title} style={styles.menuSection}>
-            <Text style={styles.menuSectionTitle}>{section.title}</Text>
-            <View style={styles.menuCard}>
-              {section.items.map((item, index) => (
-                <TouchableOpacity 
-                  key={index} 
-                  style={[styles.menuRow, index === section.items.length - 1 && { borderBottomWidth: 0 }]} 
-                  onPress={() => {
-                    if (item.action === 'alert') {
-                      Alert.alert(item.label, 'Feature coming soon.');
-                    } else if (item.tab) {
-                      navigation.getParent?.()?.navigate(item.tab);
-                    } else if (item.screen) {
-                      navigation.navigate(item.screen);
-                    }
-                  }}
+        {/* ── NUTRITION GOALS ───────────────────────── */}
+        <View style={s.card}>
+          <Text style={s.cardLabel}>NUTRITION GOALS</Text>
+          <Text style={s.cardHint}>Tap to add or remove goals from your plan.</Text>
+          <View style={s.pillRow}>
+            {ALL_NUTRITION_GOALS.map(goal => {
+              const active = activeGoals.includes(goal);
+              return (
+                <TouchableOpacity
+                  key={goal}
+                  style={[s.pill, active && s.pillActive]}
+                  onPress={() => toggleGoal(goal)}
+                  activeOpacity={0.8}
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.menuLabel}>{item.label}</Text>
-                    {item.screen === 'NutritionProfile' && (
-                      <Text style={styles.menuSub}>
-                        {profile?.nutrition_profile_set
-                          ? 'Calorie targets set'
-                          : 'Set up household calories'}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={styles.menuArrow}>›</Text>
+                  {active && <Ionicons name="checkmark" size={12} color={GREEN} style={{ marginRight: 4 }} />}
+                  <Text style={[s.pillText, active && s.pillTextActive]}>{goal}</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              );
+            })}
           </View>
-        ))}
+        </View>
 
-        <View style={styles.menuSection}>
-          <TouchableOpacity 
-            style={styles.signOutBtn} 
+        {/* ── RECEIPT HISTORY ───────────────────────── */}
+        <View style={s.card}>
+          <Text style={s.cardLabel}>RECEIPT HISTORY</Text>
+          {receipts.length === 0 ? (
+            <View style={s.emptyRow}>
+              <Ionicons name="receipt-outline" size={28} color={MUTED} />
+              <Text style={s.emptyText}>No verified trips yet.{'\n'}Upload a receipt to earn credits.</Text>
+              <TouchableOpacity
+                style={s.emptyBtn}
+                onPress={() => navigation.navigate('ReceiptUpload')}
+                activeOpacity={0.9}
+              >
+                <Text style={s.emptyBtnText}>Upload Receipt</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            receipts.map((r, i) => {
+              const savings = ((r.response_payload?.savings_cents ?? 0) / 100).toFixed(2);
+              const paid    = ((r.response_payload?.you_pay_cents ?? 0) / 100).toFixed(2);
+              const store   = r.response_payload?.retailer_node
+                ?? r.request_payload?.retailer
+                ?? 'Store';
+              const date    = r.computed_at
+                ? new Date(r.computed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : '—';
+              return (
+                <View key={r.id} style={[s.receiptRow, i === receipts.length - 1 && s.noBorder]}>
+                  <View style={s.receiptLeft}>
+                    <Text style={s.receiptStore}>{store}</Text>
+                    <Text style={s.receiptDate}>{date}</Text>
+                  </View>
+                  <View style={s.receiptRight}>
+                    <View style={s.savingsBadge}>
+                      <Text style={s.savingsBadgeText}>Saved ${savings}</Text>
+                    </View>
+                    <Text style={s.receiptPaid}>You paid ${paid}</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+          {receipts.length > 0 && (
+            <TouchableOpacity
+              style={s.viewAllBtn}
+              onPress={() => navigation.navigate('Wins')}
+              activeOpacity={0.8}
+            >
+              <Text style={s.viewAllText}>View all savings</Text>
+              <Ionicons name="arrow-forward" size={14} color={GREEN} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ── ACCOUNT SETTINGS ─────────────────────── */}
+        <View style={s.card}>
+          <Text style={s.cardLabel}>ACCOUNT SETTINGS</Text>
+          {[
+            { label: 'Edit Profile',        icon: 'person-outline',        screen: 'EditProfile' },
+            { label: 'Budget Preferences',  icon: 'wallet-outline',        screen: 'BudgetPreferences' },
+            { label: 'Preferred Stores',    icon: 'storefront-outline',    screen: 'PreferredStores' },
+            { label: 'Nutrition Profile',   icon: 'nutrition-outline',     screen: 'NutritionProfile' },
+            { label: 'Wealth Momentum',     icon: 'trending-up-outline',   screen: 'WealthMomentum' },
+            { label: 'Credits Store',       icon: 'gift-outline',          screen: 'CreditsStore' },
+          ].map((item, i, arr) => (
+            <TouchableOpacity
+              key={item.screen}
+              style={[s.settingsRow, i === arr.length - 1 && s.noBorder]}
+              onPress={() => navigation.navigate(item.screen)}
+              activeOpacity={0.8}
+            >
+              <View style={s.settingsIcon}>
+                <Ionicons name={item.icon} size={18} color={GREEN} />
+              </View>
+              <Text style={s.settingsLabel}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={16} color={MUTED} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── SIGN OUT ──────────────────────────────── */}
+        <View style={s.actionSection}>
+          <TouchableOpacity
+            style={s.signOutBtn}
             onPress={handleSignOut}
             disabled={signingOut}
+            activeOpacity={0.8}
           >
-            <Text style={styles.signOutBtnTxt}>
-              {signingOut ? 'Signing Out...' : 'Sign Out'}
-            </Text>
+            <Ionicons name="log-out-outline" size={18} color={NAVY} style={{ marginRight: 8 }} />
+            <Text style={s.signOutText}>{signingOut ? 'Signing Out...' : 'Sign Out'}</Text>
           </TouchableOpacity>
-        </View>
 
-        <View style={[styles.menuSection, { marginBottom: 40 }]}>
           <TouchableOpacity
-            style={[styles.deleteBtn, deleting && { opacity: 0.5 }]}
+            style={[s.deleteBtn, deleting && { opacity: 0.5 }]}
             onPress={handleDeleteAccount}
             disabled={deleting}
+            activeOpacity={0.8}
           >
-            <Text style={styles.deleteBtnTxt}>
-              {deleting ? 'Deleting...' : 'Delete Account'}
-            </Text>
+            <Text style={s.deleteBtnText}>{deleting ? 'Deleting...' : 'Delete Account'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -295,31 +419,255 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: OFF_WHITE },
-  scroll: { paddingBottom: 40 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { alignItems: 'center', paddingVertical: 30, backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', ...SHADOW },
-  avatarTxt: { fontSize: 30, fontWeight: 'bold', color: WHITE },
-  headerName: { fontSize: 22, fontWeight: 'bold', color: NAVY },
-  headerEmail: { fontSize: 14, color: GRAY, marginTop: 4 },
-  menuSection: { marginTop: 25, paddingHorizontal: 20 },
-  menuSectionTitle: { fontSize: 12, fontWeight: 'bold', color: GRAY, marginBottom: 10, textTransform: 'uppercase' },
-  menuCard: { backgroundColor: WHITE, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: BORDER },
-  menuRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 18, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  menuLabel: { fontSize: 15, color: NAVY },
-  menuSub:   { fontSize: 12, color: GRAY, marginTop: 2 },
-  menuArrow: { fontSize: 20, color: '#D1D5DB' },
-  signOutBtn: { backgroundColor: WHITE, borderRadius: 18, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: BORDER },
-  signOutBtnTxt: { fontSize: 16, fontWeight: 'bold', color: NAVY },
-  deleteBtn: { backgroundColor: '#FEF2F2', borderRadius: 18, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
-  deleteBtnTxt: { fontSize: 15, fontWeight: 'bold', color: RED },
-  wealthCard: { backgroundColor: WHITE, borderRadius: 20, marginHorizontal: 20, marginTop: 20, padding: 16, borderWidth: 1, borderColor: BORDER, ...SHADOW },
-  wealthTitle: { fontSize: 11, fontWeight: 'bold', color: GRAY, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
-  wealthRow: { flexDirection: 'row', alignItems: 'center' },
-  wealthStat: { flex: 1, alignItems: 'center' },
-  wealthValue: { fontSize: 15, fontWeight: 'bold', color: NAVY, marginBottom: 2 },
-  wealthLabel: { fontSize: 10, color: GRAY },
-  wealthDivider: { width: 1, height: 28, backgroundColor: BORDER },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: BG },
+  scroll:    { paddingBottom: 60 },
+  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: BG },
+
+  // ── Hero card ──
+  heroCard: {
+    paddingTop: 28,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: WHITE,
+    letterSpacing: -0.5,
+  },
+  heroInfo: { flex: 1 },
+  heroName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: WHITE,
+    letterSpacing: -0.4,
+    marginBottom: 4,
+  },
+  heroPersona: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.75)',
+  },
+
+  heroStats: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    borderRadius: 16,
+    paddingVertical: 14,
+  },
+  heroStat:       { flex: 1, alignItems: 'center' },
+  heroStatNum:    { fontSize: 16, fontWeight: '800', color: WHITE, marginBottom: 2 },
+  heroStatLabel:  { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
+  heroStatDivider:{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+
+  // ── Shared card ──
+  card: {
+    backgroundColor: WHITE,
+    marginTop: 8,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: BORDER,
+  },
+  cardLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: MUTED,
+    letterSpacing: 1.2,
+    marginBottom: 16,
+  },
+  cardHint: {
+    fontSize: 12,
+    color: MUTED,
+    fontWeight: '500',
+    marginTop: -10,
+    marginBottom: 14,
+  },
+  noBorder: { borderBottomWidth: 0 },
+
+  // ── Loyalty ──
+  loyaltyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  storeCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  storeInitial: { fontSize: 16, fontWeight: '800', color: WHITE },
+  loyaltyInfo:  { flex: 1 },
+  loyaltyName:  { fontSize: 15, fontWeight: '700', color: NAVY },
+  loyaltyConnected:    { fontSize: 12, color: GREEN, fontWeight: '600', marginTop: 2 },
+  loyaltyDisconnected: { fontSize: 12, color: MUTED, fontWeight: '500', marginTop: 2 },
+
+  connectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0FBF5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  connectedText: { fontSize: 12, fontWeight: '700', color: GREEN },
+
+  connectBtn: {
+    borderWidth: 1.5,
+    borderColor: GREEN,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  connectBtnText: { fontSize: 12, fontWeight: '700', color: GREEN },
+
+  // ── Nutrition pills ──
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingBottom: 12,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: '#F9FAFB',
+  },
+  pillActive: {
+    borderColor: GREEN,
+    backgroundColor: '#F0FBF5',
+  },
+  pillText:       { fontSize: 13, fontWeight: '600', color: NAVY },
+  pillTextActive: { color: GREEN },
+
+  // ── Receipt history ──
+  receiptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  receiptLeft:  {},
+  receiptStore: { fontSize: 15, fontWeight: '700', color: NAVY },
+  receiptDate:  { fontSize: 12, color: MUTED, marginTop: 2, fontWeight: '500' },
+  receiptRight: { alignItems: 'flex-end' },
+  savingsBadge: {
+    backgroundColor: '#F0FBF5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 4,
+  },
+  savingsBadgeText: { fontSize: 13, fontWeight: '700', color: GREEN },
+  receiptPaid:      { fontSize: 11, color: MUTED, fontWeight: '500' },
+
+  emptyRow: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 10,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: MUTED,
+    textAlign: 'center',
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  emptyBtn: {
+    marginTop: 8,
+    backgroundColor: GREEN,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyBtnText: { color: WHITE, fontWeight: '800', fontSize: 14 },
+
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+  },
+  viewAllText: { fontSize: 14, fontWeight: '700', color: GREEN },
+
+  // ── Settings ──
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  settingsIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F0FBF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  settingsLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: NAVY },
+
+  // ── Actions ──
+  actionSection: {
+    marginTop: 8,
+    marginHorizontal: 16,
+    gap: 10,
+    paddingBottom: 8,
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+  },
+  signOutText: { fontSize: 15, fontWeight: '700', color: NAVY },
+
+  deleteBtn: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  deleteBtnText: { fontSize: 14, fontWeight: '700', color: RED },
 });
