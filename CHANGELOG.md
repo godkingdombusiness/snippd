@@ -4,6 +4,14 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — OnboardingScreen: 9-step conversational onboarding (2026-05-08)
+- `screens/OnboardingScreen.js` — Full rewrite. 9 question steps: Budget (5 range chips) → Stores (11 multi-select) → Household (4 icon tiles) → Cooking Style (9 appliance chips: Air Fryer, Crockpot, Instant Pot, Meal Prep, etc.) → Cooking Frequency (5 single-select with sub-labels) → Weekly Habits (10 chips: Pizza Fridays, Gym Days, Takeout Nights, etc.) → Nutrition Goals (12 chips) → Grocery Goals (6 list options) → GLP-1 (3 options with "no judgment" microcopy). "Did you know?" modal overlay fires after steps 1, 3, 6, 8 — auto-dismisses after 3.5s, tap to skip. Progress bar tracks 9/9 questions. Smooth slide transitions via react-native-reanimated. Hero step kept. Persona Reveal updated with 9 new shopper types (GLP-1 Optimizer, Busy Parent, Budget Master, etc.). Paywall saves all 9 fields to profiles.preferences, then navigates to PersonalityResult.
+- Updated `derivePersona()` — now uses budget_range, preferred_stores, cooking_appliances, cooking_frequency, weekly_habits, grocery_goals, is_glp1, plus household/dietary inputs. 9 persona types.
+
+### Added — PersonalityResultScreen: viral shareable household type card (2026-05-08)
+- `screens/PersonalityResultScreen.js` — New screen. Dynamic gradient background matching persona color. White persona card with icon circle, "YOU ARE [Type]" headline, 3 trait bullets. 4-stat grid (annual savings, waste reduction, time saved, budget fit — all persona-specific). "Cost of doing nothing" urgency card with red callouts. 3 personalized insights per persona type (9 personas × 3 insights). "Go to My Dashboard" → MainApp. "Share My Profile" → native share sheet with pre-written copy. Entrance animations: card spring scale-in, stats slide-up.
+- `App.js` — Imported PersonalityResultScreen and registered as `PersonalityResult` stack screen with `gestureEnabled: false`.
+
 ### Changed — SignInScreen: ADAPTIVE HOUSEHOLD INTELLIGENCE landing page (2026-05-08)
 - `screens/SignInScreen.js` — Complete redesign. New premium DTC landing page with: "ADAPTIVE HOUSEHOLD INTELLIGENCE" overline, hero headline "The grocery industry was built for a different generation." with green accent, 34%/84%/$47 stat cards, collapsible pain-point section, 4 feature rows (Ionicons), $2,028 annual savings green gradient card with 4 savings line-items, "Cost of Doing Nothing" 3-column urgency block, 2.1-hr time recovered stat, personalized grocery insights list. Sign-up flow now has 2 onboarding questions (household size → grocery goal) before email/password — 3-step wizard with progress dots. Sign-in tab unaffected.
 

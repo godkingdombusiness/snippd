@@ -147,6 +147,7 @@ import UnlockBetaScreen from './screens/UnlockBetaScreen';
 import DeepPersonalizationScreen from './screens/DeepPersonalizationScreen';
 import PersonaRevealScreen from './screens/PersonaRevealScreen';
 import HowItWorksScreen from './screens/HowItWorksScreen';
+import PersonalityResultScreen from './screens/PersonalityResultScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -590,6 +591,7 @@ function RootNavigator() {
         <Stack.Screen name="SplashIntro"           component={SplashIntroScreen} />
         <Stack.Screen name="Auth"                  component={SignInScreen} />
         <Stack.Screen name="Onboarding"            component={OnboardingScreen} />
+        <Stack.Screen name="PersonalityResult"     component={PersonalityResultScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="InstantForecast"       component={InstantForecastScreen} />
         <Stack.Screen name="SoftPersonalization"   component={SoftPersonalizationScreen} />
         <Stack.Screen name="UnlockBeta"            component={UnlockBetaScreen} />
