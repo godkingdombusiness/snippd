@@ -625,6 +625,7 @@ export default function HomeScreen({ navigation }) {
           stores:       data.preferred_stores ?? [],
           diet:         data.lifestyle_concierge?.dietary_preference ?? [],
           foods:        data.lifestyle_concierge?.favorite_foods ?? [],
+          disliked:     data.lifestyle_concierge?.disliked_foods ?? [],
           couponComfort: data.lifestyle_concierge?.coupon_comfort ?? null,
           budgetRange:  Math.round(data.weekly_budget ?? data.preferences?.budget_range ?? 0),
         });
@@ -1206,6 +1207,25 @@ export default function HomeScreen({ navigation }) {
                     {intelligenceProfile.foods.length > 3 && (
                       <View style={s.intelChip}>
                         <Text style={s.intelChipText}>+{intelligenceProfile.foods.length - 3}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Avoids row */}
+              {intelligenceProfile.disliked?.length > 0 && (
+                <View style={s.intelRow}>
+                  <Text style={s.intelRowLabel}>Avoids</Text>
+                  <View style={s.intelChipRow}>
+                    {intelligenceProfile.disliked.slice(0, 3).map(f => (
+                      <View key={f} style={[s.intelChip, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
+                        <Text style={[s.intelChipText, { color: '#C2410C' }]}>{f}</Text>
+                      </View>
+                    ))}
+                    {intelligenceProfile.disliked.length > 3 && (
+                      <View style={[s.intelChip, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
+                        <Text style={[s.intelChipText, { color: '#C2410C' }]}>+{intelligenceProfile.disliked.length - 3}</Text>
                       </View>
                     )}
                   </View>

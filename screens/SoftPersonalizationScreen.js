@@ -77,12 +77,13 @@ const COUPON_OPTIONS = [
   { key: 'not_into',   label: 'Not interested',    sub: 'Just show me lowest prices' },
 ];
 
-const STEPS = ['stores', 'diet', 'foods', 'allergies', 'coupons'];
+const STEPS = ['stores', 'diet', 'foods', 'disliked', 'allergies', 'coupons'];
 
 const STEP_META = {
   stores:    { title: 'Where do you shop?',          sub: 'Select all stores you visit regularly.', icon: 'shopping-bag' },
   diet:      { title: 'Dietary preference',          sub: "We'll filter deals to match. Pick all that apply.", icon: 'heart' },
   foods:     { title: 'Foods you love',              sub: "We'll prioritize deals on things you actually eat.", icon: 'star' },
+  disliked:  { title: "Foods you'd rather skip",     sub: "We'll avoid pushing deals on these.", icon: 'x-circle' },
   allergies: { title: 'Allergies or foods to avoid', sub: "We'll flag anything unsafe.",             icon: 'shield' },
   coupons:   { title: 'Coupon comfort level',        sub: 'How do you prefer to save?',             icon: 'tag' },
 };
@@ -171,6 +172,7 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
   const [otherStore,   setOtherStore] = useState('');
   const [diets,        setDiets]      = useState([]);   // multi-select array
   const [foods,        setFoods]      = useState([]);   // positive food preferences
+  const [dislikedFoods, setDislikedFoods] = useState([]);
   const [allergies,    setAllergies]  = useState([]);
   const [otherAllergy, setOtherAllergy] = useState('');
   const [couponLevel,  setCoupon]     = useState(null);
@@ -196,6 +198,10 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
 
   function toggleFood(f) {
     setFoods(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
+  }
+
+  function toggleDisliked(f) {
+    setDislikedFoods(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
   }
 
   function toggleAllergy(a) {
@@ -235,9 +241,10 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
         if (allergies.length) profileUpdate.allergies = allergies.filter(a => a !== 'None');
 
         const lifestyleUpdate = {};
-        if (diets.length)  lifestyleUpdate.dietary_preference = diets;
-        if (foods.length)  lifestyleUpdate.favorite_foods     = foods;
-        if (couponLevel)   lifestyleUpdate.coupon_comfort      = couponLevel;
+        if (diets.length)         lifestyleUpdate.dietary_preference = diets;
+        if (foods.length)         lifestyleUpdate.favorite_foods     = foods;
+        if (dislikedFoods.length) lifestyleUpdate.disliked_foods     = dislikedFoods;
+        if (couponLevel)          lifestyleUpdate.coupon_comfort      = couponLevel;
 
         if (Object.keys(profileUpdate).length || Object.keys(lifestyleUpdate).length) {
           const { data: existing } = await supabase
@@ -264,10 +271,11 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
         recordMemoryEvent({
           event_type: allSkipped ? 'personalization_skipped' : 'personalization_started',
           metadata: {
-            stores_selected:  stores.length,
-            diets_selected:   diets.length,
-            foods_selected:   foods.length,
-            allergies_count:  allergies.length,
+            stores_selected:   stores.length,
+            diets_selected:    diets.length,
+            foods_selected:    foods.length,
+            disliked_selected: dislikedFoods.length,
+            allergies_count:   allergies.length,
             coupon_selected:  !!couponLevel,
             skips:            skippedAll,
           },
@@ -341,6 +349,21 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
     );
   }
 
+  function renderDisliked() {
+    return (
+      <View style={styles.chipWrap}>
+        {FOOD_OPTIONS.map(f => (
+          <AllergyChip
+            key={f}
+            label={f}
+            selected={dislikedFoods.includes(f)}
+            onPress={() => toggleDisliked(f)}
+          />
+        ))}
+      </View>
+    );
+  }
+
   function renderAllergies() {
     return (
       <View>
@@ -387,6 +410,7 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
     (currentKey === 'stores'    && stores.length > 0) ||
     (currentKey === 'diet'      && diets.length > 0) ||
     (currentKey === 'foods'     && foods.length > 0) ||
+    (currentKey === 'disliked'  && dislikedFoods.length > 0) ||
     (currentKey === 'allergies' && allergies.length > 0) ||
     (currentKey === 'coupons'   && couponLevel != null);
 
@@ -430,6 +454,7 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
         {currentKey === 'stores'    && renderStores()}
         {currentKey === 'diet'      && renderDiet()}
         {currentKey === 'foods'     && renderFoods()}
+        {currentKey === 'disliked'  && renderDisliked()}
         {currentKey === 'allergies' && renderAllergies()}
         {currentKey === 'coupons'   && renderCoupons()}
       </ScrollView>

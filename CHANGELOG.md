@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Profile personalization: disliked_foods step + HomeScreen display (2026-05-10)
+- `screens/SoftPersonalizationScreen.js` — Added 6th step "Foods you'd rather skip" (between foods-loved and allergies). Reuses FOOD_OPTIONS chip grid; saves to `profiles.lifestyle_concierge.disliked_foods`.
+- `screens/HomeScreen.js` — Intelligence Profile card now shows "Avoids" row (orange chips) from `intelligenceProfile.disliked`; fetched from `lifestyle_concierge.disliked_foods` in `fetchProfile`.
+
 ### Added - Launch-safe store cart handoff (2026-05-10)
 - `src/components/StoreCartHandoffCard.js` - Added reusable cart handoff card with store-level open CTA, item open/search actions, coupon link/hub fallback, launch-safe checkout microcopy, and handoff analytics events.
 - `screens/CartScreen.js` - Renders the handoff card under each expanded store section without changing existing cart logic or removing CouponClippingScreen.
