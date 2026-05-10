@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added - Launch readiness audit (2026-05-10)
+- `docs/LAUNCH_READINESS_AUDIT.md` - Added App Store/beta readiness audit covering navigation, onboarding persistence, home feed/profile data, weekly plan math, cart sync, coupon links, checkout authority, receipt verification, and fake/demo data risks.
+
 ### Added — Post-personality profile flow + HomeScreen Intelligence Profile card (2026-05-10)
 - `screens/PersonalityResultScreen.js` — `handleContinue` now routes to `SoftPersonalization` (was `MainApp`). CTA label changed from "Go to My Dashboard" to "Build My Profile". Passes `{ fromPersonalityReveal: true }` param so SoftPersonalizationScreen knows it is in onboarding mode.
 - `screens/SoftPersonalizationScreen.js` — Added 5th step "Foods you love" (between diet and allergies). 25 food/cuisine options in chip grid using existing `AllergyChip` component. Saves to `profiles.lifestyle_concierge.favorite_foods`. Reads `fromPersonalityReveal` param: if `true` finishes with `replace('MainApp')` (onboarding flow), otherwise `goBack()` (in-app edit from HomeScreen). Step count updated from 4 → 5.
