@@ -4,6 +4,13 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added - Production stack generation pipeline (2026-05-10)
+- `supabase/migrations/20260510_production_stack_pipeline.sql` - Added additive schema for normalized coupons, coupon activation links, retailer data sources, stack run counters, user stack feedback, and normalized coupon inventory view.
+- `services/offer_ingestion/` - Added FastAPI Cloud Run ingestion service with retailer/manual endpoints, Supabase writes, coupon link resolution, and optional Vertex AI Gemini stack reasoning behind env configuration.
+- `services/generate_stacks/main.py` - Enhanced generation to read normalized coupon inventory, log generation runs, calculate OOP/net-after-rebate fields, resolve coupon activation links, and write approved cards to `app_home_feed`.
+- `src/lib/retailerCouponLinks.ts` - Added search and hub fallback metadata with link type/source/confidence.
+- `__tests__/productionStackPipeline.test.ts` - Added pipeline schema/service, deterministic math, ingestion contract, and feed output coverage.
+
 ### Added - Launch readiness audit (2026-05-10)
 - `docs/LAUNCH_READINESS_AUDIT.md` - Added App Store/beta readiness audit covering navigation, onboarding persistence, home feed/profile data, weekly plan math, cart sync, coupon links, checkout authority, receipt verification, and fake/demo data risks.
 

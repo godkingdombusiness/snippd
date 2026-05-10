@@ -59,6 +59,17 @@ STORE_APP_NAMES = {
 RETAILER_COUPON_HUBS = {
     "dollar_general": "https://www.dollargeneral.com/deals/coupons?sort=0&sortOrder=2&type=0",
     "publix": "https://www.publix.com/savings/digital-coupons",
+    "kroger": "https://www.kroger.com/savings/cl/coupons",
+    "walmart": "https://www.walmart.com/coupons",
+    "target": "https://www.target.com/circle",
+}
+
+RETAILER_COUPON_SEARCH = {
+    "dollar_general": "https://www.dollargeneral.com/deals/coupons?search={query}",
+    "publix": "https://www.publix.com/savings/digital-coupons?search={query}",
+    "kroger": "https://www.kroger.com/savings/cl/coupons?searchTerm={query}",
+    "walmart": "https://www.walmart.com/coupons?query={query}",
+    "target": "https://www.target.com/circle/offers?keyword={query}",
 }
 
 
@@ -101,6 +112,19 @@ def _sb_upsert(table: str, rows: list | dict) -> bool:
         return False
 
 
+def _sb_patch(table: str, qs: str, payload: dict) -> bool:
+    try:
+        r = requests.patch(
+            f"{SUPABASE_URL}/rest/v1/{table}?{qs}",
+            headers={**_hdr(), "Prefer": "return=minimal"},
+            json=payload,
+            timeout=12,
+        )
+        return r.ok
+    except Exception:
+        return False
+
+
 def _sb_rpc(function_name: str, payload: dict) -> dict:
     try:
         r = requests.post(
@@ -117,6 +141,47 @@ def _sb_rpc(function_name: str, payload: dict) -> dict:
         return {"ok": False, "error": str(exc)}
 
 
+def _create_generation_run(retailer_key: str | None, trigger_source: str) -> str | None:
+    row = {
+        "retailer_key": retailer_key,
+        "model_function_used": "generate-stacks-cloudrun",
+        "status": "running",
+        "trigger_source": trigger_source,
+        "source_tables_used": ["stack_candidates", "digital_coupons", "normalized_coupons", "retailer_rules", "app_home_feed"],
+    }
+    try:
+        r = requests.post(
+            f"{SUPABASE_URL}/rest/v1/stack_generation_runs",
+            headers={**_hdr(), "Prefer": "return=representation"},
+            json=[row],
+            timeout=12,
+        )
+        if r.ok:
+            data = r.json()
+            return data[0].get("id") if isinstance(data, list) and data else None
+    except Exception:
+        pass
+    return None
+
+
+def _finish_generation_run(run_id: str | None, status: str, counts: dict, error: str | None = None) -> None:
+    if not run_id:
+        return
+    payload = {
+        "status": status,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "generated_count": counts.get("generated", 0),
+        "approved_count": counts.get("approved", 0),
+        "rejected_count": counts.get("rejected", 0),
+        "candidates_created": counts.get("generated", 0),
+        "candidates_approved": counts.get("approved", 0),
+        "candidates_rejected": counts.get("rejected", 0),
+        "coupons_matched": counts.get("coupons", 0),
+        "error_message": error,
+    }
+    _sb_patch("stack_generation_runs", f"id=eq.{run_id}", payload)
+
+
 def _parse_json_field(value: Any, fallback: Any = None) -> Any:
     if fallback is None:
         fallback = []
@@ -128,6 +193,11 @@ def _parse_json_field(value: Any, fallback: Any = None) -> Any:
         except Exception:
             pass
     return fallback
+
+
+def _product_key(value: str) -> str:
+    import re
+    return re.sub(r"(^_+|_+$)", "", re.sub(r"[^a-z0-9]+", "_", str(value or "").lower()))
 
 
 # ── Item enrichment ───────────────────────────────────────────────────────────
@@ -150,6 +220,43 @@ def _find_coupon(item: dict, coupons: list, retailer_key: str) -> dict | None:
         if score > best and score > 0.45:
             best, best_coupon = score, c
     return best_coupon
+
+
+def resolve_coupon_activation_link(item: dict, coupon: dict | None, retailer_key: str) -> dict:
+    item_url = (
+        item.get("official_coupon_url")
+        or item.get("exact_coupon_url")
+        or item.get("coupon_url")
+        or (coupon or {}).get("link_url")
+        or (coupon or {}).get("exact_coupon_url")
+        or (coupon or {}).get("official_coupon_url")
+        or (coupon or {}).get("source_url")
+    )
+    if item_url and str(item_url).startswith("https://"):
+        return {
+            "link_type": "item",
+            "link_url": item_url,
+            "source": "coupon_evidence",
+            "confidence": 0.95,
+        }
+
+    search_template = RETAILER_COUPON_SEARCH.get(retailer_key)
+    product_name = item.get("product_name") or item.get("name") or item.get("item_name") or ""
+    if search_template and product_name:
+        return {
+            "link_type": "search",
+            "link_url": search_template.format(query=requests.utils.quote(str(product_name))),
+            "source": "retailer_search",
+            "confidence": 0.70,
+        }
+
+    hub = RETAILER_COUPON_HUBS.get(retailer_key)
+    return {
+        "link_type": "hub" if hub else "unavailable",
+        "link_url": hub,
+        "source": "retailer_hub" if hub else "none",
+        "confidence": 0.45 if hub else 0.0,
+    }
 
 
 def _end_of_week() -> str:
@@ -193,10 +300,10 @@ def enrich_item(raw: dict, coupons: list, retailer_key: str) -> dict:
 
     if matched:
         coupon_exp = matched.get("expiration_date") or matched.get("valid_until")
-        v = matched.get("coupon_value") or matched.get("discount_value") or 0
+        v = matched.get("coupon_value") or matched.get("discount_value") or matched.get("discount_cents") or 0
         coupon_value_cents = int(float(v) * 100) if float(v) < 200 else int(float(v))
         coupon_status = "verified"
-        official_coupon_url = matched.get("exact_coupon_url") or matched.get("official_coupon_url")
+        official_coupon_url = matched.get("exact_coupon_url") or matched.get("official_coupon_url") or matched.get("link_url")
     else:
         cv = raw.get("coupon_value") or raw.get("coupon_value_cents") or 0
         if float(cv) > 0:
@@ -207,7 +314,8 @@ def enrich_item(raw: dict, coupons: list, retailer_key: str) -> dict:
 
     store_app = STORE_APP_NAMES.get(retailer_key, f"{retailer_key.replace('_', ' ').title()} app")
     retailer_coupon_hub_url = RETAILER_COUPON_HUBS.get(retailer_key)
-    coupon_activation_url = official_coupon_url or retailer_coupon_hub_url
+    link = resolve_coupon_activation_link(raw, matched, retailer_key)
+    coupon_activation_url = official_coupon_url or link.get("link_url")
 
     # price_cents from multiple possible fields, including existing *_cents names.
     price_raw = (
@@ -246,7 +354,11 @@ def enrich_item(raw: dict, coupons: list, retailer_key: str) -> dict:
         "coupon_clip_instruction": f"Open {store_app} coupons and search '{coupon_search_name}'",
         "official_coupon_url":     coupon_activation_url,
         "retailer_coupon_hub_url": retailer_coupon_hub_url,
-        "coupon_link_status":      "evidence_exact" if official_coupon_url else ("official_hub" if coupon_activation_url else "unsupported"),
+        "coupon_link_status":      "evidence_exact" if link["link_type"] == "item" else ("official_hub" if link["link_type"] == "hub" else link["link_type"]),
+        "coupon_link_type":        link["link_type"],
+        "coupon_link_source":      link["source"],
+        "coupon_link_confidence":  link["confidence"],
+        "canonical_product_key":   _product_key(display_name),
         "coupon_expiration_date":  coupon_exp,
         "deal_expiration_date":    deal_exp,
         "best_shop_window":        _best_shop_window(deal_exp),
@@ -283,7 +395,7 @@ def _classify_stack_type(items: list[dict], trigger: str | None) -> str:
 
 def calculate_stack_math(items: list[dict], trigger_discount_cents: int = 0) -> dict:
     subtotal = sum(i["price_cents"] * i["qty"] for i in items)
-    item_discounts = sum(i["coupon_value_cents"] * i["qty"] for i in items)
+    coupon_total = sum(i["coupon_value_cents"] * i["qty"] for i in items)
     rebate_total = sum(i.get("_rebate_cents", 0) * i["qty"] for i in items)
 
     # BOGO: half-price for paired items
@@ -292,20 +404,29 @@ def calculate_stack_math(items: list[dict], trigger_discount_cents: int = 0) -> 
         if "BOGO" in i.get("_deal_type", ""):
             bogo_discount += (i["price_cents"] // 2) * i["qty"]
 
-    total_discounts = item_discounts + rebate_total + bogo_discount + trigger_discount_cents
-    final = max(0, subtotal - total_discounts)
+    promo_discount = bogo_discount + trigger_discount_cents
+    register_discount = coupon_total + promo_discount
+    final = max(0, subtotal - register_discount)
+    net_after_rebate = max(0, final - rebate_total)
 
     # Overage: coupon > price — flag as credit scenario
-    is_overage = total_discounts > subtotal
+    is_overage = register_discount > subtotal
     if is_overage:
         final = 0
+        net_after_rebate = 0
 
-    savings_pct = round((total_discounts / subtotal * 100)) if subtotal > 0 else 0
+    total_savings = register_discount + rebate_total
+    savings_pct = round((total_savings / subtotal * 100)) if subtotal > 0 else 0
 
     return {
         "subtotal_cents":        subtotal,
-        "total_discounts_cents": total_discounts,
+        "sale_total_cents":      max(0, subtotal - promo_discount),
+        "promo_discount_cents":  promo_discount,
+        "coupon_total_cents":    coupon_total,
+        "rebate_total_cents":    rebate_total,
+        "total_discounts_cents": total_savings,
         "final_out_of_pocket_cents": final,
+        "net_after_rebate_cents": net_after_rebate,
         "savings_percent":       savings_pct,
         "is_overage":            is_overage,
     }
@@ -407,10 +528,6 @@ def build_stack_from_candidate(
     # Strip internal fields from enriched items before returning
     stack_items = [{k: v for k, v in i.items() if not k.startswith("_")} for i in enriched]
 
-    rebate_total = sum(i.get("_rebate_cents", 0) * i["qty"] for i in enriched)
-    promo_total = sum(i.get("_promo_discount_cents", 0) * i["qty"] for i in enriched)
-    coupon_total = sum(i["coupon_value_cents"] * i["qty"] for i in enriched)
-
     return {
         "stack_candidate_id":          candidate.get("id"),
         "retailer_key":               retailer_key,
@@ -419,8 +536,10 @@ def build_stack_from_candidate(
         "stack_type":                 stack_type,
         "trigger_coupon":             trigger_coupon,
         "subtotal_cents":             math["subtotal_cents"],
+        "sale_total_cents":           math["sale_total_cents"],
         "total_discounts_cents":      math["total_discounts_cents"],
         "final_out_of_pocket_cents":  math["final_out_of_pocket_cents"],
+        "net_after_rebate_cents":     math["net_after_rebate_cents"],
         "savings_percent":            math["savings_percent"],
         "is_overage":                 math["is_overage"],
         "stack_items":                stack_items,
@@ -432,18 +551,31 @@ def build_stack_from_candidate(
         "source_type":                "SNIPPD_GENERATED",
         "validation_status":          "system_generated_verified",
         "attribution":                None,
-        "source_tables_used":          candidate.get("source_tables_used") or ["stack_candidates", "digital_coupons", "retailer_policies"],
+        "source_tables_used":          candidate.get("source_tables_used") or ["stack_candidates", "digital_coupons", "normalized_coupons", "retailer_rules"],
         "rules_applied":              _parse_json_field(candidate.get("rules_applied"), []),
         "model_function_used":         candidate.get("model_function_used") or "generate-stacks-cloudrun",
         "generation_timestamp":        candidate.get("generation_timestamp") or datetime.now(timezone.utc).isoformat(),
         "review_status":              candidate.get("review_status") or "approved",
         "error_reason":               candidate.get("error_reason"),
         "regular_price_cents":         candidate.get("regular_price_cents") or math["subtotal_cents"],
-        "sale_price_cents":            candidate.get("sale_price_cents"),
-        "promo_discount_cents":        candidate.get("promo_discount_cents") or promo_total,
-        "coupon_discount_cents":       candidate.get("coupon_discount_cents") or coupon_total,
-        "rebate_value_cents":          candidate.get("rebate_value_cents") or rebate_total,
-        "net_price_after_rebate_cents": candidate.get("net_price_after_rebate_cents") or max(0, math["final_out_of_pocket_cents"] - rebate_total),
+        "sale_price_cents":            candidate.get("sale_price_cents") or math["sale_total_cents"],
+        "promo_discount_cents":        candidate.get("promo_discount_cents") or math["promo_discount_cents"],
+        "coupon_discount_cents":       candidate.get("coupon_discount_cents") or math["coupon_total_cents"],
+        "rebate_value_cents":          candidate.get("rebate_value_cents") or math["rebate_total_cents"],
+        "net_price_after_rebate_cents": candidate.get("net_price_after_rebate_cents") or math["net_after_rebate_cents"],
+        "coupon_activation_links":     [
+            {
+                "product_name": item.get("display_name"),
+                "link_type": item.get("coupon_link_type"),
+                "link_url": item.get("official_coupon_url"),
+                "source": item.get("coupon_link_source"),
+                "confidence": item.get("coupon_link_confidence"),
+            }
+            for item in stack_items
+            if item.get("coupon_link_type") and item.get("coupon_link_type") != "unavailable"
+        ],
+        "confidence_explanation":      candidate.get("confidence_explanation") or candidate.get("explanation"),
+        "is_fallback":                 bool(candidate.get("is_fallback")),
     }
 
 
@@ -524,6 +656,10 @@ def save_stack_to_home_feed(stack: dict) -> bool:
         "coupon_discount_cents":       stack.get("coupon_discount_cents", 0),
         "rebate_value_cents":          stack.get("rebate_value_cents", 0),
         "net_price_after_rebate_cents": stack.get("net_price_after_rebate_cents"),
+        "coupon_activation_links":     stack.get("coupon_activation_links") or [],
+        "generation_run_id":           stack.get("generation_run_id"),
+        "confidence_explanation":      stack.get("confidence_explanation"),
+        "is_fallback":                 stack.get("is_fallback", False),
     }
     return _sb_upsert("app_home_feed", row)
 
@@ -580,6 +716,9 @@ def generate_stacks():
     body = request.get_json(silent=True) or {}
     stores = body.get("stores", [])
     savings_threshold = float(body.get("savings_threshold", MIN_SAVINGS_PCT))
+    retailer_for_run = stores[0] if len(stores) == 1 else body.get("retailer_key")
+    run_id = _create_generation_run(retailer_for_run, body.get("trigger_source") or "manual")
+    counts = {"generated": 0, "approved": 0, "rejected": 0, "coupons": 0}
 
     # ── 1. Load data ──────────────────────────────────────────────────────────
     automation_result = _sb_rpc("rpc_run_stack_thinking_engine", {
@@ -597,18 +736,24 @@ def generate_stacks():
                       if c.get("retailer_key") in stores or c.get("retailer") in stores]
 
     digital_coupons = _sb_select("digital_coupons", "select=*&limit=300")
-    retailer_policies = _sb_select("retailer_policies", "select=*&limit=50")
+    normalized_coupons = _sb_select("v_normalized_coupon_inventory", "select=*&limit=300")
+    coupons = normalized_coupons or digital_coupons
+    counts["coupons"] = len(coupons)
+    retailer_policies = _sb_select("retailer_policies", "select=*&limit=50") or _sb_select("retailer_rules", "select=*&limit=100")
 
     # ── 2. Generate stacks ────────────────────────────────────────────────────
     valid_stacks: list[dict] = []
     for candidate in candidates:
         try:
-            stack = build_stack_from_candidate(
-                candidate, digital_coupons, retailer_policies, savings_threshold
-            )
+            threshold = 0 if candidate.get("is_fallback") else savings_threshold
+            stack = build_stack_from_candidate(candidate, coupons, retailer_policies, threshold)
             if stack:
+                stack["generation_run_id"] = run_id
                 valid_stacks.append(stack)
+            else:
+                counts["rejected"] += 1
         except Exception:
+            counts["rejected"] += 1
             continue
 
     # Deduplicate by retailer_key (keep highest savings per store)
@@ -621,16 +766,19 @@ def generate_stacks():
 
     # Self-healing: if < 3 stacks, relax filters
     if len(ranked) < 3:
-        ranked = self_heal_stack_results(ranked, candidates, digital_coupons, savings_threshold)
+        ranked = self_heal_stack_results(ranked, candidates, coupons, savings_threshold)
 
     top = ranked[:6]
 
     # ── 3. Write to app_home_feed ─────────────────────────────────────────────
     for stack in top:
         try:
-            save_stack_to_home_feed(stack)
+            if save_stack_to_home_feed(stack):
+                counts["approved"] += 1
         except Exception:
             pass
+    counts["generated"] = len(valid_stacks)
+    _finish_generation_run(run_id, "completed", counts)
 
     # ── 4. Return ─────────────────────────────────────────────────────────────
     status = "OK" if len(top) >= 3 else "LOW_YIELD_WEEK"
@@ -639,6 +787,7 @@ def generate_stacks():
         "status":           status,
         "mode":             "budget_first_self_healing",
         "automation_result": automation_result,
+        "run_id":            run_id,
         "stacks_generated": len(top),
         "stacks":           top,
     }
