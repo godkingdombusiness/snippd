@@ -111,7 +111,7 @@ export default function OmniStoreComparisonScreen({ navigation }) {
             <Text style={styles.emptySub}>
               Build a list first, then Snippd will compare the same items across eligible stores.
             </Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Catalog')}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Discover')}>
               <Text style={styles.primaryBtnTxt}>Browse Deals</Text>
             </TouchableOpacity>
           </View>

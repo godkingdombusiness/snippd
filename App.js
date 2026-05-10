@@ -81,7 +81,6 @@ import CartScreen from './screens/CartScreen';
 import ProfileScreen from './screens/ProfileScreen';
 
 // ── STACK SCREENS ────────────────────────────────────────────────────────────
-import AuthScreen from './screens/AuthScreen';
 import SignInScreen from './screens/SignInScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import StackDetailScreen from './screens/StackDetailScreen';
@@ -99,7 +98,6 @@ import PromoCodesScreen from './screens/PromoCodesScreen';
 import HelpScreen from './screens/HelpScreen';
 import PantryScreen from './screens/PantryScreen';
 import ListScreen from './screens/ListScreen';
-import CatalogScreen from './screens/CatalogScreen';
 import CartOptionsScreen from './screens/CartOptionsScreen';
 import CartOptionDetailScreen from './screens/CartOptionDetailScreen';
 import WealthMomentumScreen from './screens/WealthMomentumScreen';
@@ -116,7 +114,6 @@ import { BudgetProvider } from './lib/BudgetContext';
 import TrialGateScreen from './screens/TrialGateScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import AdminCircularUploadScreen from './screens/AdminCircularUploadScreen';
-import AdminAnalyticsDashboardScreen from './screens/AdminAnalyticsDashboardScreen';
 import AdminDealReviewScreen from './screens/AdminDealReviewScreen';
 import StackReviewTrainingScreen from './screens/StackReviewTrainingScreen';
 import WeeklyPlanScreen from './screens/WeeklyPlanScreen';
@@ -130,10 +127,6 @@ import ReceiptVerifiedScreen from './screens/ReceiptVerifiedScreen';
 import SnippdProScreen from './screens/SnippdProScreen';
 import TermsOfUseScreen from './screens/TermsOfUseScreen';
 import OnboardingConciergeScreen from './screens/OnboardingConciergeScreen';
-import SplashIntroScreen from './screens/SplashIntroScreen';
-import WaitlistForecastScreen from './screens/WaitlistForecastScreen';
-import LogicScanScreen from './screens/LogicScanScreen';
-import FounderDashboardScreen from './screens/FounderDashboardScreen';
 import BarcodeScannerScreen from './screens/BarcodeScannerScreen';
 import QuickDealsScreen from './screens/QuickDealsScreen';
 import MealDetailScreen from './screens/MealDetailScreen';
@@ -141,12 +134,10 @@ import ShoppingListScreen from './screens/ShoppingListScreen';
 import OutcomeScreen from './screens/OutcomeScreen';
 import SavingsActionScreen from './screens/SavingsActionScreen';
 import NextWeekBuilderScreen from './screens/NextWeekBuilderScreen';
-import InstantForecastScreen from './screens/InstantForecastScreen';
 import SoftPersonalizationScreen from './screens/SoftPersonalizationScreen';
 import UnlockBetaScreen from './screens/UnlockBetaScreen';
 import DeepPersonalizationScreen from './screens/DeepPersonalizationScreen';
 import PersonaRevealScreen from './screens/PersonaRevealScreen';
-import HowItWorksScreen from './screens/HowItWorksScreen';
 import PersonalityResultScreen from './screens/PersonalityResultScreen';
 
 const Tab = createBottomTabNavigator();
@@ -224,7 +215,6 @@ function DiscoverStack() {
     <DiscoverStackNav.Navigator screenOptions={{ headerShown: false }}>
       <DiscoverStackNav.Screen name="Discover"    component={DiscoverScreen} />
       <DiscoverStackNav.Screen name="StackDetail" component={StackDetailScreen} />
-      <DiscoverStackNav.Screen name="Catalog"     component={CatalogScreen} />
       <DiscoverStackNav.Screen name="Cart"        component={CartScreen} options={{ presentation: 'modal' }} />
       {renderChefStashScreen(DiscoverStackNav)}
       {renderOmniStoreComparisonScreen(DiscoverStackNav)}
@@ -299,7 +289,6 @@ function ProfileStack() {
       <ProfileStackNav.Screen name="TermsOfUse"           component={TermsOfUseScreen} />
       <ProfileStackNav.Screen name="SnippdPro"            component={SnippdProScreen} options={{ presentation: 'modal' }} />
       <ProfileStackNav.Screen name="AdminCircularUpload"  component={AdminCircularUploadScreen} />
-      <ProfileStackNav.Screen name="AdminAnalytics"       component={AdminAnalyticsDashboardScreen} />
       <ProfileStackNav.Screen name="AdminDealReview"      component={AdminDealReviewScreen} />
       <ProfileStackNav.Screen name="StackReviewTraining"  component={StackReviewTrainingScreen} />
       <ProfileStackNav.Screen name="NutritionProfile"     component={NutritionProfileScreen} />
@@ -587,20 +576,14 @@ function RootNavigator() {
         initialRouteName={resolvedRoute}
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="SplashIntro"           component={SplashIntroScreen} />
         <Stack.Screen name="Auth"                  component={SignInScreen} />
         <Stack.Screen name="Onboarding"            component={OnboardingScreen} />
         <Stack.Screen name="PersonalityResult"     component={PersonalityResultScreen} options={{ gestureEnabled: false }} />
-        <Stack.Screen name="InstantForecast"       component={InstantForecastScreen} />
         <Stack.Screen name="SoftPersonalization"   component={SoftPersonalizationScreen} />
         <Stack.Screen name="UnlockBeta"            component={UnlockBetaScreen} />
         <Stack.Screen name="DeepPersonalization"   component={DeepPersonalizationScreen} />
         <Stack.Screen name="PersonaReveal"         component={PersonaRevealScreen} />
-        <Stack.Screen name="HowItWorks"            component={HowItWorksScreen} />
-        <Stack.Screen name="WaitlistForecast"      component={WaitlistForecastScreen} />
         <Stack.Screen name="ConciergeOnboarding"   component={OnboardingConciergeScreen} />
-        <Stack.Screen name="LogicScan"            component={LogicScanScreen} />
-        <Stack.Screen name="FounderDashboard"     component={FounderDashboardScreen} />
         <Stack.Screen name="MainApp"              component={MainTabs} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
         <Stack.Screen name="TestAgent"       component={AppTestAgent} />

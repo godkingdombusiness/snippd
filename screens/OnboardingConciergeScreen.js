@@ -366,7 +366,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
         briefing_completed:      true,
       }, { onConflict: 'user_id' });
 
-      navigation.replace('LogicScan');
+      navigation.replace('MainApp');
     } catch (e) {
       console.error('DeepBrief save error:', e);
     } finally {

@@ -308,10 +308,10 @@ export default function PersonaRevealScreen({ route, navigation }) {
         {/* ── CTA ────────────────────────────────────────────────────────── */}
         <TouchableOpacity
           style={styles.ctaBtn}
-          onPress={() => navigation.navigate('HowItWorks', { persona: persona.name })}
+          onPress={() => navigation.replace('MainApp')}
           activeOpacity={0.88}
         >
-          <Text style={styles.ctaBtnText}>See How It Works</Text>
+          <Text style={styles.ctaBtnText}>Go to My Dashboard</Text>
           <Feather name="arrow-right" size={18} color={WHITE} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </ScrollView>

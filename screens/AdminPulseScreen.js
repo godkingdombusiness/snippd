@@ -320,21 +320,6 @@ export default function AdminPulseScreen({ navigation }) {
           <Feather name="chevron-right" size={18} color={GRAY} />
         </TouchableOpacity>
 
-        {/* ── ANALYTICS DASHBOARD ──────────────────────────────── */}
-        <TouchableOpacity
-          style={styles.graphViewerBtn}
-          onPress={() => navigation.navigate('AdminAnalytics')}
-          activeOpacity={0.82}
-        >
-          <View style={styles.graphViewerLeft}>
-            <Feather name="bar-chart-2" size={20} color={GREEN} />
-            <View style={{ marginLeft: 12 }}>
-              <Text style={styles.graphViewerTitle}>Analytics Dashboard</Text>
-              <Text style={styles.graphViewerSub}>Pipeline health · savings · Vertex readiness</Text>
-            </View>
-          </View>
-          <Feather name="chevron-right" size={18} color={GRAY} />
-        </TouchableOpacity>
 
         {/* ── DEAL REVIEW QUEUE ────────────────────────────────── */}
         <TouchableOpacity

@@ -4,6 +4,27 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Removed — Screen cleanup: 12 dead/legacy screens deleted (2026-05-10)
+- `screens/AuthScreen.js` — replaced by SignInScreen, nothing routed to it
+- `screens/VerifyScreen.js` — transient redirect with no purpose as a screen
+- `screens/BrandMarketplaceScreen.js` — brand partnership UI not part of core loop
+- `screens/TransparencyDataScreen.js` — iOS ATT handled at OS level, not a screen
+- `screens/WaitlistForecastScreen.js` — legacy waitlist era, bypassed for all current users
+- `screens/CatalogScreen.js` — placeholder that only told users to go elsewhere
+- `screens/SplashIntroScreen.js` — 3 intro slides, never shown (SignInScreen is first screen)
+- `screens/FounderDashboardScreen.js` — beta founder perks, beta is over
+- `screens/LogicScanScreen.js` — demo hype animation, not part of real user flow
+- `screens/HowItWorksScreen.js` — redundant with SignInScreen landing page
+- `screens/AdminAnalyticsDashboardScreen.js` — explicitly unfinished (pending backend endpoint)
+- `screens/InstantForecastScreen.js` — shows fake forecast numbers, no live data source
+- `App.js` — removed all 12 imports + route registrations; removed Catalog from DiscoverStack, AdminAnalytics from ProfileStack, SplashIntro/WaitlistForecast/LogicScan/FounderDashboard/HowItWorks/InstantForecast from root stack
+
+### Changed — Rewired 4 broken navigation references (2026-05-10)
+- `screens/OnboardingConciergeScreen.js:369` — `replace('LogicScan')` → `replace('MainApp')` (LogicScan deleted)
+- `screens/PersonaRevealScreen.js:311` — `navigate('HowItWorks')` → `replace('MainApp')`; CTA label updated to "Go to My Dashboard"
+- `screens/OmniStoreComparisonScreen.js:114` — `navigate('Catalog')` → `navigate('Discover')` (Catalog deleted)
+- `screens/AdminPulseScreen.js:326` — removed "Analytics Dashboard" nav button (AdminAnalytics deleted)
+
 ### Changed — HomeScreen: Week Savings Hero card (2026-05-08)
 - `screens/HomeScreen.js` — Added `WeekSavingsHero` component as the dominant first card in the scroll. Green gradient (`#0C9E54` → `#087038`). When cart exists: shows full retail price → with-deals price (strikethrough baseline), plus a thin progress bar showing spend vs. $150 budget ("$130 / $150 budget · $20 under" or red "over"). When no cart: shows budget + "Build your smart plan" CTA. Chip row (save amount / % less / stores / items), "See Smart Plan" action row. Always taps to WeeklyPlan tab. Baseline is `cartRegularCents` (actual retail), not the user's budget — budget is shown separately as a progress bar so framing is "retail → deals, here's how you compare to your $150 target".
 
