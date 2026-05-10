@@ -386,6 +386,7 @@ export default function HomeScreen({ navigation }) {
   const [liveCard, setLiveCard] = useState(null);
   const [topStacks, setTopStacks] = useState([]);
   const [stacksLoading, setStacksLoading] = useState(false);
+  const [intelligenceProfile, setIntelligenceProfile] = useState(null);
 
   // â”€â”€ Personalization state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [experienceType, setExperienceType] = useState('saver');
@@ -613,6 +614,14 @@ export default function HomeScreen({ navigation }) {
         ];
         const filled = fields.filter(Boolean).length;
         setProfileCompletePct(Math.round((filled / fields.length) * 100));
+        setIntelligenceProfile({
+          persona:      data.preferences?.persona_type ?? null,
+          stores:       data.preferred_stores ?? [],
+          diet:         data.lifestyle_concierge?.dietary_preference ?? [],
+          foods:        data.lifestyle_concierge?.favorite_foods ?? [],
+          couponComfort: data.lifestyle_concierge?.coupon_comfort ?? null,
+          budgetRange:  Math.round(data.weekly_budget ?? data.preferences?.budget_range ?? 0),
+        });
       }
 
       const { data: snaps } = await supabase
@@ -1096,6 +1105,97 @@ export default function HomeScreen({ navigation }) {
           </View>
         </TouchableOpacity>
 
+        {/* INTELLIGENCE PROFILE */}
+        {intelligenceProfile && (
+          <View style={s.intelSection}>
+            <View style={s.intelHeader}>
+              <Text style={s.intelHeaderLabel}>INTELLIGENCE PROFILE</Text>
+              <TouchableOpacity onPress={() => handlePress('SoftPersonalization')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={s.intelEditLink}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={s.intelCard}>
+              {/* Persona row */}
+              {intelligenceProfile.persona ? (
+                <View style={s.intelRow}>
+                  <Text style={s.intelRowLabel}>Shopper type</Text>
+                  <View style={s.intelPersonaPill}>
+                    <Text style={s.intelPersonaText}>{intelligenceProfile.persona}</Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Stores row */}
+              {intelligenceProfile.stores.length > 0 && (
+                <View style={s.intelRow}>
+                  <Text style={s.intelRowLabel}>Your stores</Text>
+                  <View style={s.intelChipRow}>
+                    {intelligenceProfile.stores.slice(0, 3).map(store => (
+                      <View key={store} style={s.intelChip}>
+                        <Text style={s.intelChipText}>{store}</Text>
+                      </View>
+                    ))}
+                    {intelligenceProfile.stores.length > 3 && (
+                      <View style={s.intelChip}>
+                        <Text style={s.intelChipText}>+{intelligenceProfile.stores.length - 3}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Diet row */}
+              {intelligenceProfile.diet.length > 0 && (
+                <View style={s.intelRow}>
+                  <Text style={s.intelRowLabel}>Diet</Text>
+                  <View style={s.intelChipRow}>
+                    {intelligenceProfile.diet.slice(0, 2).map(d => (
+                      <View key={d} style={s.intelChip}>
+                        <Text style={s.intelChipText}>{d.replace(/_/g, '-')}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Foods row */}
+              {intelligenceProfile.foods.length > 0 && (
+                <View style={s.intelRow}>
+                  <Text style={s.intelRowLabel}>Loves</Text>
+                  <View style={s.intelChipRow}>
+                    {intelligenceProfile.foods.slice(0, 3).map(f => (
+                      <View key={f} style={s.intelChip}>
+                        <Text style={s.intelChipText}>{f}</Text>
+                      </View>
+                    ))}
+                    {intelligenceProfile.foods.length > 3 && (
+                      <View style={s.intelChip}>
+                        <Text style={s.intelChipText}>+{intelligenceProfile.foods.length - 3}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Budget row */}
+              {intelligenceProfile.budgetRange > 0 && (
+                <View style={s.intelRow}>
+                  <Text style={s.intelRowLabel}>Weekly budget</Text>
+                  <Text style={s.intelBudgetValue}>${intelligenceProfile.budgetRange}</Text>
+                </View>
+              )}
+
+              {/* Empty state nudge */}
+              {!intelligenceProfile.persona && intelligenceProfile.stores.length === 0 && (
+                <TouchableOpacity style={s.intelNudge} onPress={() => handlePress('SoftPersonalization')}>
+                  <Feather name="sliders" size={14} color="#0C9E54" />
+                  <Text style={s.intelNudgeText}>Finish your profile so Snippd can personalize your stacks</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
         <View style={{ height: 120 }} />
       </ScrollView>
 
@@ -1486,6 +1586,36 @@ const s = StyleSheet.create({
   },
   emptyTitle: { fontSize: 15, fontWeight: '800', color: '#0D1B4B', textAlign: 'center' },
   emptySub: { fontSize: 13, color: '#64748B', textAlign: 'center' },
+
+  // Intelligence Profile card
+  intelSection: { marginBottom: 20 },
+  intelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  intelHeaderLabel: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 1.1 },
+  intelEditLink: { fontSize: 12, fontWeight: '700', color: '#0C9E54' },
+  intelCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    gap: 12,
+  },
+  intelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  intelRowLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', flexShrink: 0 },
+  intelChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, flex: 1, justifyContent: 'flex-end' },
+  intelChip: {
+    backgroundColor: '#F0FDF4', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: '#BDF3CD',
+  },
+  intelChipText: { fontSize: 11, fontWeight: '700', color: '#0C9E54' },
+  intelPersonaPill: {
+    backgroundColor: '#0C9E54', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
+  },
+  intelPersonaText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
+  intelBudgetValue: { fontSize: 16, fontWeight: '900', color: '#0D1B4B' },
+  intelNudge: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#BDF3CD',
+  },
+  intelNudgeText: { fontSize: 12, fontWeight: '600', color: '#0C9E54', flex: 1 },
 
   // Budget modal
   modalOverlay: {

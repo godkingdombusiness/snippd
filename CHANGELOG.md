@@ -4,6 +4,11 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Post-personality profile flow + HomeScreen Intelligence Profile card (2026-05-10)
+- `screens/PersonalityResultScreen.js` — `handleContinue` now routes to `SoftPersonalization` (was `MainApp`). CTA label changed from "Go to My Dashboard" to "Build My Profile". Passes `{ fromPersonalityReveal: true }` param so SoftPersonalizationScreen knows it is in onboarding mode.
+- `screens/SoftPersonalizationScreen.js` — Added 5th step "Foods you love" (between diet and allergies). 25 food/cuisine options in chip grid using existing `AllergyChip` component. Saves to `profiles.lifestyle_concierge.favorite_foods`. Reads `fromPersonalityReveal` param: if `true` finishes with `replace('MainApp')` (onboarding flow), otherwise `goBack()` (in-app edit from HomeScreen). Step count updated from 4 → 5.
+- `screens/HomeScreen.js` — Added "INTELLIGENCE PROFILE" section at the bottom of the main scroll (above the 120px spacer). Reads `persona`, `stores`, `diet`, `foods`, `couponComfort`, `budgetRange` from `intelligenceProfile` state which is populated by the existing `fetchProfile` call. Shows: shopper type pill (green), preferred stores chips (first 3 + N more), diet chips, foods chips (first 3 + N more), weekly budget value. "Edit" link navigates to `SoftPersonalization` for in-app profile updates. Empty-state nudge shown when persona and stores are both absent.
+
 ### Removed — Screen cleanup: 12 dead/legacy screens deleted (2026-05-10)
 - `screens/AuthScreen.js` — replaced by SignInScreen, nothing routed to it
 - `screens/VerifyScreen.js` — transient redirect with no purpose as a screen

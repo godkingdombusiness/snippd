@@ -56,6 +56,15 @@ const DIET_OPTIONS = [
   { key: 'kosher',      label: 'Kosher',         sub: 'Kosher certified' },
 ];
 
+const FOOD_OPTIONS = [
+  'Chicken', 'Beef', 'Pork', 'Seafood', 'Eggs', 'Tofu',
+  'Pasta', 'Rice', 'Bread', 'Potatoes',
+  'Salads', 'Sandwiches', 'Soups & Stews', 'Tacos',
+  'Asian cuisine', 'Mediterranean', 'Mexican', 'Italian',
+  'Breakfast foods', 'Snacks & Chips', 'Frozen meals', 'Deli items',
+  'Fresh produce', 'Organic', 'Meal kits',
+];
+
 const ALLERGY_OPTIONS = [
   'Peanuts', 'Tree nuts', 'Dairy', 'Eggs', 'Wheat / Gluten',
   'Soy', 'Shellfish', 'Fish', 'Sesame', 'None',
@@ -68,11 +77,12 @@ const COUPON_OPTIONS = [
   { key: 'not_into',   label: 'Not interested',    sub: 'Just show me lowest prices' },
 ];
 
-const STEPS = ['stores', 'diet', 'allergies', 'coupons'];
+const STEPS = ['stores', 'diet', 'foods', 'allergies', 'coupons'];
 
 const STEP_META = {
   stores:    { title: 'Where do you shop?',          sub: 'Select all stores you visit regularly.', icon: 'shopping-bag' },
   diet:      { title: 'Dietary preference',          sub: "We'll filter deals to match. Pick all that apply.", icon: 'heart' },
+  foods:     { title: 'Foods you love',              sub: "We'll prioritize deals on things you actually eat.", icon: 'star' },
   allergies: { title: 'Allergies or foods to avoid', sub: "We'll flag anything unsafe.",             icon: 'shield' },
   coupons:   { title: 'Coupon comfort level',        sub: 'How do you prefer to save?',             icon: 'tag' },
 };
@@ -153,12 +163,14 @@ function CouponRow({ item, selected, onPress }) {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function SoftPersonalizationScreen({ route, navigation }) {
-  const { budgetRange, household, goal } = route?.params ?? {};
+  const { budgetRange, household, goal, fromPersonalityReveal } = route?.params ?? {};
+  const isOnboarding = !!fromPersonalityReveal;
 
   const [step,         setStep]       = useState(0);
   const [stores,       setStores]     = useState([]);
   const [otherStore,   setOtherStore] = useState('');
   const [diets,        setDiets]      = useState([]);   // multi-select array
+  const [foods,        setFoods]      = useState([]);   // positive food preferences
   const [allergies,    setAllergies]  = useState([]);
   const [otherAllergy, setOtherAllergy] = useState('');
   const [couponLevel,  setCoupon]     = useState(null);
@@ -180,6 +192,10 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
       const without = prev.filter(x => x !== 'omnivore');
       return without.includes(key) ? without.filter(x => x !== key) : [...without, key];
     });
+  }
+
+  function toggleFood(f) {
+    setFoods(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
   }
 
   function toggleAllergy(a) {
@@ -220,6 +236,7 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
 
         const lifestyleUpdate = {};
         if (diets.length)  lifestyleUpdate.dietary_preference = diets;
+        if (foods.length)  lifestyleUpdate.favorite_foods     = foods;
         if (couponLevel)   lifestyleUpdate.coupon_comfort      = couponLevel;
 
         if (Object.keys(profileUpdate).length || Object.keys(lifestyleUpdate).length) {
@@ -249,6 +266,7 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
           metadata: {
             stores_selected:  stores.length,
             diets_selected:   diets.length,
+            foods_selected:   foods.length,
             allergies_count:  allergies.length,
             coupon_selected:  !!couponLevel,
             skips:            skippedAll,
@@ -257,7 +275,11 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
       }
     } catch (_) { /* non-fatal */ }
     setSaving(false);
-    navigation.replace('MainApp');
+    if (isOnboarding) {
+      navigation.replace('MainApp');
+    } else {
+      navigation.goBack();
+    }
   }
 
   // ── Step renders ─────────────────────────────────────────────────────────
@@ -298,6 +320,21 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
             item={opt}
             selected={diets.includes(opt.key)}
             onPress={() => toggleDiet(opt.key)}
+          />
+        ))}
+      </View>
+    );
+  }
+
+  function renderFoods() {
+    return (
+      <View style={styles.chipWrap}>
+        {FOOD_OPTIONS.map(f => (
+          <AllergyChip
+            key={f}
+            label={f}
+            selected={foods.includes(f)}
+            onPress={() => toggleFood(f)}
           />
         ))}
       </View>
@@ -349,6 +386,7 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
   const hasAnswer =
     (currentKey === 'stores'    && stores.length > 0) ||
     (currentKey === 'diet'      && diets.length > 0) ||
+    (currentKey === 'foods'     && foods.length > 0) ||
     (currentKey === 'allergies' && allergies.length > 0) ||
     (currentKey === 'coupons'   && couponLevel != null);
 
@@ -391,6 +429,7 @@ export default function SoftPersonalizationScreen({ route, navigation }) {
       >
         {currentKey === 'stores'    && renderStores()}
         {currentKey === 'diet'      && renderDiet()}
+        {currentKey === 'foods'     && renderFoods()}
         {currentKey === 'allergies' && renderAllergies()}
         {currentKey === 'coupons'   && renderCoupons()}
       </ScrollView>

@@ -187,7 +187,7 @@ export default function PersonalityResultScreen({ navigation, route }) {
 
   const handleContinue = () => {
     hapticMedium();
-    navigation.replace('MainApp');
+    navigation.replace('SoftPersonalization', { fromPersonalityReveal: true });
   };
 
   const STATS = [
@@ -263,7 +263,7 @@ export default function PersonalityResultScreen({ navigation, route }) {
             {/* CTAs */}
             <Animated.View entering={FadeIn.delay(700).duration(400)} style={s.ctaSection}>
               <TouchableOpacity style={[s.primaryBtn, { backgroundColor: color }]} onPress={handleContinue} activeOpacity={0.9}>
-                <Text style={s.primaryBtnText}>Go to My Dashboard</Text>
+                <Text style={s.primaryBtnText}>Build My Profile</Text>
                 <Ionicons name="arrow-forward" size={18} color={WHITE} />
               </TouchableOpacity>
 
