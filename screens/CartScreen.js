@@ -33,6 +33,7 @@ import { readActiveCart } from '../src/services/cartStorage';
 import { fetchWeeklyBudgetCents } from '../lib/weeklyBudget';
 import { fetchTop3StoreEngine, engineTotalsForDisplay } from '../src/services/top3StoreEngine';
 import CartNutritionSummary from '../src/components/CartNutritionSummary';
+import StoreCartHandoffCard from '../src/components/StoreCartHandoffCard';
 import { recordMemoryEvent } from '../src/lib/memoryEvents';
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -327,6 +328,7 @@ function StoreSection({
   collapsed,
   collapsedAreas,
   checked,
+  userId,
   onToggleStore,
   onToggleArea,
   onToggleItem,
@@ -369,6 +371,13 @@ function StoreSection({
               />
             );
           })}
+          <StoreCartHandoffCard
+            storeLabel={store.label}
+            retailerKey={store.key}
+            items={store.items}
+            userId={userId}
+            sessionId={`cart_handoff_${store.key}`}
+          />
           <StoreFulfillment storeLabel={store.label} />
         </View>
       )}
@@ -832,6 +841,7 @@ export default function CartScreen({ navigation }) {
             collapsed={Boolean(collapsedStores[store.key])}
             collapsedAreas={collapsedAreas}
             checked={checkedItems}
+            userId={userIdRef.current}
             onToggleStore={toggleStoreCollapsed}
             onToggleArea={toggleAreaCollapsed}
             onToggleItem={toggleItemChecked}

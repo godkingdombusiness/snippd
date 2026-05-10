@@ -4,6 +4,11 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added - Launch-safe store cart handoff (2026-05-10)
+- `src/components/StoreCartHandoffCard.js` - Added reusable cart handoff card with store-level open CTA, item open/search actions, coupon link/hub fallback, launch-safe checkout microcopy, and handoff analytics events.
+- `screens/CartScreen.js` - Renders the handoff card under each expanded store section without changing existing cart logic or removing CouponClippingScreen.
+- `__tests__/storeCartHandoff.test.ts` - Added launch-safe contract coverage for copy, link fallback behavior, analytics event names, and CartScreen integration.
+
 ### Added - Production stack generation pipeline (2026-05-10)
 - `supabase/migrations/20260510_production_stack_pipeline.sql` - Added additive schema for normalized coupons, coupon activation links, retailer data sources, stack run counters, user stack feedback, and normalized coupon inventory view.
 - `services/offer_ingestion/` - Added FastAPI Cloud Run ingestion service with retailer/manual endpoints, Supabase writes, coupon link resolution, and optional Vertex AI Gemini stack reasoning behind env configuration.
