@@ -236,6 +236,13 @@ export default function WealthMomentumScreen({ navigation }) {
 
       const json = await res.json();
       setData(json.data);
+      const hasReceiptHistory = Boolean(json.data?.time_series?.length || json.data?.snapshots?.length);
+      if (!hasReceiptHistory) {
+        console.info('[WealthMomentumScreen] receipt history empty; showing zero-state', {
+          source: 'get-wealth-momentum',
+          requiredData: 'verified receipt history',
+        });
+      }
 
       // Track screen view
       tracker.emit({
@@ -324,9 +331,12 @@ export default function WealthMomentumScreen({ navigation }) {
           <View style={s.emptyIcon}>
             <Feather name="trending-up" size={28} color={GREEN} />
           </View>
+          <View style={s.statusBadge}>
+            <Text style={s.statusBadgeTxt}>Needs receipt history</Text>
+          </View>
           <Text style={s.emptyTitle}>No momentum data yet</Text>
           <Text style={s.emptySub}>
-            Upload your first receipt to start tracking your wealth momentum.
+            Snippd needs verified receipt history before it can chart savings momentum. You are seeing this because no verified receipt snapshots were returned for your account.
           </Text>
           <TouchableOpacity
             style={s.uploadBtn}
@@ -463,6 +473,8 @@ const s = StyleSheet.create({
   snapVelocity: { fontSize: 12, fontWeight: '700', color: NAVY },
 
   emptyIcon:  { width: 72, height: 72, borderRadius: 36, backgroundColor: LIGHT_GREEN, alignItems: 'center', justifyContent: 'center' },
+  statusBadge: { backgroundColor: PALE_BLUE, borderColor: '#BFDBFE', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  statusBadgeTxt: { fontSize: 10, fontWeight: '900', color: BLUE, textTransform: 'uppercase', letterSpacing: 0.5 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: NAVY },
   emptySub:   { fontSize: 13, color: GRAY, textAlign: 'center', lineHeight: 20 },
   uploadBtn:  { backgroundColor: GREEN, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14, marginTop: 8 },

@@ -181,6 +181,7 @@ export default function DiscoverScreen({ navigation }) {
   const [selectedStore, setSelectedStore] = useState('all');
   const [sortMode, setSortMode] = useState('oop');
   const [addedIds, setAddedIds] = useState(new Set());
+  const [dataStatus, setDataStatus] = useState('waiting');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -200,17 +201,50 @@ export default function DiscoverScreen({ navigation }) {
         setProfile(data);
       }
 
-      const { data: rows, error } = await supabase
+      let source = 'app_home_feed';
+      const { data: homeRows, error } = await supabase
         .from('app_home_feed')
         .select('*')
         .eq('status', 'active')
         .limit(100);
       if (error) throw error;
 
+      let rows = homeRows || [];
+      if (!rows.length) {
+        const { data: candidateRows, error: candidateError } = await supabase
+          .from('stack_candidates')
+          .select('*')
+          .in('status', ['approved', 'active', 'ready'])
+          .limit(100);
+        if (!candidateError && candidateRows?.length) {
+          rows = candidateRows;
+          source = 'stack_candidates';
+        }
+      }
+
+      if (!rows.length) {
+        console.info('[DiscoverScreen] no discoverable stacks found', {
+          tables: ['app_home_feed', 'stack_candidates'],
+          hasProfile: Boolean(prof),
+        });
+        setDataStatus('waiting');
+      } else {
+        setDataStatus('live');
+      }
+
       const normalized = (rows || [])
         .map(normalizeStack)
         .filter(stack => stack.payCents > 0)
         .filter(stack => matchesProfile(stack, prof));
+
+      if (rows.length && !normalized.length) {
+        console.info('[DiscoverScreen] stack rows filtered out by profile or missing price', {
+          source,
+          rowCount: rows.length,
+          hasProfile: Boolean(prof),
+        });
+        setDataStatus('waiting');
+      }
 
       setStacks(normalized);
 
@@ -225,6 +259,16 @@ export default function DiscoverScreen({ navigation }) {
   }, []);
 
   useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
+
+  const openProfile = useCallback(() => {
+    const parent = navigation.getParent?.();
+    if (parent?.navigate) parent.navigate('ProfileTab');
+  }, [navigation]);
+
+  const openBudget = useCallback(() => {
+    const parent = navigation.getParent?.();
+    if (parent?.navigate) parent.navigate('ProfileTab', { screen: 'BudgetPreferences' });
+  }, [navigation]);
 
   const stores = useMemo(() => {
     const unique = [...new Map(stacks.map(stack => [stack.retailerKey, stack.retailer])).entries()];
@@ -327,9 +371,27 @@ export default function DiscoverScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {filteredStacks.length === 0 ? (
           <View style={styles.emptyWrap}>
+            <View style={[styles.dataBadge, dataStatus === 'live' ? styles.dataBadgeLive : styles.dataBadgeWaiting]}>
+              <Text style={[styles.dataBadgeTxt, dataStatus === 'live' ? styles.dataBadgeTxtLive : styles.dataBadgeTxtWaiting]}>
+                {dataStatus === 'live' ? 'Live' : 'Waiting for weekly deals'}
+              </Text>
+            </View>
             <Feather name="inbox" size={34} color={COLORS.grey} />
-            <Text style={styles.emptyTitle}>No matching stacks yet.</Text>
-            <Text style={styles.emptySub}>Try another store filter or refresh after new deals are generated.</Text>
+            <Text style={styles.emptyTitle}>No verified stacks match your profile yet.</Text>
+            <Text style={styles.emptySub}>
+              Snippd checked app_home_feed and stack_candidates, but there are no active cards for your stores, budget, or food preferences. This usually clears after the weekly deals refresh or after you finish your profile.
+            </Text>
+            <View style={styles.emptyActions}>
+              <TouchableOpacity style={styles.emptyPrimaryBtn} onPress={openProfile} activeOpacity={0.86}>
+                <Text style={styles.emptyPrimaryTxt}>Build profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.emptyGhostBtn} onPress={openBudget} activeOpacity={0.86}>
+                <Text style={styles.emptyGhostTxt}>Add grocery budget</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.emptyWideBtn} onPress={fetchData} activeOpacity={0.86}>
+              <Text style={styles.emptyWideTxt}>Check back after weekly deals refresh</Text>
+            </TouchableOpacity>
           </View>
         ) : filteredStacks.map(stack => {
           const withinPlan = stack.payCents <= weeklyBudgetCents;
@@ -413,9 +475,22 @@ const styles = StyleSheet.create({
   sortToggle: { marginTop: 12, height: 36, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, borderRadius: 12, backgroundColor: COLORS.mint, borderWidth: 1, borderColor: '#BDF3CD' },
   sortTxt: { fontFamily: FONT, color: COLORS.forest, fontSize: 12, fontWeight: '900' },
   scroll: { padding: 16 },
-  emptyWrap: { alignItems: 'center', gap: 8, paddingTop: 48 },
+  emptyWrap: { alignItems: 'center', gap: 8, paddingTop: 48, paddingHorizontal: 10 },
   emptyTitle: { fontFamily: FONT, color: COLORS.navy, fontSize: 16, fontWeight: '900' },
   emptySub: { fontFamily: FONT, color: COLORS.grey, textAlign: 'center', lineHeight: 19 },
+  dataBadge: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 4 },
+  dataBadgeLive: { backgroundColor: COLORS.mint, borderColor: '#BDF3CD' },
+  dataBadgeWaiting: { backgroundColor: COLORS.amberBg, borderColor: '#FDE68A' },
+  dataBadgeTxt: { fontFamily: FONT, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+  dataBadgeTxtLive: { color: COLORS.green },
+  dataBadgeTxtWaiting: { color: '#92400E' },
+  emptyActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  emptyPrimaryBtn: { backgroundColor: COLORS.green, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  emptyPrimaryTxt: { fontFamily: FONT, color: COLORS.white, fontSize: 12, fontWeight: '900' },
+  emptyGhostBtn: { backgroundColor: COLORS.white, borderColor: COLORS.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  emptyGhostTxt: { fontFamily: FONT, color: COLORS.forest, fontSize: 12, fontWeight: '900' },
+  emptyWideBtn: { backgroundColor: COLORS.white, borderColor: COLORS.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginTop: 4 },
+  emptyWideTxt: { fontFamily: FONT, color: COLORS.navy, fontSize: 12, fontWeight: '900', textAlign: 'center' },
   card: { backgroundColor: COLORS.white, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: COLORS.border, shadowColor: '#0D1B4B', shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   cardEyebrow: { fontFamily: FONT, color: COLORS.green, fontSize: 10, fontWeight: '900', letterSpacing: 1.3, textTransform: 'uppercase' },

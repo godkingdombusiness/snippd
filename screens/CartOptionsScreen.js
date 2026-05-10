@@ -274,7 +274,15 @@ export default function CartOptionsScreen({ navigation, route }) {
       }
 
       const json = await res.json();
-      setCarts(json.carts ?? []);
+      const nextCarts = json.carts ?? [];
+      if (!nextCarts.length) {
+        console.info('[CartOptionsScreen] empty cart options response', {
+          retailer_key: retailerKey,
+          week_of: weekOf,
+          source: 'get-cart-options',
+        });
+      }
+      setCarts(nextCarts);
 
       // Track impression for each cart shown
       for (const cart of (json.carts ?? [])) {
@@ -323,6 +331,18 @@ export default function CartOptionsScreen({ navigation, route }) {
       });
     }
     navigation.goBack();
+  };
+
+  const goToPlan = () => {
+    const parent = navigation.getParent?.();
+    if (parent?.navigate) parent.navigate('PlanTab', { screen: 'WeeklyPlan' });
+    else navigation.goBack();
+  };
+
+  const goToHome = () => {
+    const parent = navigation.getParent?.();
+    if (parent?.navigate) parent.navigate('HomeTab');
+    else navigation.goBack();
   };
 
   const retailerLabel = retailerKey.charAt(0).toUpperCase() + retailerKey.slice(1);
@@ -375,10 +395,21 @@ export default function CartOptionsScreen({ navigation, route }) {
           <View style={s.emptyIcon}>
             <Feather name="shopping-cart" size={28} color={GREEN} />
           </View>
+          <View style={s.statusBadge}>
+            <Text style={s.statusBadgeTxt}>Waiting for weekly deals</Text>
+          </View>
           <Text style={s.emptyTitle}>No carts available yet</Text>
           <Text style={s.emptySub}>
-            Smart carts for {retailerLabel} will appear here once deals are loaded for the week.
+            Snippd did not receive cart options from get-cart-options for {retailerLabel}. This usually means the cart is empty or this week's verified deals have not produced cart groupings yet.
           </Text>
+          <View style={s.emptyActionRow}>
+            <TouchableOpacity style={s.retryBtn} onPress={goToPlan}>
+              <Text style={s.retryTxt}>Start manual cart</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.emptyGhostBtn} onPress={goToHome}>
+              <Text style={s.emptyGhostTxt}>Go Home</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -485,6 +516,11 @@ const s = StyleSheet.create({
   retryTxt:   { color: WHITE, fontSize: 15, fontWeight: '800' },
 
   emptyIcon:  { width: 68, height: 68, borderRadius: 34, backgroundColor: LIGHT_GREEN, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  statusBadge: { backgroundColor: PALE_AMBER, borderColor: '#FDE68A', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 10 },
+  statusBadgeTxt: { fontSize: 10, fontWeight: '900', color: '#92400E', textTransform: 'uppercase', letterSpacing: 0.5 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: NAVY, marginBottom: 8 },
   emptySub:   { fontSize: 13, color: GRAY, textAlign: 'center', lineHeight: 19 },
+  emptyActionRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  emptyGhostBtn: { backgroundColor: WHITE, borderColor: BORDER, borderWidth: 1, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 13 },
+  emptyGhostTxt: { color: NAVY, fontSize: 15, fontWeight: '800' },
 });

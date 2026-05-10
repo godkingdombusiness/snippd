@@ -263,6 +263,12 @@ export default function ChefStashScreen({ navigation }) {
         .limit(60);
 
       if (offersError) throw offersError;
+      if (!offersData?.length) {
+        console.info('[ChefStashScreen] normalized_offers empty; showing deals zero-state', {
+          table: 'normalized_offers',
+          minConfidence: 0.5,
+        });
+      }
       setOffers(offersData || []);
     } catch (e) {
       setError('Unable to load deals. Pull down to refresh.');
@@ -337,7 +343,10 @@ export default function ChefStashScreen({ navigation }) {
 
   function handleAddToCart() {
     if (!selectedBundle) return;
-    console.log('[ChefStash] Add to cart:', selectedBundle);
+    console.info('[ChefStashScreen] add-to-cart requested', {
+      bundle_id: selectedBundle.id,
+      item_count: selectedBundle.items?.length || 0,
+    });
     // TODO: wire to addItemsToActiveCart when cart integration is ready
   }
 
@@ -420,11 +429,22 @@ export default function ChefStashScreen({ navigation }) {
         {!hasContent ? (
           /* ── Empty state ─────────────────────────────────────────────────── */
           <View style={styles.emptyState}>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusBadgeTxt}>Waiting for weekly deals</Text>
+            </View>
             <Feather name="shopping-bag" size={48} color={C.border} />
-            <Text style={styles.emptyTitle}>No deals loaded yet</Text>
+            <Text style={styles.emptyTitle}>Chef Stash is waiting on verified offers</Text>
             <Text style={styles.emptySub}>
-              Pull down to refresh, or complete a store scan to populate your deal pool.
+              Snippd could not find qualifying rows in normalized_offers. This appears when retailer ingestion has not published current, confident offers for your stores.
             </Text>
+            <View style={styles.emptyActions}>
+              <TouchableOpacity style={styles.emptyPrimaryBtn} onPress={() => navigation.getParent?.()?.navigate('ProfileTab')} activeOpacity={0.86}>
+                <Text style={styles.emptyPrimaryTxt}>Build profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.emptyGhostBtn} onPress={handleRefresh} activeOpacity={0.86}>
+                <Text style={styles.emptyGhostTxt}>Check back after weekly deals refresh</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <>
@@ -767,8 +787,15 @@ const styles = StyleSheet.create({
 
   // Empty / error states
   emptyState: { alignItems: 'center', paddingVertical: 60 },
+  statusBadge: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 14 },
+  statusBadgeTxt: { fontSize: 10, fontWeight: '900', color: '#92400E', textTransform: 'uppercase', letterSpacing: 0.5 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: C.darkNavy, marginTop: 16 },
   emptySub:   { fontSize: 13, color: C.grey, textAlign: 'center', marginTop: 8, lineHeight: 20 },
+  emptyActions: { alignItems: 'center', gap: 8, marginTop: 16 },
+  emptyPrimaryBtn: { backgroundColor: C.primaryGreen, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
+  emptyPrimaryTxt: { color: C.white, fontSize: 12, fontWeight: '900' },
+  emptyGhostBtn: { backgroundColor: C.white, borderColor: C.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
+  emptyGhostTxt: { color: C.deepGreen, fontSize: 12, fontWeight: '900', textAlign: 'center' },
   loadingTxt: { fontSize: 13, color: C.grey, marginTop: 16 },
   errorTxt:   { fontSize: 14, color: C.alertCoral, marginTop: 12, textAlign: 'center' },
   retryBtn: {

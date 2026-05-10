@@ -215,6 +215,7 @@ function DiscoverStack() {
     <DiscoverStackNav.Navigator screenOptions={{ headerShown: false }}>
       <DiscoverStackNav.Screen name="Discover"    component={DiscoverScreen} />
       <DiscoverStackNav.Screen name="StackDetail" component={StackDetailScreen} />
+      <DiscoverStackNav.Screen name="ShoppingList" component={ShoppingListScreen} />
       <DiscoverStackNav.Screen name="Cart"        component={CartScreen} options={{ presentation: 'modal' }} />
       {renderChefStashScreen(DiscoverStackNav)}
       {renderOmniStoreComparisonScreen(DiscoverStackNav)}
@@ -357,6 +358,7 @@ function MainTabs() {
   const tabs = filterEnabledItems([
     { name: 'HomeTab', component: HomeStack, label: 'Home', iconName: 'home' },
     { name: 'PlanTab', component: PlanStack, label: 'Plan', iconName: 'calendar' },
+    { name: 'DiscoverTab', component: DiscoverStack, label: 'Discover', iconName: 'search' },
     { name: 'SnippdTab', component: CartStack, isCart: true },
     studioTab(StudioStack),
     { name: 'ProfileTab', component: ProfileStack, label: 'Profile', iconName: 'user' },

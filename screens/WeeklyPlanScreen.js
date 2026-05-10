@@ -3,11 +3,11 @@
  *
  * Sections (top to bottom):
  *   1. Hero Block          — forest green, week eyebrow, title, 3-chip stat row
- *   2. Anchor Bar          — restaurant cost comparison
+ *   2. Stack tabs          — verified store stacks when available
  *   3. Section Label
  *   4. Meal List           — two-column rows (day/price | meal detail)
  *   5. Week Receipt        — line items + dark green footer
- *   6. Takeout Comparison  — red tint, savings kept
+ *   6. Nutrition summary
  *   7. Lock In Button
  */
 
@@ -574,6 +574,12 @@ export default function WeeklyPlanScreen({ navigation, route }) {
         });
       }
       const stacks = await loadVerifiedStacks({ retailer: store, limit: 10 });
+      if (!stacks.length) {
+        console.info('[WeeklyPlanScreen] no verified stacks for selected store', {
+          table: 'app_home_feed',
+          retailer: store,
+        });
+      }
       setStoreStacks(stacks);
     } catch { /* non-fatal */ }
     finally { setRefreshingDeals(false); }
@@ -620,29 +626,23 @@ export default function WeeklyPlanScreen({ navigation, route }) {
   const totalDinnerCents  = mealPrices.reduce((s, p) => s + p, 0);
   const totalRegularCents = mealRegulars.reduce((s, p) => s + p, 0);
   const engineTotals = engineTotalsForDisplay(enginePayload);
-  const planSavedCents   = engineTotals.stack_savings_cents || (totalRegularCents - totalDinnerCents);
+  const hasVerifiedStoreStacks = storeStacks.length > 0;
+  const planSavedCents = hasVerifiedStoreStacks
+    ? (engineTotals.stack_savings_cents || Math.max(0, totalRegularCents - totalDinnerCents))
+    : 0;
 
   // Snippd range = cheapest meal to most expensive meal
   const snippdLow  = allPlanMeals.length ? Math.min(...mealPrices) : 0;
   const snippdHigh = allPlanMeals.length ? Math.max(...mealPrices) : 0;
 
-  // Restaurant estimate: household_size * $20–$30 per night * 1 night (per-dinner comparison)
-  const restLowPerNight  = householdSize * 2000;   // $20/person
-  const restHighPerNight = householdSize * 3000;   // $30/person
-
-  // Week receipt line items (sample breakdown — replace with real data)
+  // Week receipt line items. Keep unknown buckets at zero unless backend math supplies them.
   const dinnersBill      = totalDinnerCents;
-  const householdStack   = Math.round(totalDinnerCents * 0.08);  // ~8% household staples
-  const refillItems      = Math.round(totalDinnerCents * 0.12);  // ~12% pantry refills
-  const postRegisterCredits  = Math.round(planSavedCents * 0.15);   // 15% of savings as rebates
-  const planTotal        = engineTotals.final_estimated_total_cents || (dinnersBill + householdStack + refillItems - postRegisterCredits);
+  const householdStack   = 0;
+  const refillItems      = 0;
+  const postRegisterCredits = 0;
+  const planTotal        = engineTotals.final_estimated_total_cents || dinnersBill;
 
-  // Takeout comparison
   const planNights   = Math.max(dayPlans.length || 0, nights || 7);
-  const takeoutLow   = householdSize * planNights * 1800;  // $18/person/night
-  const takeoutHigh  = householdSize * planNights * 2800;  // $28/person/night
-  const diffLow      = Math.max(0, takeoutLow  - planTotal);
-  const diffHigh     = Math.max(0, takeoutHigh - planTotal);
 
   const withoutSnippd = totalRegularCents + householdStack + refillItems;
 
@@ -716,8 +716,16 @@ export default function WeeklyPlanScreen({ navigation, route }) {
         </View>
         <View style={styles.center}>
           <Feather name="inbox" size={36} color={GRAY} />
-          <Text style={styles.emptyTitle}>No deals loaded yet</Text>
-          <Text style={styles.emptyBody}>Upload this week's circulars to generate a plan.</Text>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusBadgeTxt}>Waiting for weekly deals</Text>
+          </View>
+          <Text style={styles.emptyTitle}>No verified weekly plan data yet</Text>
+          <Text style={styles.emptyBody}>
+            Snippd did not receive verified deal rows for this week. This appears when retailer ingestion has not published current offers for your stores.
+          </Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => { setNoDeals(false); setLoading(true); load(true); loadStoreDeals(selectedStore); }}>
+            <Text style={styles.retryTxt}>Check back after weekly deals refresh</Text>
+          </TouchableOpacity>
           {isAdmin && (
             <TouchableOpacity style={styles.uploadBtn} onPress={() => navigation.navigate('AdminCircularUpload')}>
               <Text style={styles.uploadBtnTxt}>Upload circulars now</Text>
@@ -861,7 +869,7 @@ export default function WeeklyPlanScreen({ navigation, route }) {
         {planTab === 'stacks' && (
           <View style={styles.pad}>
             {/* Comparison card */}
-            {(() => {
+            {storeStacks.length > 0 && (() => {
               const planRetail   = regularTotal || (youPayCents + youSaveCents);
               const planPay      = youPayCents;
               const budgetDiff   = planPay - weeklyBudgetCents;
@@ -942,8 +950,22 @@ export default function WeeklyPlanScreen({ navigation, route }) {
               </View>
             ) : storeStacks.length === 0 ? (
               <View style={styles.stackEmptyCard}>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusBadgeTxt}>Waiting for weekly deals</Text>
+                </View>
                 <Feather name="inbox" size={28} color={GRAY} />
-                <Text style={styles.stackEmptyTxt}>No verified stacks for this store yet.</Text>
+                <Text style={styles.stackEmptyTitle}>No verified stacks for your stores yet.</Text>
+                <Text style={styles.stackEmptyTxt}>
+                  app_home_feed has no active stack rows for {selectedStoreLabel}. This usually means the weekly deals refresh has not produced verified math for your selected stores.
+                </Text>
+                <View style={styles.stackEmptyActions}>
+                  <TouchableOpacity style={styles.stackEmptyBtn} onPress={() => loadStoreDeals(selectedStore)} activeOpacity={0.86}>
+                    <Text style={styles.stackEmptyBtnTxt}>Check back after weekly deals refresh</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.stackEmptyGhostBtn} onPress={() => navigation.getParent?.()?.navigate('ProfileTab')} activeOpacity={0.86}>
+                    <Text style={styles.stackEmptyGhostTxt}>Build profile</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : (
               storeStacks.slice(0, 6).map((stack, i) => {
@@ -1269,6 +1291,8 @@ const styles = StyleSheet.create({
 
   emptyTitle: { fontSize: 18, fontWeight: '700', color: NAVY, marginTop: 12, textAlign: 'center' },
   emptyBody:  { fontSize: 14, color: GRAY, textAlign: 'center', lineHeight: 20 },
+  statusBadge: { alignSelf: 'center', backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginTop: 4 },
+  statusBadgeTxt: { fontSize: 10, fontWeight: '900', color: '#92400E', textTransform: 'uppercase', letterSpacing: 0.5 },
   uploadBtn:  { marginTop: 16, backgroundColor: FOREST, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
   uploadBtnTxt: { color: WHITE, fontWeight: '700', fontSize: 14 },
 
@@ -1311,8 +1335,14 @@ const styles = StyleSheet.create({
   stackBudgetStatus: { fontSize: 13, fontWeight: '900' },
   stackLoadWrap: { alignItems: 'center', paddingVertical: 32, gap: 8 },
   stackLoadTxt: { fontSize: 13, color: GRAY },
-  stackEmptyCard: { alignItems: 'center', paddingVertical: 40, gap: 10 },
-  stackEmptyTxt: { fontSize: 14, color: GRAY, fontWeight: '600' },
+  stackEmptyCard: { alignItems: 'center', paddingVertical: 34, paddingHorizontal: 18, gap: 10, backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER },
+  stackEmptyTitle: { fontSize: 16, color: NAVY, fontWeight: '900', textAlign: 'center' },
+  stackEmptyTxt: { fontSize: 13, color: GRAY, fontWeight: '600', textAlign: 'center', lineHeight: 19 },
+  stackEmptyActions: { gap: 8, marginTop: 8, alignItems: 'center' },
+  stackEmptyBtn: { backgroundColor: FOREST, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
+  stackEmptyBtnTxt: { color: WHITE, fontSize: 12, fontWeight: '900', textAlign: 'center' },
+  stackEmptyGhostBtn: { backgroundColor: '#F8FAFC', borderColor: BORDER, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
+  stackEmptyGhostTxt: { color: FOREST, fontSize: 12, fontWeight: '900', textAlign: 'center' },
   stackRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: WHITE, borderRadius: 14, padding: 14, marginBottom: 8,

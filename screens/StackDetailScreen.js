@@ -190,10 +190,19 @@ export default function StackDetailScreen({ route, navigation }) {
   const [checked, setChecked] = useState({});
 
   if (!stack) {
+    console.info('[StackDetailScreen] missing route stack payload; showing empty state', {
+      requiredData: 'route.params.stack',
+    });
     return (
       <View style={[s.container, { alignItems: 'center', justifyContent: 'center' }]}>
         <Feather name="alert-circle" size={40} color={SLATE} />
-        <Text style={{ color: SLATE, marginTop: 12 }}>No stack data available.</Text>
+        <View style={s.statusBadge}>
+          <Text style={s.statusBadgeTxt}>Waiting for weekly deals</Text>
+        </View>
+        <Text style={{ color: NAVY, marginTop: 12, fontWeight: '900' }}>No stack data available.</Text>
+        <Text style={{ color: SLATE, marginTop: 8, textAlign: 'center', paddingHorizontal: 28, lineHeight: 19 }}>
+          This screen needs a verified app_home_feed or stack_candidates row. Go back and open a live stack after the weekly deals refresh.
+        </Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
           <Text style={{ color: GREEN, fontWeight: '700' }}>Go back</Text>
         </TouchableOpacity>
@@ -202,6 +211,12 @@ export default function StackDetailScreen({ route, navigation }) {
   }
 
   const items = parseMaybeJson(stack.breakdown_list ?? stack.stack_items ?? stack.items, []);
+  if (!items.length) {
+    console.info('[StackDetailScreen] stack has no item breakdown; showing item zero-state', {
+      stack_id: stack.id || stack.stack_id || stack.stack_candidate_id,
+      requiredData: 'breakdown_list/stack_items/items',
+    });
+  }
   const retailer = stack.retailer || stack.store || stack.retailer_key;
   const instructions = parseMaybeJson(stack.instructions, [
     `Open the ${stack.store || 'store'} app`,
@@ -382,7 +397,16 @@ export default function StackDetailScreen({ route, navigation }) {
 
           {items.length === 0 ? (
             <View style={s.emptyCard}>
-              <Text style={{ color: SLATE, textAlign: 'center' }}>No items available.</Text>
+              <View style={s.statusBadge}>
+                <Text style={s.statusBadgeTxt}>Waiting for weekly deals</Text>
+              </View>
+              <Text style={s.emptyTitle}>No verified item list yet</Text>
+              <Text style={s.emptySub}>
+                This stack does not include breakdown_list, stack_items, or items. Snippd cannot add it to a cart until backend stack generation publishes the item breakdown.
+              </Text>
+              <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.goBack()} activeOpacity={0.86}>
+                <Text style={s.emptyBtnTxt}>Check back after weekly deals refresh</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={s.itemsCard}>
@@ -495,7 +519,13 @@ const s = StyleSheet.create({
   finalPriceTxt:{ fontSize: 16, fontWeight: '900', color: NAVY },
   qtyTxt:       { fontSize: 11, color: SLATE, marginTop: 1 },
 
-  emptyCard:    { backgroundColor: WHITE, borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: BORDER },
+  emptyCard:    { backgroundColor: WHITE, borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: BORDER, gap: 8 },
+  statusBadge:  { backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginTop: 8 },
+  statusBadgeTxt: { fontSize: 10, fontWeight: '900', color: '#92400E', textTransform: 'uppercase', letterSpacing: 0.5 },
+  emptyTitle:   { fontSize: 16, fontWeight: '900', color: NAVY, textAlign: 'center' },
+  emptySub:     { fontSize: 13, color: SLATE, textAlign: 'center', lineHeight: 19 },
+  emptyBtn:     { backgroundColor: FOREST, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginTop: 6 },
+  emptyBtnTxt:  { color: WHITE, fontSize: 12, fontWeight: '900', textAlign: 'center' },
 
   sourceNote:   { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingVertical: 6 },
   sourceNoteTxt:{ fontSize: 11, color: SLATE },

@@ -57,12 +57,52 @@ const RETAILER_COUPON_URLS = {
   cvs: 'https://www.cvs.com/extracare/home',
 };
 
+const RETAILER_SEARCH_URLS = {
+  walmart: 'https://www.walmart.com/search?q=',
+  target: 'https://www.target.com/s?searchTerm=',
+  publix: 'https://www.publix.com/search?searchTerm=',
+  walgreens: 'https://www.walgreens.com/search/results.jsp?Ntt=',
+  dollar_general: 'https://www.dollargeneral.com/search?q=',
+  dollargeneral: 'https://www.dollargeneral.com/search?q=',
+  kroger: 'https://www.kroger.com/search?query=',
+  cvs: 'https://www.cvs.com/search?searchTerm=',
+};
+
 function retailerKey(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
 
+function couponLinkInfo(coupon) {
+  const key = retailerKey(coupon?.retailer_key || coupon?.retailer || coupon?.store);
+  const itemLevelUrl = coupon?.coupon_activation_link
+    || coupon?.coupon_deep_link
+    || coupon?.exact_coupon_url
+    || coupon?.link_url;
+  if (itemLevelUrl) {
+    return { url: itemLevelUrl, linkType: 'item', label: 'Clip coupon' };
+  }
+
+  const productName = coupon?.product_name || coupon?.name || coupon?.coupon_title || coupon?.title;
+  const searchBase = coupon?.retailer_search_url || RETAILER_SEARCH_URLS[key];
+  if (searchBase && productName) {
+    const separator = searchBase.includes('=') || searchBase.endsWith('/') ? '' : '?q=';
+    return {
+      url: `${searchBase}${separator}${encodeURIComponent(productName)}`,
+      linkType: 'search',
+      label: 'Search in store app',
+    };
+  }
+
+  const hubUrl = coupon?.retailer_coupon_hub || coupon?.coupon_hub_url || RETAILER_COUPON_URLS[key];
+  if (hubUrl) {
+    return { url: hubUrl, linkType: 'hub', label: 'Open coupon page' };
+  }
+
+  return { url: null, linkType: 'missing', label: 'Link unavailable' };
+}
+
 function couponUrl(coupon) {
-  return coupon.exact_coupon_url || null;
+  return couponLinkInfo(coupon).url;
 }
 
 async function copyCouponHint(coupon) {
@@ -90,12 +130,26 @@ export default function CouponClippingScreen({ navigation, route }) {
       setCartItems(normalized);
       setCheckoutAuthority(route?.params?.checkoutAuthority ?? (normalized.length ? await fetchAuthorizedCheckoutMath({ items: normalized }) : null));
       if (route?.params?.coupons?.length) {
-        setCoupons(route.params.coupons.filter(coupon => coupon.exact_coupon_url));
+        const nextCoupons = route.params.coupons.filter(coupon => couponUrl(coupon));
+        if (!nextCoupons.some(coupon => couponLinkInfo(coupon).linkType === 'item')) {
+          console.info('[CouponClippingScreen] no item-level coupon links; showing retailer fallback links', {
+            source: 'route.params.coupons',
+            couponCount: nextCoupons.length,
+          });
+        }
+        setCoupons(nextCoupons);
       } else {
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.id) {
           const result = await runCouponClip(user.id, true);
-          setCoupons(result.coupons.filter(coupon => coupon.exact_coupon_url));
+          const nextCoupons = (result.coupons || []).filter(coupon => couponUrl(coupon));
+          if (!nextCoupons.some(coupon => couponLinkInfo(coupon).linkType === 'item')) {
+            console.info('[CouponClippingScreen] no item-level coupon links; showing retailer fallback links', {
+              source: 'runCouponClip',
+              couponCount: nextCoupons.length,
+            });
+          }
+          setCoupons(nextCoupons);
         }
       }
     } catch {
@@ -111,6 +165,7 @@ export default function CouponClippingScreen({ navigation, route }) {
   const authority = route?.params?.totals ?? authorizedTotalsForRoute(checkoutAuthority);
   const currentCoupon = coupons[currentCouponIndex] ?? null;
   const allCouponsClipped = coupons.length > 0 && clippedCouponIds.size >= coupons.length;
+  const hasItemLevelCoupons = coupons.some(coupon => couponLinkInfo(coupon).linkType === 'item');
 
   async function openCoupon(coupon) {
     await copyCouponHint(coupon);
@@ -128,9 +183,15 @@ export default function CouponClippingScreen({ navigation, route }) {
     try {
       const url = couponUrl(coupon);
       if (!url) {
-        Alert.alert('Coupon hidden', 'This coupon does not have a verified exact source URL.');
+        Alert.alert('Link unavailable', 'This coupon does not include an item link, retailer search page, or retailer coupon hub.');
         return;
       }
+      const linkInfo = couponLinkInfo(coupon);
+      console.info('[CouponClippingScreen] opening coupon link', {
+        retailer: coupon.retailer_key,
+        link_type: linkInfo.linkType,
+        has_item_level_link: linkInfo.linkType === 'item',
+      });
       await WebBrowser.openBrowserAsync(url);
     } catch {
       const url = couponUrl(coupon);
@@ -255,18 +316,30 @@ export default function CouponClippingScreen({ navigation, route }) {
             {currentCoupon && !allCouponsClipped && (
               <View style={styles.currentCoupon}>
                 <View style={{ flex: 1 }}>
+                  {(() => {
+                    const linkInfo = couponLinkInfo(currentCoupon);
+                    return (
+                      <View style={[styles.linkTypeBadge, linkInfo.linkType === 'item' ? styles.linkTypeItem : styles.linkTypeFallback]}>
+                        <Text style={[styles.linkTypeTxt, linkInfo.linkType === 'item' ? styles.linkTypeTxtItem : styles.linkTypeTxtFallback]}>
+                          {linkInfo.linkType === 'item' ? 'Live' : linkInfo.linkType === 'search' ? 'Search fallback' : 'Hub fallback'}
+                        </Text>
+                      </View>
+                    );
+                  })()}
                   <Text style={styles.currentCouponName}>{currentCoupon.product_name}</Text>
                   <View style={styles.couponMetaRow}>
                     <Text style={styles.couponRetailer}>{currentCoupon.retailer_key}</Text>
                     <Text style={styles.couponSavings}>{currentCoupon.savings_label}</Text>
                   </View>
                   <Text style={styles.couponHint}>
-                    Verified from {currentCoupon.retailer_key}. Checked {currentCoupon.verified_at ? new Date(currentCoupon.verified_at).toLocaleString() : 'recently'}
-                    {currentCoupon.expiration_date ? `, expires ${currentCoupon.expiration_date}` : ''}. Clip it, return here, then mark it done.
+                    {couponLinkInfo(currentCoupon).linkType === 'item'
+                      ? `Open the item-level coupon link from ${currentCoupon.retailer_key}.`
+                      : `No item-level coupon link was returned, so Snippd will open a safe retailer ${couponLinkInfo(currentCoupon).linkType === 'search' ? 'search' : 'coupon hub'} fallback.`}
+                    {currentCoupon.expiration_date ? ` Expires ${currentCoupon.expiration_date}.` : ''} Return here, then mark it done.
                   </Text>
                 </View>
                 <TouchableOpacity style={styles.clipSmallBtn} onPress={() => openCoupon(currentCoupon)}>
-                  <Text style={styles.clipSmallTxt}>Clip</Text>
+                  <Text style={styles.clipSmallTxt}>{couponLinkInfo(currentCoupon).label}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -284,6 +357,9 @@ export default function CouponClippingScreen({ navigation, route }) {
                   <Text style={[styles.couponRowTxt, clipped && styles.couponRowDone]} numberOfLines={1}>
                     {coupon.product_name}
                   </Text>
+                  {couponLinkInfo(coupon).linkType !== 'item' && (
+                    <Text style={styles.couponFallbackTxt}>{couponLinkInfo(coupon).linkType}</Text>
+                  )}
                   <Text style={styles.couponRowAmt}>{coupon.savings_label}</Text>
                 </View>
               );
@@ -303,6 +379,30 @@ export default function CouponClippingScreen({ navigation, route }) {
                 <Feather name="shopping-cart" size={17} color={WHITE} />
               </TouchableOpacity>
             )}
+          </View>
+        )}
+
+        {coupons.length === 0 && (
+          <View style={styles.noCouponCard}>
+            <View style={styles.linkTypeBadge}>
+              <Text style={[styles.linkTypeTxt, styles.linkTypeTxtFallback]}>Waiting for weekly deals</Text>
+            </View>
+            <Text style={styles.noCouponTitle}>No item-level coupon links yet</Text>
+            <Text style={styles.noCouponSub}>
+              Snippd did not receive coupon_activation_links or exact coupon URLs for this cart. Use the retailer coupon pages below, or search the store app by item name before checkout.
+            </Text>
+          </View>
+        )}
+
+        {coupons.length > 0 && !hasItemLevelCoupons && (
+          <View style={styles.noCouponCard}>
+            <View style={styles.linkTypeBadge}>
+              <Text style={[styles.linkTypeTxt, styles.linkTypeTxtFallback]}>Hub/search fallback</Text>
+            </View>
+            <Text style={styles.noCouponTitle}>No item-level links for these coupons</Text>
+            <Text style={styles.noCouponSub}>
+              These rows do not include exact item links. Snippd will open safe retailer search or coupon hub pages instead of inventing coupon links.
+            </Text>
           </View>
         )}
 
@@ -353,6 +453,12 @@ const styles = StyleSheet.create({
   couponQueueCard: { backgroundColor: WHITE, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, gap: 10 },
   queueProgress: { position: 'absolute', top: 16, right: 16, fontSize: 12, fontWeight: '900', color: GREEN },
   currentCoupon: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F0FDF4', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#BBF7D0' },
+  linkTypeBadge: { alignSelf: 'flex-start', borderRadius: 999, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 8 },
+  linkTypeItem: { backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' },
+  linkTypeFallback: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
+  linkTypeTxt: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+  linkTypeTxtItem: { color: GREEN },
+  linkTypeTxtFallback: { color: '#92400E' },
   currentCouponName: { fontSize: 15, fontWeight: '900', color: NAVY, marginBottom: 6 },
   couponMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   couponRetailer: { fontSize: 10, fontWeight: '900', color: GRAY, textTransform: 'uppercase' },
@@ -363,12 +469,16 @@ const styles = StyleSheet.create({
   couponRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   couponRowTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: NAVY },
   couponRowDone: { color: GRAY, textDecorationLine: 'line-through' },
+  couponFallbackTxt: { fontSize: 10, fontWeight: '900', color: '#92400E', textTransform: 'uppercase' },
   couponRowAmt: { fontSize: 12, fontWeight: '900', color: GREEN },
   confirmClipBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: GREEN, borderRadius: 14, paddingVertical: 14 },
   confirmClipTxt: { color: WHITE, fontWeight: '900', fontSize: 14 },
   checkoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: FOREST, borderRadius: 14, paddingVertical: 14 },
   checkoutBtnTxt: { color: WHITE, fontWeight: '900', fontSize: 14 },
   storeCard: { backgroundColor: WHITE, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: BORDER },
+  noCouponCard: { backgroundColor: WHITE, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, gap: 8 },
+  noCouponTitle: { fontSize: 15, fontWeight: '900', color: NAVY },
+  noCouponSub: { fontSize: 12, color: GRAY, lineHeight: 18 },
   storeName: { fontSize: 15, fontWeight: '900', color: NAVY },
   storeHint: { fontSize: 12, color: GRAY, marginTop: 5, lineHeight: 18 },
   linkRow: { marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

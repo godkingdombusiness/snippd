@@ -114,6 +114,11 @@ export default function StudioScreen({ navigation, route }) {
         .eq('user_id', user.id);
 
       setTripsVerified(count || 0);
+      if (!count && !(Number(profile?.receipt_credit_award_count) || 0)) {
+        console.info('[StudioScreen] no receipt credits or trip history; showing locked zero-state', {
+          requiredData: ['profiles.receipt_credit_award_count', 'trip_results'],
+        });
+      }
     } catch (e) {
       
     } finally {
@@ -548,9 +553,12 @@ export default function StudioScreen({ navigation, route }) {
               <View style={styles.lockedIconWrap}>
                 <Text style={styles.lockedIconTxt}>LOCK</Text>
               </View>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusBadgeTxt}>Needs receipt history</Text>
+              </View>
               <Text style={styles.lockedTitle}>Unlock Creator Studio</Text>
               <Text style={styles.lockedSub}>
-                Earn {TRIPS_REQUIRED} receipt-verify credits to unlock Snippd Studio and share your savings story.
+                Snippd needs verified receipt credits before Studio can unlock. You are seeing this because your profile does not have enough receipt verification history yet.
               </Text>
 
               <View style={styles.lockedProgressWrap}>
@@ -783,6 +791,8 @@ const styles = StyleSheet.create({
     marginBottom: 16, borderWidth: 1, borderColor: BORDER,
   },
   lockedIconTxt: { fontSize: 11, fontWeight: 'bold', color: GRAY, letterSpacing: 1 },
+  statusBadge: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 12 },
+  statusBadgeTxt: { fontSize: 10, fontWeight: '900', color: '#3B82F6', textTransform: 'uppercase', letterSpacing: 0.5 },
   lockedTitle: { fontSize: 20, fontWeight: 'bold', color: NAVY, marginBottom: 8 },
   lockedSub: { fontSize: 14, color: GRAY, textAlign: 'center', lineHeight: 21, marginBottom: 20 },
   lockedProgressWrap: { width: '100%', marginBottom: 16 },

@@ -469,6 +469,12 @@ export default function HomeScreen({ navigation }) {
     navigation?.navigate('DiscoverTab');
   };
 
+  const goToProfileTab = () => {
+    const parent = navigation?.getParent?.();
+    if (parent?.navigate) parent.navigate('ProfileTab');
+    else navigation?.navigate('SoftPersonalization');
+  };
+
   const openBudgetEditor = () => {
     setBudgetDraft(String(Math.round(budget.goal || 150)));
     setBudgetModalVisible(true);
@@ -735,6 +741,12 @@ export default function HomeScreen({ navigation }) {
   async function loadHomeData() {
     try {
       const stacks = await queryVerifiedHomeFeed(6);
+      if (!stacks.length) {
+        console.info('[HomeScreen] app_home_feed empty; showing weekly deal engine warming state', {
+          table: 'app_home_feed',
+          source: 'verified_home_feed',
+        });
+      }
       setTopStacks(stacks.slice(0, 4));
       setHomeDeals(stacks.slice(0, 6).map(row => normalizeHomeDeal(row, 'app_home_feed')));
       await loadWeeklyPlan();
@@ -771,6 +783,13 @@ export default function HomeScreen({ navigation }) {
 
       if (!stacks.length) {
         stacks = await queryVerifiedHomeFeed(6);
+      }
+
+      if (!stacks.length) {
+        console.info('[HomeScreen] no verified stacks available after refresh', {
+          table: 'app_home_feed',
+          triggerGenerate,
+        });
       }
 
       setTopStacks(stacks.slice(0, 4));
@@ -1044,9 +1063,25 @@ export default function HomeScreen({ navigation }) {
           />
         ) : (
           <View style={s.emptyCard}>
+            <View style={s.dataStatusBadge}>
+              <Text style={s.dataStatusTxt}>Waiting for weekly deals</Text>
+            </View>
             <Feather name="inbox" size={28} color="#0C9E54" />
-            <Text style={s.emptyTitle}>We're checking today's live deals.</Text>
-            <Text style={s.emptySub}>Check back soon.</Text>
+            <Text style={s.emptyTitle}>Your weekly deal engine is warming up</Text>
+            <Text style={s.emptySub}>
+              Snippd did not find active rows in app_home_feed for your verified stores yet. This usually means the weekly deals refresh has not published stacks for your profile.
+            </Text>
+            <View style={s.emptyActionRow}>
+              <TouchableOpacity style={s.emptyPrimaryBtn} onPress={goToProfileTab} activeOpacity={0.86}>
+                <Text style={s.emptyPrimaryTxt}>Build profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.emptySecondaryBtn} onPress={openBudgetEditor} activeOpacity={0.86}>
+                <Text style={s.emptySecondaryTxt}>Add grocery budget</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={s.emptyWideBtn} onPress={() => loadTopStacks(false)} activeOpacity={0.86}>
+              <Text style={s.emptyWideTxt}>Check back after weekly deals refresh</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1585,7 +1620,16 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#F1F5F9',
   },
   emptyTitle: { fontSize: 15, fontWeight: '800', color: '#0D1B4B', textAlign: 'center' },
-  emptySub: { fontSize: 13, color: '#64748B', textAlign: 'center' },
+  emptySub: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 19 },
+  dataStatusBadge: { alignSelf: 'center', backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 4 },
+  dataStatusTxt: { fontSize: 10, fontWeight: '900', color: '#92400E', textTransform: 'uppercase', letterSpacing: 0.6 },
+  emptyActionRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  emptyPrimaryBtn: { backgroundColor: '#0C9E54', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  emptyPrimaryTxt: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  emptySecondaryBtn: { backgroundColor: '#F0FDF4', borderColor: '#BDF3CD', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  emptySecondaryTxt: { color: '#0C7A3D', fontSize: 12, fontWeight: '900' },
+  emptyWideBtn: { marginTop: 4, backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  emptyWideTxt: { color: '#0D1B4B', fontSize: 12, fontWeight: '900', textAlign: 'center' },
 
   // Intelligence Profile card
   intelSection: { marginBottom: 20 },
