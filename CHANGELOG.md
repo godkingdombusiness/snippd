@@ -4,12 +4,16 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — tracker.track crash (2026-05-13)
+- `src/lib/eventTracker.ts` — Added missing `track(event_name, payload)` method to `SnippdEventTracker` class. Method was referenced by `SnippdDeepBriefScreen`, `HomeScreen`, `ProfileScreen`, and `WeeklyPlanScreen` but had not been committed, causing a `TypeError: tracker.track is not a function` crash on mount. Also fixed a secondary bug where the method called `requireUserId()` (which throws) — replaced with a warn-and-drop guard so missing user_id logs a warning instead of crashing the app.
+
 ### Added — Optional Deep Brief personalization flow (2026-05-13)
 - `screens/SnippdDeepBriefScreen.js` — Added an optional Snippd Deep Brief flow for deeper household, shopping, cooking, allergy/safety, pantry, behavior, financial goals, and autonomy preferences. Saves to `user_persona` with `briefing_completed = true` and supports optional `returnTo` navigation.
 - `App.js` — wired the existing `ConciergeOnboarding` route to the new `SnippdDeepBriefScreen` component.
 - `screens/HomeScreen.js` — added an optional Snippd Deep Brief CTA card so users can choose a deeper personalization flow from the home feed.
 - `screens/ProfileScreen.js` — added an optional Deep Brief CTA from the profile screen to let users update personalization anytime.
 - `docs/APP_WIRING.md`, `docs/USER_FLOW_AND_COUPON_VALIDATION.md`, `docs/DATABASE.md`, `docs/DESIGN.md` — updated legacy `ConciergeOnboarding` documentation to reflect the new optional `SnippdDeepBriefScreen` flow.
+- `screens/SignInScreen.js` — fixed sign-up flow to avoid navigating to `ConciergeOnboarding` when email confirmation is pending, and instead surface a confirmation message.
 
 ### Fixed — Compile fix (2026-05-13)
 - `src/services/pushNotificationService.ts` — updated `Notifications.setNotificationHandler` to include `shouldShowBanner` and `shouldShowList`, matching Expo `NotificationBehavior`.

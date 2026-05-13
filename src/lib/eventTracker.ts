@@ -82,7 +82,14 @@ class SnippdEventTracker {
   trackBatch(events: InboundEvent[]): void {
     events.forEach((e) => this.enqueue(this.prepare(e)));
   }
-
+  track(event_name: string, payload: Record<string, unknown> = {}): void {
+    const user_id = (payload as Partial<InboundEvent>).user_id ?? this.defaultUserId;
+    if (!user_id) {
+      console.warn('[SnippdTracker] track(): no user_id available, event dropped:', event_name);
+      return;
+    }
+    this.emit({ ...payload, event_name, user_id } as PartialEvent);
+  }
   // ── Convenience methods ───────────────────────────────────
 
   private emit(event: PartialEvent): void {
