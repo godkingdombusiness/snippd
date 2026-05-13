@@ -157,7 +157,7 @@ export default function WeeklyPlanStarterScreen({ navigation, route }) {
           />
           <ChoiceCard
             icon="zap"
-            label="Build a smart starter cart"
+            label="Plan my meals around deals"
             sublabel="Snippd picks based on your profile"
             onPress={() => navigation.navigate('SmartStarterCart')}
           />

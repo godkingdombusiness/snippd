@@ -28,7 +28,7 @@ function StashBubble({ message }) {
   return (
     <View style={styles.stash}>
       <View style={styles.stashIcon}>
-        <Text style={styles.stashIconText}>✦</Text>
+        <Text style={styles.stashIconText}>S</Text>
       </View>
       <Text style={styles.stashText}>{message}</Text>
     </View>
@@ -119,7 +119,7 @@ export default function SmartStartScreen({ navigation, route }) {
     {
       id: 'build_plan',
       icon: 'calendar',
-      label: 'Build this week\'s grocery plan',
+      label: 'Plan this week\'s food',
       sublabel: ACTION_SUBLABELS[nbaAction] && highlighted === 'build_plan'
         ? ACTION_SUBLABELS[nbaAction] : null,
       onPress: () => navigation.navigate('WeeklyPlanStarter', { action: nbaAction }),
@@ -133,10 +133,10 @@ export default function SmartStartScreen({ navigation, route }) {
     },
     {
       id: 'tonight',
-      icon: 'moon',
-      label: 'Figure out what\'s for tonight',
-      sublabel: null,
-      onPress: goToMainApp,
+      icon: 'layers',
+      label: 'Help me decide what to do today',
+      sublabel: 'Cook, pick up, or eat out — ranked for you',
+      onPress: () => navigation.navigate('TodayDecision'),
     },
     {
       id: 'receipt',

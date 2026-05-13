@@ -449,7 +449,7 @@ export default function ShoppingPlanScreen({ navigation }) {
             style={styles.primaryBtn}
             onPress={() => navigation.navigate('SnippdTab')}
           >
-            <Text style={styles.primaryBtnTxt}>Build My Cart from This Plan</Text>
+            <Text style={styles.primaryBtnTxt}>Start This Food Plan</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

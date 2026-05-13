@@ -4,6 +4,24 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Provider-agnostic food decision architecture (2026-05-13)
+- `src/services/foodOptions/decisionEngineService.js` — Core 100-point scoring engine. Six factors: budget_fit (25), time_fit (20), nutrition_fit (20), pantry_fit (15), household_fit (10), preference_score (10). Exports `scoreOption()` and `rankOptions()`. Snippd decides; providers fulfill.
+- `src/services/foodOptions/pantryProvider.js` — Returns cook_from_pantry option with coverage estimate. Excluded when pantryCount === 0.
+- `src/services/foodOptions/snippdGroceryProvider.js` — Returns quick_grocery_run and grocery_pickup options ranked by budget + pantry fit.
+- `src/services/foodOptions/uberEatsProvider.js` — Uber Eats as one fulfillment provider. Options excluded when recommendation_score < 35. Includes legal disclaimer copy. Does NOT label Snippd as "powered by Uber Eats".
+- `src/services/foodOptions/foodOptionsProvider.js` — Orchestrator. Calls all providers in parallel, runs through decision engine, returns ranked list. `buildContextFromProfile()` maps Supabase profile → context.
+- `screens/TodayDecisionScreen.js` — New screen: ranked food decision flow. 6 options (cook from pantry, quick grocery run, grocery pickup, Uber Eats pickup, Uber Eats delivery, eat out smart). Score bar + "Best fit / Good fit / Possible / Not ideal" badges. Budget remaining pill. Loads live profile from Supabase, falls back to seeded context.
+- `App.js` — Registered `TodayDecision` route. Imported `TodayDecisionScreen`.
+
+### Changed — App language / strategic positioning (2026-05-13)
+- `screens/SmartStartScreen.js` — Option 1 "Build this week's grocery plan" → "Plan this week's food". Option 3 "Figure out what's for tonight" → "Help me decide what to do today" (now routes to TodayDecision). StashBubble icon ✦ → S.
+- `screens/AddNeedsScreen.js` — "Build Smart Starter Cart" → "Add to My Food Plan".
+- `screens/WeeklyPlanStarterScreen.js` — "Build a smart starter cart" → "Plan my meals around deals".
+- `screens/ShoppingPlanScreen.js` — "Build My Cart from This Plan" → "Start This Food Plan".
+- `screens/ExpandedDayPlanScreen.js` — "Add Today to Cart" → "Add Today to Plan".
+- `screens/CartOptionsScreen.js` — "Building your smart carts…" → "Planning your smart food options…".
+- `screens/UsualStaplesScreen.js` — "Skip — build cart from scratch" → "Skip — I'll add items manually".
+
 ### Changed — HomeScreen WeeklyDinnerPlan entry point (2026-05-13)
 - `screens/HomeScreen.js` — Added "Your Weekly Dinner Plan" banner card between the More Stacks and Budget sections. Taps navigate to `WeeklyDinnerPlanScreen`. Styled as a mint banner with calendar icon and chevron, matching the screen's existing card language.
 

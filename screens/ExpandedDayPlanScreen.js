@@ -125,7 +125,7 @@ function ExpandedDayPlanScreen(props) {
         {/* CTA buttons */}
         <View style={styles.ctaSection}>
           <TouchableOpacity style={styles.ctaPrimary} activeOpacity={0.8}>
-            <Text style={styles.ctaPrimaryText}>Add Today to Cart</Text>
+            <Text style={styles.ctaPrimaryText}>Add Today to Plan</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.ctaSecondary} activeOpacity={0.8}>
             <Text style={styles.ctaSecondaryText}>Swap a Meal</Text>

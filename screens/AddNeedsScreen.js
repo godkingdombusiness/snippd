@@ -153,7 +153,7 @@ export default function AddNeedsScreen({ navigation }) {
             onPress={() => navigation.navigate('SmartStarterCart', { addedItems: items })}
           >
             <Feather name="zap" size={16} color={GREEN} />
-            <Text style={styles.secondaryBtnText}>Build Smart Starter Cart</Text>
+            <Text style={styles.secondaryBtnText}>Add to My Food Plan</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

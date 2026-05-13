@@ -355,7 +355,7 @@ export default function CartOptionsScreen({ navigation, route }) {
         <StatusBar barStyle="dark-content" />
         <View style={s.center}>
           <ActivityIndicator size="large" color={GREEN} />
-          <Text style={s.loadingTxt}>Building your smart carts…</Text>
+          <Text style={s.loadingTxt}>Planning your smart food options…</Text>
         </View>
       </SafeAreaView>
     );

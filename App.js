@@ -143,6 +143,7 @@ import PersonalityResultScreen from './screens/PersonalityResultScreen';
 // ── NEXT-BEST-ACTION FLOW ────────────────────────────────────────────────────
 import PlanGenerationLoadingScreen from './screens/PlanGenerationLoadingScreen';
 import SmartStartScreen from './screens/SmartStartScreen';
+import TodayDecisionScreen from './screens/TodayDecisionScreen';
 import WeeklyPlanStarterScreen from './screens/WeeklyPlanStarterScreen';
 import AddNeedsScreen from './screens/AddNeedsScreen';
 import UsualStaplesScreen from './screens/UsualStaplesScreen';
@@ -611,6 +612,7 @@ function RootNavigator() {
         {/* ── Next-Best-Action flow screens ─────────────────────────────── */}
         <Stack.Screen name="PlanGenerationLoading" component={PlanGenerationLoadingScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="SmartStart"            component={SmartStartScreen} options={{ gestureEnabled: false }} />
+        <Stack.Screen name="TodayDecision"         component={TodayDecisionScreen} />
         <Stack.Screen name="WeeklyPlanStarter"     component={WeeklyPlanStarterScreen} />
         <Stack.Screen name="AddNeeds"              component={AddNeedsScreen} />
         <Stack.Screen name="UsualStaples"          component={UsualStaplesScreen} />

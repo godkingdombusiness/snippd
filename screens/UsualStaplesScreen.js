@@ -173,7 +173,7 @@ export default function UsualStaplesScreen({ navigation }) {
           style={styles.skipBtn}
           onPress={() => navigation.navigate('SmartStarterCart')}
         >
-          <Text style={styles.skipText}>Skip — build cart from scratch</Text>
+          <Text style={styles.skipText}>Skip — I'll add items manually</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
