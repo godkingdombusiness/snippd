@@ -23,7 +23,7 @@ Two token files exist and conflict. This must be resolved before any screen migr
 |---|---|---|
 | `src/design/tokens.js` | Mint canvas (`#EAF9E7`), Navy (`#172250`), Mint accent (`#C5FFBC`) | **Deprecated — do not extend** |
 | `lib/theme.js` | Light FinTech (`#F8F9FA` bg, `#172250` navy, `#0C9E54` green) | **Transitional — do not extend** |
-| Screen-level overrides | `#050805` / `#0C9E54` in `OnboardingConciergeScreen`, `LogicScanScreen` | **Sovereign — canonical reference** |
+| Screen-level overrides | `#050805` / `#0C9E54` in `SnippdDeepBriefScreen`, `LogicScanScreen` | **Sovereign — canonical reference** |
 
 ### 2B. Target Token Set (Replace Both Files With This)
 
@@ -226,7 +226,7 @@ export const SHADOW = {
 ### 7B. Screen-Level Design State
 
 **Sovereign — complete. Use as reference:**
-- `screens/OnboardingConciergeScreen.js` — canonical sovereign implementation
+- `screens/SnippdDeepBriefScreen.js` — canonical sovereign implementation
 - `screens/LogicScanScreen.js` — canonical sovereign implementation
 
 **Transitional — partially migrated:**

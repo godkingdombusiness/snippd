@@ -9,6 +9,10 @@ Format: [version] — YYYY-MM-DD
 - `App.js` — wired the existing `ConciergeOnboarding` route to the new `SnippdDeepBriefScreen` component.
 - `screens/HomeScreen.js` — added an optional Snippd Deep Brief CTA card so users can choose a deeper personalization flow from the home feed.
 - `screens/ProfileScreen.js` — added an optional Deep Brief CTA from the profile screen to let users update personalization anytime.
+- `docs/APP_WIRING.md`, `docs/USER_FLOW_AND_COUPON_VALIDATION.md`, `docs/DATABASE.md`, `docs/DESIGN.md` — updated legacy `ConciergeOnboarding` documentation to reflect the new optional `SnippdDeepBriefScreen` flow.
+
+### Fixed — Compile fix (2026-05-13)
+- `src/services/pushNotificationService.ts` — updated `Notifications.setNotificationHandler` to include `shouldShowBanner` and `shouldShowList`, matching Expo `NotificationBehavior`.
 
 ### Added - Production stack generation pipeline (2026-05-10)
 - `supabase/migrations/20260510_production_stack_pipeline.sql` - Added additive schema for normalized coupons, coupon activation links, retailer data sources, stack run counters, user stack feedback, and normalized coupon inventory view.

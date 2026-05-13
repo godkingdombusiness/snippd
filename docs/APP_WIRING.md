@@ -123,7 +123,7 @@ After `resolveUserStatus`, if `TrialProvider.isPaused === true` AND route would 
 | `PersonaReveal` | `PersonaRevealScreen` | Post-onboarding reveal |
 | `HowItWorks` | `HowItWorksScreen` | Explainer, reachable from onboarding |
 | `WaitlistForecast` | `WaitlistForecastScreen` | Legacy (no longer in routing) |
-| `ConciergeOnboarding` | `OnboardingConciergeScreen` | New users with `launched` status |
+| `ConciergeOnboarding` | `SnippdDeepBriefScreen` | New users with `launched` status or optional re-entry from Home/Profile |
 | `LogicScan` | `LogicScanScreen` | AI scan flow |
 | `FounderDashboard` | `FounderDashboardScreen` | Beta/lifetime founders |
 | `MainApp` | `MainTabs` | All authenticated users |
@@ -589,7 +589,7 @@ Auth: `Authorization: Bearer {user_jwt}` unless noted.
 | `wealth-momentum` | WealthMomentumScreen | Fetch wealth momentum data |
 | `slack-notify` | Admin events | Slack webhook notifications |
 | `admin-deal-review` | AdminDealReviewScreen | Admin deal quality review |
-| `initialize-agent` | OnboardingConciergeScreen | Initialize AI concierge agent |
+| `initialize-agent` | SnippdDeepBriefScreen | Initialize AI concierge agent |
 | `geo-auth-check` | Location events | Geo-based authorization check |
 
 ---

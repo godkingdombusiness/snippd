@@ -1546,7 +1546,7 @@ Web-app waitlist and paid beta signups. Written by the Next.js `initialize-agent
 
 ### user_persona
 
-Living shopping persona — the central intelligence record for every user. Written by the `WaitlistForecastScreen` (initial 4-step capture), `OnboardingConciergeScreen` (Deep Brief), and receipt-analysis workers (behavioral signal updates). One row per user.
+Living shopping persona — the central intelligence record for every user. Written by the `WaitlistForecastScreen` (initial 4-step capture), `SnippdDeepBriefScreen` via the `ConciergeOnboarding` route (Deep Brief), and receipt-analysis workers (behavioral signal updates). One row per user.
 
 **Migrations:**
 - `supabase/migrations/20260423_user_persona.sql` — initial schema
@@ -1573,7 +1573,7 @@ Living shopping persona — the central intelligence record for every user. Writ
 | `why_snippd` | text | Free-text social proof: "Why do you need Snippd?" (max 140 chars) |
 | `forecast_completed` | boolean DEFAULT false | Set to `true` when Forecast is submitted |
 
-#### Deep Brief (captured in ConciergeOnboarding — 5 chapters, on activation)
+#### Deep Brief (captured in ConciergeOnboarding / `SnippdDeepBriefScreen` — 8 chapters, on activation)
 | Column | Type | Notes |
 |---|---|---|
 | `child_ages` | int[] | Exact ages of children for growth-spurt modeling |

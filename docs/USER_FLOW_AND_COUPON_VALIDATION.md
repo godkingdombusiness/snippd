@@ -102,7 +102,7 @@ The **working copy** has an uncommitted redesign that **removed** the rate limit
 ### STAGE 2A — First-Time Onboarding (New Users)
 
 **Trigger:** After sign-up, `resolveUserStatus` returns `'MainApp'` initially (no persona yet), but the `ConciergeOnboarding` path fires when `user_persona.status = 'launched' AND briefing_completed = false`.  
-The quick onboarding (`OnboardingScreen`) is separate from the deep brief (`OnboardingConciergeScreen`).
+The quick onboarding (`OnboardingScreen`) is separate from the optional deep brief experience (`ConciergeOnboarding` route → `SnippdDeepBriefScreen`).
 
 ---
 
@@ -159,9 +159,9 @@ default                     → Balanced Strategist
 
 #### STAGE 2A-2: Deep Concierge Brief — 8 Chapters
 
-**Screen:** `OnboardingConciergeScreen` (`screens/OnboardingConciergeScreen.js`)  
-**Route:** `ConciergeOnboarding` in root stack  
-**Triggers when:** `user_persona.status = 'launched' AND briefing_completed = false`
+**Screen:** `SnippdDeepBriefScreen` (`screens/SnippdDeepBriefScreen.js`)  
+**Route:** `ConciergeOnboarding` in root stack (legacy route alias preserved)  
+**Triggers when:** `user_persona.status = 'launched' AND briefing_completed = false`, or when the user opens the optional Deep Brief from Home/Profile.
 
 This is an 8-chapter deep behavioral profiling interview. Dark "war room" aesthetic. Takes ~5 minutes.
 
