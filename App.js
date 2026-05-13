@@ -152,6 +152,10 @@ import StackPersonalizationScreen from './screens/StackPersonalizationScreen';
 import CartBuilderScreen from './screens/CartBuilderScreen';
 import ReceiptPromptScreen from './screens/ReceiptPromptScreen';
 import { getNextBestAction } from './src/services/nextBestActionService';
+// ── WEEKLY DINNER PLAN FLOW ──────────────────────────────────────────────────
+import WeeklyDinnerPlanScreen from './screens/WeeklyDinnerPlanScreen';
+import ExpandedDayPlanScreen from './screens/ExpandedDayPlanScreen';
+import StoreItemBreakdownScreen from './screens/StoreItemBreakdownScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -615,6 +619,10 @@ function RootNavigator() {
         <Stack.Screen name="StackPersonalization"  component={StackPersonalizationScreen} />
         <Stack.Screen name="CartBuilder"           component={CartBuilderScreen} />
         <Stack.Screen name="ReceiptPrompt"         component={ReceiptPromptScreen} />
+        {/* ── Weekly Dinner Plan flow screens ───────────────────────────── */}
+        <Stack.Screen name="WeeklyDinnerPlan"      component={WeeklyDinnerPlanScreen} />
+        <Stack.Screen name="ExpandedDayPlan"       component={ExpandedDayPlanScreen} />
+        <Stack.Screen name="StoreItemBreakdown"    component={StoreItemBreakdownScreen} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
         <Stack.Screen name="TestAgent"       component={AppTestAgent} />
         <Stack.Screen name="MFAVerify"       component={MFAVerifyScreen} />

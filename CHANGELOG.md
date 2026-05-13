@@ -4,6 +4,31 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — WeeklyDinnerPlanScreen v1 (2026-05-13)
+- `screens/WeeklyDinnerPlanScreen.js` — Premium weekly dinner plan screen with 3-tab layout (Meals / Store / Nutrition). Green hero card showing week range, household size, OOP cost, and savings. Tab logic routes to MealsByDayTab, StorePlanTab, NutritionComplianceTab.
+- `screens/ExpandedDayPlanScreen.js` — Day drill-down showing full meal breakdown with per-meal cost, store, savings, prep time, and why-picked rationale. Add to Cart + Swap Meal CTAs.
+- `screens/StoreItemBreakdownScreen.js` — Store-specific item list showing product name, meal association, price, and deal info. Per-item add/remove toggle and Add All CTA.
+- `src/components/weeklyPlan/WeeklyPlanHeroCard.js` — Green hero card: week range, household size, out-of-pocket total, savings, best overall store, deal expiry.
+- `src/components/weeklyPlan/PlanTabBar.js` — Three-tab bar (Meals / Store / Nutrition) with green active underline indicator.
+- `src/components/weeklyPlan/DaySummaryCard.js` — Day card with day/date, daily total, savings badge, 3-meal summary rows, best store badge, tap-to-expand hint.
+- `src/components/weeklyPlan/MealBreakdownCard.js` — Per-meal card with cost, store, savings, prep time, why-picked rationale, Add to Cart + Swap Meal buttons.
+- `src/components/weeklyPlan/MealsByDayTab.js` — Meals tab: scrollable list of DaySummaryCard items, navigates to ExpandedDayPlan on tap.
+- `src/components/weeklyPlan/StoreFilterBar.js` — Horizontal chip bar: All Stores + one chip per store. Active chip filled green.
+- `src/components/weeklyPlan/StorePlanCard.js` — Store card with initial badge, role, estimated total, savings, meals-supported list, deal date, and View Items CTA.
+- `src/components/weeklyPlan/StorePlanTab.js` — Store tab: summary bar, StoreFilterBar, filtered StorePlanCard list. Navigates to StoreItemBreakdown on View Items tap.
+- `src/components/weeklyPlan/NutritionFilterBar.js` — Horizontal filter pills: All Goals, High Protein, Budget Meals, Lower Sugar, Lower Sodium, Kid-Friendly, Quick Meals, calorie ranges.
+- `src/components/weeklyPlan/NutritionComplianceCard.js` — Compliance card: score badge, animated bar, matched goals, watch items (coral), estimated calories + protein, cost, store, why-it-ranks text.
+- `src/components/weeklyPlan/NutritionComplianceTab.js` — Nutrition tab: sorted sections (Best Matches / Strong Match / Good Match / Needs Review), filter bar, footer disclaimer.
+- `src/utils/weeklyPlan/seededPlanData.js` — Complete seeded demo data: 1 weekly plan, 7 day plans, 21 meals, 3 stores, 21 nutrition entries, user profile.
+- `src/utils/weeklyPlan/formatMoney.js` — `formatCents()` and `formatCentsCompact()` monetary display utilities.
+- `src/utils/weeklyPlan/groupMealsByDay.js` — Groups meals into Map<day_plan_id, {dayPlan, meals[]}> sorted Breakfast/Lunch/Dinner.
+- `src/utils/weeklyPlan/groupMealsByStore.js` — Groups meals into Map<store_id, {store, meals[]}> with primary flag and dayPlan reference.
+- `src/utils/weeklyPlan/calculateNutritionCompliance.js` — 100-point compliance scoring: goal match (40), budget fit (20), nutrition filter (25), time fit (10), preference safety (5). Labels + sortByCompliance export.
+- `src/utils/weeklyPlan/getBestStoreForMeal.js` — Returns {primary_store, secondary_stores, store_label} for a meal.
+- `src/utils/weeklyPlan/getBestStoreForDay.js` — Returns {best_store, secondary_stores, store_label} for a day plan.
+- `src/utils/weeklyPlan/calculateWeeklyPlanTotals.js` — Normalizes out-of-pocket, savings, daily totals, and store totals for consistent display across all three tabs.
+- `App.js` — Registered WeeklyDinnerPlan, ExpandedDayPlan, StoreItemBreakdown routes in root Stack.Navigator.
+
 ### Added — Premium onboarding overhaul (2026-05-13)
 - `screens/OnboardingScreen.js` — Full rewrite. 12-step premium flow replacing the old 9-step conversational onboarding. Steps: Welcome → Budget → BudgetSplit → Household → FoodGoals → Stores → PreferencesAllergies → CookingStyle → EatOut → BrandSwap → StashStyle → AllSet. Step-machine architecture (single component, `step` state, render functions called as `{steps[step]()`}). Stash uses clean "S" monogram — no emojis anywhere. Budget step captures real weekly spend with large centered input + quick-select chips ($100–$300) and warning validation. Saves all 15 profile fields to Supabase `profiles` + `user_persona` on completion.
 - `screens/PlanGenerationLoadingScreen.js` — New loading screen shown immediately after onboarding. Animates through 6 checklist items at 1.1s intervals, then navigates to `SmartStart`. Stash "S" avatar, progress indicators (pending/active/done states).
