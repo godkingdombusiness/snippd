@@ -140,6 +140,18 @@ import DeepPersonalizationScreen from './screens/DeepPersonalizationScreen';
 import PersonaRevealScreen from './screens/PersonaRevealScreen';
 import PersonalityResultScreen from './screens/PersonalityResultScreen';
 
+// ── NEXT-BEST-ACTION FLOW ────────────────────────────────────────────────────
+import SmartStartScreen from './screens/SmartStartScreen';
+import WeeklyPlanStarterScreen from './screens/WeeklyPlanStarterScreen';
+import AddNeedsScreen from './screens/AddNeedsScreen';
+import UsualStaplesScreen from './screens/UsualStaplesScreen';
+import SmartStarterCartScreen from './screens/SmartStarterCartScreen';
+import PlanReviewScreen from './screens/PlanReviewScreen';
+import StackPersonalizationScreen from './screens/StackPersonalizationScreen';
+import CartBuilderScreen from './screens/CartBuilderScreen';
+import ReceiptPromptScreen from './screens/ReceiptPromptScreen';
+import { getNextBestAction } from './src/services/nextBestActionService';
+
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
@@ -404,9 +416,12 @@ function MainTabs() {
 }
 
 // ── USER STATUS GATE ─────────────────────────────────────────────────────────
-// All authenticated users → MainApp. Waitlist/forecast screens bypassed.
+// Evaluates user state via the Next-Best-Action router and returns the
+// appropriate root-stack route name. Users are never dropped into a generic
+// dashboard — they are always guided to their next meaningful action.
 async function resolveUserStatus(userId) {
   try {
+    // 1. Check if the Snippd Deep Brief is still needed (one-time prompt)
     const { data: persona } = await supabase
       .from('user_persona')
       .select('status, briefing_completed')
@@ -416,12 +431,13 @@ async function resolveUserStatus(userId) {
     const status            = persona?.status;
     const briefingCompleted = persona?.briefing_completed ?? false;
 
-    // Launched users who haven't completed the concierge brief still see it once
     if (status === 'launched' && !briefingCompleted) {
       return 'ConciergeOnboarding';
     }
 
-    return 'MainApp';
+    // 2. Run the Next-Best-Action router
+    const { route } = await getNextBestAction(userId);
+    return route;
   } catch (_) {
     return 'MainApp';
   }
@@ -587,6 +603,16 @@ function RootNavigator() {
         <Stack.Screen name="PersonaReveal"         component={PersonaRevealScreen} />
         <Stack.Screen name="ConciergeOnboarding"   component={SnippdDeepBriefScreen} />
         <Stack.Screen name="MainApp"              component={MainTabs} />
+        {/* ── Next-Best-Action flow screens ─────────────────────────────── */}
+        <Stack.Screen name="SmartStart"            component={SmartStartScreen} options={{ gestureEnabled: false }} />
+        <Stack.Screen name="WeeklyPlanStarter"     component={WeeklyPlanStarterScreen} />
+        <Stack.Screen name="AddNeeds"              component={AddNeedsScreen} />
+        <Stack.Screen name="UsualStaples"          component={UsualStaplesScreen} />
+        <Stack.Screen name="SmartStarterCart"      component={SmartStarterCartScreen} />
+        <Stack.Screen name="PlanReview"            component={PlanReviewScreen} />
+        <Stack.Screen name="StackPersonalization"  component={StackPersonalizationScreen} />
+        <Stack.Screen name="CartBuilder"           component={CartBuilderScreen} />
+        <Stack.Screen name="ReceiptPrompt"         component={ReceiptPromptScreen} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
         <Stack.Screen name="TestAgent"       component={AppTestAgent} />
         <Stack.Screen name="MFAVerify"       component={MFAVerifyScreen} />

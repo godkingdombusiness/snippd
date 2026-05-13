@@ -4,6 +4,19 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Next-Best-Action concierge flow (2026-05-13)
+- `src/services/nextBestActionService.js` — `getNextBestAction(userId)` evaluates 5 Supabase state signals (onboarding_complete, active_weekly_plan, cart_started, receipt_uploaded, trip_feedback_completed) and returns the user's next best action and route. Falls back gracefully when tables don't exist yet. Actions: RESUME_ONBOARDING, START_WEEKLY_PLAN, REVIEW_PLAN, CONTINUE_SHOPPING_OR_RECEIPT, COMPLETE_TRIP_FEEDBACK, VIEW_WEEKLY_INSIGHTS, HOME_DASHBOARD.
+- `screens/SmartStartScreen.js` — Post-login concierge landing page. Greets user by first name, shows 5 action options, highlights the NBA-recommended option. Calls `getNextBestAction` on mount to self-determine state if no param provided.
+- `screens/WeeklyPlanStarterScreen.js` — Weekly plan kickoff screen. Displays budget/stores/goals snapshot from user profile (seeded fallback). Four entry paths: type items, past favorites, usual staples, smart starter cart.
+- `screens/AddNeedsScreen.js` — Item entry screen with search input, chip tags, quick-add suggestions (Milk, Eggs, Chicken, etc.). Routes to UsualStaples or SmartStarterCart.
+- `screens/UsualStaplesScreen.js` — Category-filtered grid of 18 common household staples. Multi-select with check marks. Routes selected items to SmartStarterCartScreen.
+- `screens/SmartStarterCartScreen.js` — AI-generated starter cart with 6 sections (Must-Have Staples, Smart Savings, Meal Builders, Quick Backup Meals, Eat-Out Defense, Household Items). Per-item remove. Summary strip shows estimated spend, savings found, item count.
+- `screens/PlanReviewScreen.js` — Budget summary card with spend vs. budget bar, potential savings, store breakdown, "Built around" checklist. Toggle between default / cheaper / healthier plan variants (seeded). Links to StackPersonalizationScreen.
+- `screens/StackPersonalizationScreen.js` — Explains 4 selected stacks (Budget Saver, High Protein, Quick Meals, Eat-Out Defense) with match reason tied to user goals.
+- `screens/CartBuilderScreen.js` — Organizes items by store (Aldi, Publix, Dollar General). Per-item Keep / Swap / Remove actions. Seeded swap alternatives for key items.
+- `screens/ReceiptPromptScreen.js` — Post-shopping receipt check-in. Three paths: Upload Receipt, Enter Total Manually, Skip for Now. Shows "what Snippd learns" cards. Routes to existing ReceiptUploadScreen.
+- `App.js` — Imported all 9 new screens and `getNextBestAction`. Updated `resolveUserStatus` to call the NBA router after the Deep Brief check, so users are always routed to their next best action rather than a generic dashboard. Registered all 9 new screens in the root Stack.Navigator.
+
 ### Fixed — tracker.track crash (2026-05-13)
 - `src/lib/eventTracker.ts` — Added missing `track(event_name, payload)` method to `SnippdEventTracker` class. Method was referenced by `SnippdDeepBriefScreen`, `HomeScreen`, `ProfileScreen`, and `WeeklyPlanScreen` but had not been committed, causing a `TypeError: tracker.track is not a function` crash on mount. Also fixed a secondary bug where the method called `requireUserId()` (which throws) — replaced with a warn-and-drop guard so missing user_id logs a warning instead of crashing the app.
 
