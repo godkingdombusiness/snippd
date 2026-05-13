@@ -141,6 +141,7 @@ import PersonaRevealScreen from './screens/PersonaRevealScreen';
 import PersonalityResultScreen from './screens/PersonalityResultScreen';
 
 // ── NEXT-BEST-ACTION FLOW ────────────────────────────────────────────────────
+import PlanGenerationLoadingScreen from './screens/PlanGenerationLoadingScreen';
 import SmartStartScreen from './screens/SmartStartScreen';
 import WeeklyPlanStarterScreen from './screens/WeeklyPlanStarterScreen';
 import AddNeedsScreen from './screens/AddNeedsScreen';
@@ -604,6 +605,7 @@ function RootNavigator() {
         <Stack.Screen name="ConciergeOnboarding"   component={SnippdDeepBriefScreen} />
         <Stack.Screen name="MainApp"              component={MainTabs} />
         {/* ── Next-Best-Action flow screens ─────────────────────────────── */}
+        <Stack.Screen name="PlanGenerationLoading" component={PlanGenerationLoadingScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="SmartStart"            component={SmartStartScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="WeeklyPlanStarter"     component={WeeklyPlanStarterScreen} />
         <Stack.Screen name="AddNeeds"              component={AddNeedsScreen} />

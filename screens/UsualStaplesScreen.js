@@ -17,25 +17,33 @@ const GRAY   = '#6B7280';
 const BORDER = '#E5E7EB';
 const MINT   = '#E8F5E9';
 
+const CATEGORY_INITIAL = {
+  Protein:   'PR',
+  Dairy:     'DA',
+  Produce:   'PR',
+  Pantry:    'PA',
+  Household: 'HH',
+};
+
 const STAPLES = [
-  { id: 'eggs',    label: 'Eggs',             icon: '🥚', category: 'Protein' },
-  { id: 'milk',    label: 'Milk',             icon: '🥛', category: 'Dairy' },
-  { id: 'chicken', label: 'Chicken Breast',   icon: '🍗', category: 'Protein' },
-  { id: 'rice',    label: 'Rice',             icon: '🍚', category: 'Pantry' },
-  { id: 'yogurt',  label: 'Greek Yogurt',     icon: '🫙', category: 'Dairy' },
-  { id: 'bananas', label: 'Bananas',          icon: '🍌', category: 'Produce' },
-  { id: 'pasta',   label: 'Pasta',            icon: '🍝', category: 'Pantry' },
-  { id: 'bread',   label: 'Bread',            icon: '🍞', category: 'Pantry' },
-  { id: 'butter',  label: 'Butter',           icon: '🧈', category: 'Dairy' },
-  { id: 'cheese',  label: 'Cheese',           icon: '🧀', category: 'Dairy' },
-  { id: 'beef',    label: 'Ground Beef',      icon: '🥩', category: 'Protein' },
-  { id: 'spinach', label: 'Spinach',          icon: '🥬', category: 'Produce' },
-  { id: 'apples',  label: 'Apples',           icon: '🍎', category: 'Produce' },
-  { id: 'oats',    label: 'Oats',             icon: '🫙', category: 'Pantry' },
-  { id: 'coffee',  label: 'Coffee',           icon: '☕', category: 'Pantry' },
-  { id: 'towels',  label: 'Paper Towels',     icon: '🧻', category: 'Household' },
-  { id: 'detergent', label: 'Laundry Detergent', icon: '🧴', category: 'Household' },
-  { id: 'soap',    label: 'Dish Soap',        icon: '🫧', category: 'Household' },
+  { id: 'eggs',      label: 'Eggs',               category: 'Protein' },
+  { id: 'milk',      label: 'Milk',               category: 'Dairy' },
+  { id: 'chicken',   label: 'Chicken Breast',     category: 'Protein' },
+  { id: 'rice',      label: 'Rice',               category: 'Pantry' },
+  { id: 'yogurt',    label: 'Greek Yogurt',       category: 'Dairy' },
+  { id: 'bananas',   label: 'Bananas',            category: 'Produce' },
+  { id: 'pasta',     label: 'Pasta',              category: 'Pantry' },
+  { id: 'bread',     label: 'Bread',              category: 'Pantry' },
+  { id: 'butter',    label: 'Butter',             category: 'Dairy' },
+  { id: 'cheese',    label: 'Cheese',             category: 'Dairy' },
+  { id: 'beef',      label: 'Ground Beef',        category: 'Protein' },
+  { id: 'spinach',   label: 'Spinach',            category: 'Produce' },
+  { id: 'apples',    label: 'Apples',             category: 'Produce' },
+  { id: 'oats',      label: 'Oats',               category: 'Pantry' },
+  { id: 'coffee',    label: 'Coffee',             category: 'Pantry' },
+  { id: 'towels',    label: 'Paper Towels',       category: 'Household' },
+  { id: 'detergent', label: 'Laundry Detergent',  category: 'Household' },
+  { id: 'soap',      label: 'Dish Soap',          category: 'Household' },
 ];
 
 const CATEGORIES = ['Protein', 'Dairy', 'Produce', 'Pantry', 'Household'];
@@ -43,7 +51,7 @@ const CATEGORIES = ['Protein', 'Dairy', 'Produce', 'Pantry', 'Household'];
 function StashBubble({ message }) {
   return (
     <View style={styles.stash}>
-      <View style={styles.stashIcon}><Text style={styles.stashIconText}>✦</Text></View>
+      <View style={styles.stashIcon}><Text style={styles.stashIconText}>S</Text></View>
       <Text style={styles.stashText}>{message}</Text>
     </View>
   );
@@ -56,7 +64,11 @@ function StapleCard({ item, selected, onToggle }) {
       onPress={onToggle}
       activeOpacity={0.75}
     >
-      <Text style={styles.stapleEmoji}>{item.icon}</Text>
+      <View style={[styles.stapleBadge, selected && styles.stapleBadgeSelected]}>
+        <Text style={[styles.stapleBadgeText, selected && styles.stapleBadgeTextSelected]}>
+          {item.category.slice(0, 2).toUpperCase()}
+        </Text>
+      </View>
       <Text style={[styles.stapleLabel, selected && styles.stapleLabelSelected]}>
         {item.label}
       </Text>
@@ -220,7 +232,14 @@ const styles = StyleSheet.create({
     borderColor: GREEN,
     backgroundColor: MINT,
   },
-  stapleEmoji: { fontSize: 24 },
+  stapleBadge: {
+    width: 32, height: 20, borderRadius: 4,
+    backgroundColor: MINT,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stapleBadgeSelected: { backgroundColor: 'rgba(12,158,84,0.15)' },
+  stapleBadgeText: { fontSize: 9, fontWeight: '800', color: GREEN, letterSpacing: 0.3 },
+  stapleBadgeTextSelected: { color: GREEN },
   stapleLabel: { fontSize: 12, fontWeight: '500', color: NAVY, textAlign: 'center' },
   stapleLabelSelected: { color: GREEN, fontWeight: '700' },
   checkMark: {

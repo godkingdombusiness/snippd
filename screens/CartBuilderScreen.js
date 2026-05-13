@@ -24,7 +24,7 @@ const SEEDED_STORES = [
     id: 'aldi',
     name: 'Aldi',
     tagline: 'Best for basics and protein',
-    icon: '🛒',
+    initials: 'AL',
     total: '$68.21',
     items: [
       { id: 'a1', name: 'Eggs (18 ct)',           price: '$3.49',  savings: null },
@@ -43,7 +43,7 @@ const SEEDED_STORES = [
     id: 'publix',
     name: 'Publix',
     tagline: 'Best for BOGO and produce',
-    icon: '🏪',
+    initials: 'PX',
     total: '$72.48',
     items: [
       { id: 'p1', name: 'Chicken Breast (3 lb)',  price: '$8.74',  savings: 'BOGO 50%' },
@@ -58,7 +58,7 @@ const SEEDED_STORES = [
     id: 'dg',
     name: 'Dollar General',
     tagline: 'Best for household items',
-    icon: '🏬',
+    initials: 'DG',
     total: '$27.71',
     items: [
       { id: 'd1', name: 'Paper Towels (6-roll)',      price: '$5.25',  savings: '$1.00 off' },
@@ -78,7 +78,7 @@ const SWAP_OPTIONS = {
 function StashBubble({ message }) {
   return (
     <View style={styles.stash}>
-      <View style={styles.stashIcon}><Text style={styles.stashIconText}>✦</Text></View>
+      <View style={styles.stashIcon}><Text style={styles.stashIconText}>S</Text></View>
       <Text style={styles.stashText}>{message}</Text>
     </View>
   );
@@ -137,7 +137,9 @@ function StoreBlock({ store, itemStatuses, onKeep, onSwap, onRemove }) {
   return (
     <View style={styles.storeCard}>
       <View style={styles.storeHeader}>
-        <Text style={styles.storeEmoji}>{store.icon}</Text>
+        <View style={styles.storeInitialBadge}>
+          <Text style={styles.storeInitialText}>{store.initials}</Text>
+        </View>
         <View style={styles.storeInfo}>
           <Text style={styles.storeName}>{store.name}</Text>
           <Text style={styles.storeTagline}>{store.tagline}</Text>
@@ -285,7 +287,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
-  storeEmoji: { fontSize: 24 },
+  storeInitialBadge: {
+    width: 40, height: 40, borderRadius: 10,
+    backgroundColor: MINT,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  storeInitialText: { fontSize: 11, fontWeight: '800', color: GREEN, letterSpacing: 0.5 },
   storeInfo: { flex: 1 },
   storeName: { fontSize: 16, fontWeight: '700', color: NAVY },
   storeTagline: { fontSize: 12, color: GRAY, marginTop: 1 },

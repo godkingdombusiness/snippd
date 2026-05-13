@@ -4,6 +4,15 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Premium onboarding overhaul (2026-05-13)
+- `screens/OnboardingScreen.js` — Full rewrite. 12-step premium flow replacing the old 9-step conversational onboarding. Steps: Welcome → Budget → BudgetSplit → Household → FoodGoals → Stores → PreferencesAllergies → CookingStyle → EatOut → BrandSwap → StashStyle → AllSet. Step-machine architecture (single component, `step` state, render functions called as `{steps[step]()`}). Stash uses clean "S" monogram — no emojis anywhere. Budget step captures real weekly spend with large centered input + quick-select chips ($100–$300) and warning validation. Saves all 15 profile fields to Supabase `profiles` + `user_persona` on completion.
+- `screens/PlanGenerationLoadingScreen.js` — New loading screen shown immediately after onboarding. Animates through 6 checklist items at 1.1s intervals, then navigates to `SmartStart`. Stash "S" avatar, progress indicators (pending/active/done states).
+- `App.js` — Added `PlanGenerationLoadingScreen` import and `PlanGenerationLoading` route in root Stack.Navigator (gestureEnabled: false).
+
+### Changed — Emoji removal (2026-05-13)
+- `screens/UsualStaplesScreen.js` — Removed all food/household emojis from 18-item STAPLES array. Replaced emoji icons with 2-letter category initial badges (PR/DA/PA/HH). Updated `StashBubble` from "✦" to clean "S" monogram.
+- `screens/CartBuilderScreen.js` — Removed store emojis from Aldi/Publix/Dollar General store cards. Replaced with branded 2-letter initial badges (AL/PX/DG) in Mint background. Updated `StashBubble` to "S" monogram.
+
 ### Added — Next-Best-Action concierge flow (2026-05-13)
 - `src/services/nextBestActionService.js` — `getNextBestAction(userId)` evaluates 5 Supabase state signals (onboarding_complete, active_weekly_plan, cart_started, receipt_uploaded, trip_feedback_completed) and returns the user's next best action and route. Falls back gracefully when tables don't exist yet. Actions: RESUME_ONBOARDING, START_WEEKLY_PLAN, REVIEW_PLAN, CONTINUE_SHOPPING_OR_RECEIPT, COMPLETE_TRIP_FEEDBACK, VIEW_WEEKLY_INSIGHTS, HOME_DASHBOARD.
 - `screens/SmartStartScreen.js` — Post-login concierge landing page. Greets user by first name, shows 5 action options, highlights the NBA-recommended option. Calls `getNextBestAction` on mount to self-determine state if no param provided.
