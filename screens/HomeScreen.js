@@ -1124,6 +1124,23 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
+        {/* WEEKLY DINNER PLAN ENTRY */}
+        <TouchableOpacity
+          style={s.weeklyPlanBanner}
+          onPress={() => handlePress('WeeklyDinnerPlan')}
+          activeOpacity={0.88}
+        >
+          <View style={s.weeklyPlanBannerLeft}>
+            <Text style={s.weeklyPlanBannerLabel}>YOUR WEEKLY DINNER PLAN</Text>
+            <Text style={s.weeklyPlanBannerTitle}>7 dinners built around your budget</Text>
+            <Text style={s.weeklyPlanBannerSub}>Meals, store breakdown, and nutrition — all in one view.</Text>
+          </View>
+          <View style={s.weeklyPlanBannerArrow}>
+            <Feather name="calendar" size={20} color="#0C9E54" />
+            <Feather name="chevron-right" size={16} color="#0C9E54" style={{ marginTop: 4 }} />
+          </View>
+        </TouchableOpacity>
+
         {/* YOUR BUDGET */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>YOUR BUDGET</Text>
@@ -1553,6 +1570,23 @@ const s = StyleSheet.create({
   deepBriefSub: { fontSize: 13, color: '#38533F', lineHeight: 20 },
   deepBriefBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0C9E54', paddingVertical: 14, borderRadius: 14 },
   deepBriefBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+
+  weeklyPlanBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FBF0',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C5FFBC',
+    padding: 18,
+    marginBottom: 20,
+    marginHorizontal: 0,
+  },
+  weeklyPlanBannerLeft: { flex: 1, marginRight: 12 },
+  weeklyPlanBannerLabel: { fontSize: 10, fontWeight: '800', color: '#0C9E54', letterSpacing: 0.8, marginBottom: 4, textTransform: 'uppercase' },
+  weeklyPlanBannerTitle: { fontSize: 15, fontWeight: '900', color: '#111827', marginBottom: 4 },
+  weeklyPlanBannerSub: { fontSize: 12, color: '#38533F', lineHeight: 18 },
+  weeklyPlanBannerArrow: { alignItems: 'center', justifyContent: 'center' },
 
   // Featured "Your Top Stack" card
   featuredCard: {

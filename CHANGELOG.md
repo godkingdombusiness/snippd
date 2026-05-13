@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — HomeScreen WeeklyDinnerPlan entry point (2026-05-13)
+- `screens/HomeScreen.js` — Added "Your Weekly Dinner Plan" banner card between the More Stacks and Budget sections. Taps navigate to `WeeklyDinnerPlanScreen`. Styled as a mint banner with calendar icon and chevron, matching the screen's existing card language.
+
 ### Changed — PlanReviewScreen navigation (2026-05-13)
 - `screens/PlanReviewScreen.js` — Added "View detailed weekly plan" secondary button that navigates to `WeeklyDinnerPlan`. Updated StashBubble icon from `✦` to `S` monogram.
 
