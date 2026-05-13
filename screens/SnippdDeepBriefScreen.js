@@ -191,7 +191,7 @@ const STORES = [
 ];
 
 const STRESS_BEHAVIORS = [
-  { key: 'orders_delivery', label: 'I order delivery',    sub: 'DoorDash, Uber Eats, or Instacart when I\'m fried',  icon: 'package'  },
+  { key: 'orders_delivery', label: 'I order delivery',    sub: 'A delivery app when I\'m fried',                     icon: 'package'  },
   { key: 'grabs_fast_food', label: 'I grab fast food',    sub: 'Drive-through is the backup plan',                   icon: 'map-pin'  },
   { key: 'still_cooks',     label: 'I still cook',        sub: 'Kitchen is my therapy, even on hard days',            icon: 'heart'    },
   { key: 'eats_whatever',   label: 'Whatever\'s there',   sub: 'Fridge roulette — meal planning goes out the window', icon: 'shuffle'  },
@@ -199,8 +199,8 @@ const STRESS_BEHAVIORS = [
 
 const AUTONOMY = [
   { key: 'show_deals', label: 'Just show me the deals',    sub: 'Surface the best prices — I\'ll decide what to buy', icon: 'eye'           },
-  { key: 'build_cart', label: 'Build my cart, I\'ll approve', sub: 'Pre-fill my optimal cart. I review and confirm', icon: 'shopping-cart' },
-  { key: 'full_auto',  label: 'Handle it — I trust you',  sub: 'Fully autonomous. Alert me only if I\'m about to overpay', icon: 'cpu'    },
+  { key: 'build_cart', label: 'Build my food plan, I\'ll approve', sub: 'Pre-fill my weekly plan. I review and confirm', icon: 'calendar' },
+  { key: 'full_auto',  label: 'Fully guided — I trust the plan', sub: 'Handle my weekly plan. Alert me if I\'m over budget',  icon: 'cpu'     },
 ];
 
 // ── Pill (multi-select) — defined outside component to prevent remounting ─────

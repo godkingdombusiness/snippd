@@ -4,6 +4,22 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — SignInScreen copy + design system alignment (2026-05-13)
+- `screens/SignInScreen.js` — Full copy overhaul. Removed: "Stack every deal. Miss nothing.", "autonomous shopping intelligence", "100% autonomous", "$2.4k avg annual savings", "stores tracked" stat. Replaced left-panel headline with "Smarter food decisions, before the money is spent." Sub: "Snippd helps you plan groceries, meals, store choices, savings, and eat-out options around your real weekly budget." Motto: "Save more, stress less." Stats: Budget-first / weekly planning · Meals + stores / guided together · Receipt-based / learning. Palette migrated from dark forest-green to Snippd brand (Navy `#172250`, Green `#0C9E54`, Mint `#c5ffbc`, Cream `#FAF8F1`). Added mobile hero section (wordmark + headline + stat cards) so phone users see value prop before the form. Form copy: email placeholder "Email address", password placeholder "Password", submit "Sign In" / "Create an Account", trust copy "Plan smarter. Save more. Stress less." Removed stats useEffect that pulled profile count.
+
+### Added — UberEatsHandoffScreen (2026-05-13)
+- `screens/UberEatsHandoffScreen.js` — Sandbox handoff screen for uber_eats_pickup and uber_eats_delivery options from TodayDecisionScreen. Shows ETA, fee note, Snippd fit score, and legal integration disclaimer. Primary CTA returns to TodayDecision; secondary navigates to WeeklyDinnerPlan.
+- `App.js` — Registered `UberEatsHandoff` route.
+
+### Changed — TodayDecisionScreen route wiring (2026-05-13)
+- `screens/TodayDecisionScreen.js` — `uber_eats_pickup` and `uber_eats_delivery` now navigate to `UberEatsHandoff` with `optionType` and `score` params. `eat_out_smart` navigates to `WeeklyDinnerPlan` (nutrition-aware meal view) instead of falling back to MainApp.
+
+### Database — pantry_item_count migration (2026-05-13)
+- `supabase/migrations/20260513_add_pantry_item_count.sql` — `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pantry_item_count integer DEFAULT 5`. Supports decision engine pantry_fit scoring. Apply in Dashboard SQL Editor.
+
+### Changed — SnippdDeepBriefScreen provider-neutral copy (2026-05-13)
+- `screens/SnippdDeepBriefScreen.js` — STRESS_BEHAVIORS: "DoorDash, Uber Eats, or Instacart when I'm fried" → "A delivery app when I'm fried". AUTONOMY: "Build my cart, I'll approve" → "Build my food plan, I'll approve"; "Fully autonomous. Alert me only if I'm about to overpay" → "Fully guided — I trust the plan. Alert me if I'm over budget".
+
 ### Added — Provider-agnostic food decision architecture (2026-05-13)
 - `src/services/foodOptions/decisionEngineService.js` — Core 100-point scoring engine. Six factors: budget_fit (25), time_fit (20), nutrition_fit (20), pantry_fit (15), household_fit (10), preference_score (10). Exports `scoreOption()` and `rankOptions()`. Snippd decides; providers fulfill.
 - `src/services/foodOptions/pantryProvider.js` — Returns cook_from_pantry option with coverage estimate. Excluded when pantryCount === 0.

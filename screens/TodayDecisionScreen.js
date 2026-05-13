@@ -195,12 +195,13 @@ export default function TodayDecisionScreen(props) {
         navigation.navigate('WeeklyDinnerPlan');
         break;
       case 'uber_eats_pickup':
+        navigation.navigate('UberEatsHandoff', { optionType: 'uber_eats_pickup', score: option.totalScore });
+        break;
       case 'uber_eats_delivery':
-        // Deep-links to Uber Eats sandbox handoff when available
-        navigation.navigate('MainApp');
+        navigation.navigate('UberEatsHandoff', { optionType: 'uber_eats_delivery', score: option.totalScore });
         break;
       case 'eat_out_smart':
-        navigation.navigate('MainApp');
+        navigation.navigate('WeeklyDinnerPlan');
         break;
       default:
         navigation.navigate('MainApp');
