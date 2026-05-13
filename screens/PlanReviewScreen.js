@@ -38,7 +38,7 @@ const SEEDED = {
 function StashBubble({ message }) {
   return (
     <View style={styles.stash}>
-      <View style={styles.stashIcon}><Text style={styles.stashIconText}>✦</Text></View>
+      <View style={styles.stashIcon}><Text style={styles.stashIconText}>S</Text></View>
       <Text style={styles.stashText}>{message}</Text>
     </View>
   );
@@ -174,6 +174,13 @@ export default function PlanReviewScreen({ navigation }) {
 
         {/* Secondary actions */}
         <View style={styles.secondaryActions}>
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate('WeeklyDinnerPlan')}
+          >
+            <Feather name="calendar" size={15} color={NAVY} />
+            <Text style={styles.secondaryBtnText}>View detailed weekly plan</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.secondaryBtn}
             onPress={() => navigation.navigate('AddNeeds')}

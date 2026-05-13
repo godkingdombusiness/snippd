@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — PlanReviewScreen navigation (2026-05-13)
+- `screens/PlanReviewScreen.js` — Added "View detailed weekly plan" secondary button that navigates to `WeeklyDinnerPlan`. Updated StashBubble icon from `✦` to `S` monogram.
+
 ### Added — WeeklyDinnerPlanScreen v1 (2026-05-13)
 - `screens/WeeklyDinnerPlanScreen.js` — Premium weekly dinner plan screen with 3-tab layout (Meals / Store / Nutrition). Green hero card showing week range, household size, OOP cost, and savings. Tab logic routes to MealsByDayTab, StorePlanTab, NutritionComplianceTab.
 - `screens/ExpandedDayPlanScreen.js` — Day drill-down showing full meal breakdown with per-meal cost, store, savings, prep time, and why-picked rationale. Add to Cart + Swap Meal CTAs.
