@@ -1086,6 +1086,25 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
+        {/* Snippd Deep Brief CTA */}
+        <View style={s.deepBriefCard}>
+          <View style={s.deepBriefHeader}>
+            <Text style={s.deepBriefTitle}>Make Snippd Smarter</Text>
+            <Text style={s.deepBriefSub}>Answer a few optional questions to improve future plans for your household.</Text>
+          </View>
+          <TouchableOpacity
+            style={s.deepBriefBtn}
+            onPress={() => {
+              tracker.track('deep_brief_cta_clicked', { source: 'home' });
+              navigation.navigate('ConciergeOnboarding');
+            }}
+            activeOpacity={0.88}
+          >
+            <Text style={s.deepBriefBtnText}>Open Snippd Deep Brief</Text>
+            <Feather name="arrow-right" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
         {/* MORE STACKS FOR YOU */}
         {moreDeals.length > 0 && (
           <View style={s.section}>
@@ -1520,6 +1539,20 @@ const s = StyleSheet.create({
     paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)',
   },
   heroActionTxt: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', flex: 1 },
+
+  deepBriefCard: {
+    borderRadius: 18,
+    backgroundColor: '#F0FBF0',
+    borderWidth: 1,
+    borderColor: '#C5FFBC',
+    padding: 18,
+    marginBottom: 20,
+  },
+  deepBriefHeader: { marginBottom: 12 },
+  deepBriefTitle: { fontSize: 15, fontWeight: '900', color: '#0C9E54', marginBottom: 4 },
+  deepBriefSub: { fontSize: 13, color: '#38533F', lineHeight: 20 },
+  deepBriefBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0C9E54', paddingVertical: 14, borderRadius: 14 },
+  deepBriefBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
 
   // Featured "Your Top Stack" card
   featuredCard: {

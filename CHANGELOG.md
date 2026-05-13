@@ -4,14 +4,11 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
-### Added — Profile personalization: disliked_foods step + HomeScreen display (2026-05-10)
-- `screens/SoftPersonalizationScreen.js` — Added 6th step "Foods you'd rather skip" (between foods-loved and allergies). Reuses FOOD_OPTIONS chip grid; saves to `profiles.lifestyle_concierge.disliked_foods`.
-- `screens/HomeScreen.js` — Intelligence Profile card now shows "Avoids" row (orange chips) from `intelligenceProfile.disliked`; fetched from `lifestyle_concierge.disliked_foods` in `fetchProfile`.
-
-### Added - Launch-safe store cart handoff (2026-05-10)
-- `src/components/StoreCartHandoffCard.js` - Added reusable cart handoff card with store-level open CTA, item open/search actions, coupon link/hub fallback, launch-safe checkout microcopy, and handoff analytics events.
-- `screens/CartScreen.js` - Renders the handoff card under each expanded store section without changing existing cart logic or removing CouponClippingScreen.
-- `__tests__/storeCartHandoff.test.ts` - Added launch-safe contract coverage for copy, link fallback behavior, analytics event names, and CartScreen integration.
+### Added — Optional Deep Brief personalization flow (2026-05-13)
+- `screens/SnippdDeepBriefScreen.js` — Added an optional Snippd Deep Brief flow for deeper household, shopping, cooking, allergy/safety, pantry, behavior, financial goals, and autonomy preferences. Saves to `user_persona` with `briefing_completed = true` and supports optional `returnTo` navigation.
+- `App.js` — wired the existing `ConciergeOnboarding` route to the new `SnippdDeepBriefScreen` component.
+- `screens/HomeScreen.js` — added an optional Snippd Deep Brief CTA card so users can choose a deeper personalization flow from the home feed.
+- `screens/ProfileScreen.js` — added an optional Deep Brief CTA from the profile screen to let users update personalization anytime.
 
 ### Added - Production stack generation pipeline (2026-05-10)
 - `supabase/migrations/20260510_production_stack_pipeline.sql` - Added additive schema for normalized coupons, coupon activation links, retailer data sources, stack run counters, user stack feedback, and normalized coupon inventory view.

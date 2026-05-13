@@ -1,61 +1,63 @@
-// screens/OnboardingConciergeScreen.js
-// The "Deep Brief" — 8-chapter Snippd Persona Activation
+// screens/SnippdDeepBriefScreen.js
+// The "Snippd Deep Brief" — 8-chapter optional personalization flow
 //
-// The questions feel like a personality test.
-// The answers build a behavioral model that makes the AI feel magic.
+// Help Snippd understand how your household really eats, shops, saves, and makes food decisions.
+// This helps us build better weekly plans around your budget, favorite stores, food preferences, cooking habits, eat-out behavior, and real-life routines.
+// You stay in control. Snippd simply gets smarter.
 //
-// Chapter 1 — Who's at Your Table?   (household structure)
-// Chapter 2 — Your Shopping Archetype (personality test: who are you as a shopper?)
-// Chapter 3 — Your Kitchen DNA        (cooking style, signature meal)
-// Chapter 4 — Your Safety Net         (allergies + medical flags)
-// Chapter 5 — Your Pantry DNA         (anchor products, price-watched)
-// Chapter 6 — The Behavior Map        (non-obvious patterns: impulse, guilt, price-checks)
-// Chapter 7 — Your Money & Stores     (financial goal, stores, loyalty, spend, multi-store)
-// Chapter 8 — Your Snippd Mandate     (autonomy, stress behavior, the one thing to solve)
+// Chapter 1 — Who Are We Planning For?   (household structure)
+// Chapter 2 — How Do You Shop?           (shopping habits)
+// Chapter 3 — How Do You Cook?           (cooking style)
+// Chapter 4 — Food Preferences & Safety Notes (allergies, preferences)
+// Chapter 5 — Your Everyday Staples      (pantry anchors)
+// Chapter 6 — Your Real-Life Shopping Patterns (behavior map)
+// Chapter 7 — Budget, Stores & Savings Goals (money & stores)
+// Chapter 8 — What Should Snippd Help With Most? (support focus)
 //
 // Saves to user_persona with briefing_completed = true
-// Then navigates to LogicScanScreen → MainApp
+// Then navigates back or to MainApp
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, Animated, Dimensions, KeyboardAvoidingView,
-  Platform, StatusBar,
+  Platform, StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import { tracker } from '../lib/eventTracker';
 
 const { width: W } = Dimensions.get('window');
 
-// ── Design tokens — intentional dark "war room" aesthetic ────────────────────
-const BG         = '#050E08';
-const SURFACE    = '#0C1A10';
-const SURFACE_HI = '#142018';
-const ACCENT     = '#0C9E54';
-const ACCENT_DIM = 'rgba(12,158,84,0.12)';
-const ACCENT_MED = 'rgba(12,158,84,0.22)';
+// ── Design tokens — Snippd premium theme ────────────────────
+const BG         = '#FAF8F1'; // Cream
+const SURFACE    = '#FFFFFF'; // White
+const SURFACE_HI = '#F9FAFB'; // Light gray
+const ACCENT     = '#0C9E54'; // Primary Green
+const ACCENT_DIM = 'rgba(12,158,84,0.1)';
+const ACCENT_MED = 'rgba(12,158,84,0.2)';
 const WHITE      = '#FFFFFF';
-const SILVER     = '#A0AAA4';
-const DIM        = '#2A3A2E';
-const BORDER     = 'rgba(255,255,255,0.08)';
+const SILVER     = '#6B7280'; // Gray
+const DIM        = '#9CA3AF'; // Lighter gray
+const BORDER     = '#E5E7EB'; // Border
 const BORDER_SEL = '#0C9E54';
-const CORAL      = '#FF7043';
-const MINT_POP   = '#C5FFBC';
-const AMBER      = '#F59E0B';
+const CORAL      = '#FB5B5B'; // Coral
+const MINT_POP   = '#C5FFBC'; // Light Green
+const NAVY       = '#172250'; // Navy
 
 const TOTAL_CHAPTERS = 8;
 
 // ── Chapter labels for the top bar ────────────────────────────────────────────
 const CHAPTER_LABELS = [
-  'YOUR TABLE',
-  'SHOPPING ARCHETYPE',
-  'KITCHEN DNA',
-  'SAFETY NET',
-  'PANTRY DNA',
-  'BEHAVIOR MAP',
-  'MONEY & STORES',
-  'YOUR MANDATE',
+  'WHO ARE WE PLANNING FOR?',
+  'HOW DO YOU SHOP?',
+  'HOW DO YOU COOK?',
+  'FOOD PREFERENCES & SAFETY NOTES',
+  'YOUR EVERYDAY STAPLES',
+  'YOUR REAL-LIFE SHOPPING PATTERNS',
+  'BUDGET, STORES & SAVINGS GOALS',
+  'WHAT SHOULD SNIPPD HELP WITH MOST?',
 ];
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -64,48 +66,48 @@ const ARCHETYPES = [
   {
     key:   'hunter',
     label: 'The Deal Hunter',
-    sub:   'I have the apps, the browser tabs, the Chrome extensions. I am the deal.',
+    sub:   'I like finding savings and comparing options.',
     icon:  'crosshair',
   },
   {
     key:   'planner',
     label: 'The Systematic Planner',
-    sub:   'I have a list. I stick to the list. Deviations irritate me.',
+    sub:   'I shop with a list and try to stick to it.',
     icon:  'clipboard',
   },
   {
     key:   'optimist',
-    label: 'The Optimistic Browser',
-    sub:   'I go in with a rough idea and see what looks good. Sometimes it works out.',
+    label: 'The Flexible Browser',
+    sub:   'I start with a plan but adjust based on what looks good.',
     icon:  'smile',
   },
   {
     key:   'improviser',
     label: 'The Last-Minute Improviser',
-    sub:   '"I\'ll figure it out when I get there." The cart surprises even me.',
+    sub:   'I usually figure it out when I get there.',
     icon:  'zap',
   },
 ];
 
 const CART_VS_LIST = [
-  { key: 'exact',       label: 'Exactly what\'s on the list',        sub: 'I have discipline. I respect the list.',                        icon: 'check-square' },
-  { key: 'mostly_same', label: '80% list, 20% "just grabbed it"',    sub: 'I stay close, but the end-cap gets me sometimes.',              icon: 'percent'      },
-  { key: 'different',   label: 'Pretty different from the list',      sub: 'The list is a suggestion. The store decides.',                  icon: 'shuffle'      },
-  { key: 'no_list',     label: 'I don\'t really make lists',          sub: 'I operate on vibes, memory, and what looks fresh.',             icon: 'wind'         },
+  { key: 'exact',       label: 'Exactly what\'s on the list',        sub: 'I stick closely to my plan.',                        icon: 'check-square' },
+  { key: 'mostly_same', label: 'Mostly the same',    sub: 'I stay close, but the end-cap gets me sometimes.',              icon: 'percent'      },
+  { key: 'different',   label: 'Pretty different',      sub: 'The list is a suggestion. The store decides.',                  icon: 'shuffle'      },
+  { key: 'no_list',     label: 'I don\'t usually make lists',          sub: 'I operate on vibes, memory, and what looks fresh.',             icon: 'wind'         },
 ];
 
 const DEAL_IMPULSE = [
   { key: 'skip',       label: 'Skip it',                    sub: 'If it\'s not on the list, it doesn\'t exist.',        icon: 'x-circle'      },
   { key: 'buy_one',    label: 'Buy one just in case',       sub: 'Future me will thank me. Probably.',                  icon: 'shopping-bag'  },
-  { key: 'stock_up',   label: 'Buy as many as the limit',   sub: 'BOGO is a command. I take it seriously.',              icon: 'layers'        },
-  { key: 'depends',    label: 'Depends entirely on category', sub: 'Paper towels? Yes. Avocados? Absolutely not.',      icon: 'sliders'       },
+  { key: 'stock_up',   label: 'Stock up',   sub: 'BOGO is a command. I take it seriously.',              icon: 'layers'        },
+  { key: 'depends',    label: 'Depends on the category', sub: 'Paper towels? Yes. Avocados? Absolutely not.',      icon: 'sliders'       },
 ];
 
 const KITCHEN_VIBES = [
-  { key: 'meal_prep',       label: 'Meal-Prep Mode',            sub: 'Sunday is for cooking. I build for the whole week.',      icon: 'calendar'   },
-  { key: 'fresh_spontaneous', label: 'Fresh & Spontaneous',     sub: 'I cook based on what looks good today. Recipes are loose.', icon: 'feather'  },
-  { key: 'takeout_backup',  label: 'Practical — Takeout Backup', sub: 'I cook 3–4 times a week. The rest is handled.',          icon: 'package'    },
-  { key: 'chef_mode',       label: 'Full Chef Mode',            sub: 'I cook everything from scratch. Shortcuts are cheating.',  icon: 'award'      },
+  { key: 'meal_prep',       label: 'Meal Prep Mode',            sub: 'I like planning meals ahead.',      icon: 'calendar'   },
+  { key: 'fresh_spontaneous', label: 'Fresh & Flexible',     sub: 'I cook based on what sounds good or what is available.', icon: 'feather'  },
+  { key: 'takeout_backup',  label: 'Cook Sometimes, Eat Out Sometimes', sub: 'I cook when I can, but real life happens.',          icon: 'package'    },
+  { key: 'chef_mode',       label: 'From-Scratch Cook',            sub: 'I prefer making most things myself.',  icon: 'award'      },
 ];
 
 const ALLERGIES = [
@@ -120,20 +122,20 @@ const ALLERGIES = [
 ];
 
 const DIAGNOSES = [
-  { key: 'diabetes_t2',        label: 'Type 2 Diabetes',      icon: '💉' },
-  { key: 'diabetes_t1',        label: 'Type 1 Diabetes',      icon: '💉' },
-  { key: 'hypertension',       label: 'High Blood Pressure',  icon: '❤️' },
-  { key: 'celiac',             label: 'Celiac Disease',       icon: '🌾' },
-  { key: 'ibs',                label: 'IBS / Crohn\'s',       icon: '🫁' },
-  { key: 'lactose_intolerant', label: 'Lactose Intolerance',  icon: '🥛' },
-  { key: 'kidney_disease',     label: 'Kidney Disease',       icon: '🫘' },
-  { key: 'none',               label: 'None',                 icon: '✓'  },
+  { key: 'general_wellness',        label: 'General wellness',      icon: '💚' },
+  { key: 'lower_sugar',        label: 'Lower sugar',      icon: '🍬' },
+  { key: 'lower_sodium',       label: 'Lower sodium',  icon: '🧂' },
+  { key: 'high_protein',             label: 'High protein',       icon: '🥩' },
+  { key: 'low_carb_keto',             label: 'Low carb / keto',       icon: '🥑' },
+  { key: 'vegetarian',                label: 'Vegetarian',       icon: '🥕' },
+  { key: 'vegan',                label: 'Vegan',       icon: '🌱' },
+  { key: 'none',               label: 'No restrictions',                 icon: '✓'  },
 ];
 
 const PANTRY_OPTIONS = [
-  'Eggs', 'Organic Milk', 'Butter', 'Greek Yogurt', 'Cheese',
+  'Eggs', 'Milk', 'Butter', 'Greek Yogurt', 'Cheese',
   'Chicken Breast', 'Ground Beef', 'Salmon', 'Bacon',
-  'Organic Spinach', 'Broccoli', 'Sweet Potatoes', 'Avocados',
+  'Spinach', 'Broccoli', 'Sweet Potatoes', 'Avocados',
   'Bananas', 'Apples', 'Berries',
   'Rice', 'Pasta', 'Oats', 'Bread', 'Tortillas',
   'Olive Oil', 'Coconut Oil', 'Almond Butter', 'Peanut Butter',
@@ -143,33 +145,34 @@ const PANTRY_OPTIONS = [
 ];
 
 const PRICE_CHECK_FREQ = [
-  { key: 'never',            label: 'Never crossed my mind',        sub: 'I find what I like and stay loyal.',                  icon: 'heart'         },
-  { key: 'sometimes',        label: 'Every now and then',           sub: 'I check if something feels too expensive.',           icon: 'eye'           },
-  { key: 'always',           label: 'I do it religiously',          sub: 'I know the unit price of 30 products off the top of my head.', icon: 'bar-chart-2' },
-  { key: 'switched_recently',label: 'I switched brands recently',   sub: 'The price gap finally got to me. The new one is fine.', icon: 'refresh-cw'  },
+  { key: 'never',            label: 'Almost never',        sub: 'I find what I like and stay loyal.',                  icon: 'heart'         },
+  { key: 'sometimes',        label: 'Sometimes',           sub: 'I check if something feels too expensive.',           icon: 'eye'           },
+  { key: 'always',           label: 'Often',          sub: 'I know the unit price of many products.', icon: 'bar-chart-2' },
+  { key: 'switched_recently',label: 'I recently switched brands because of price',   sub: 'The price gap finally got to me.', icon: 'refresh-cw'  },
 ];
 
 const IMPULSE_CATEGORIES = [
-  { key: 'snacks',     label: 'Snacks & Chips',          icon: '🍿' },
-  { key: 'beverages',  label: 'Drinks & Beverages',      icon: '🧃' },
-  { key: 'home',       label: 'Home & Cleaning',         icon: '🧹' },
-  { key: 'self_care',  label: 'Self-Care & Beauty',      icon: '✨' },
-  { key: 'candy',      label: 'Candy & Checkout Lane',   icon: '🍬' },
+  { key: 'snacks',     label: 'Snacks',          icon: '🍿' },
+  { key: 'beverages',  label: 'Drinks',      icon: '🧃' },
+  { key: 'home',       label: 'Home & cleaning items',         icon: '🧹' },
+  { key: 'self_care',  label: 'Self-care items',      icon: '✨' },
+  { key: 'candy',      label: 'Candy or checkout items',   icon: '🍬' },
   { key: 'none',       label: 'Nothing — I stick to the list', icon: '🧊' },
 ];
 
 const POST_SHOP_FEELINGS = [
-  { key: 'accomplished', label: 'Accomplished',          sub: 'I got deals. I stayed on budget. That felt good.',      icon: 'trophy'        },
-  { key: 'guilty',       label: 'Guilty about something', sub: 'There\'s always that one thing I shouldn\'t have bought.', icon: 'alert-circle' },
-  { key: 'neutral',      label: 'It\'s just groceries',  sub: 'Task done. Moving on. Not a moment for reflection.',    icon: 'minus-circle'  },
-  { key: 'irritated',    label: 'Irritated at the total', sub: 'Every week I\'m surprised it came to that much.',      icon: 'frown'         },
+  { key: 'accomplished', label: 'Accomplished',          sub: 'I got deals. I stayed on budget.',      icon: 'trophy'        },
+  { key: 'guilty',       label: 'A little guilty about something', sub: 'There\'s always that one thing.', icon: 'alert-circle' },
+  { key: 'neutral',      label: 'Neutral',  sub: 'Task done. Moving on.',    icon: 'minus-circle'  },
+  { key: 'irritated',    label: 'Frustrated by the total', sub: 'Every week it comes to that much.',      icon: 'frown'         },
 ];
 
 const FIN_GOALS = [
   { key: 'debt_payoff',    label: 'Pay off debt',       sub: 'Every dollar saved goes toward eliminating what I owe', icon: 'credit-card'  },
-  { key: 'build_wealth',   label: 'Build wealth',       sub: 'I want to invest the difference — savings = assets',    icon: 'trending-up'  },
+  { key: 'build_wealth',   label: 'Build savings',       sub: 'I want to invest the difference — savings = assets',    icon: 'trending-up'  },
   { key: 'emergency_fund', label: 'Emergency fund',     sub: 'I need a safety net before anything else',              icon: 'shield'       },
-  { key: 'stretch_budget', label: 'Make it stretch',    sub: 'Tight month — I need every dollar to go further',       icon: 'maximize-2'   },
+  { key: 'stretch_budget', label: 'Make this month stretch',    sub: 'Tight month — I need every dollar to go further',       icon: 'percent'   },
+  { key: 'spend_less',     label: 'Spend less without sacrificing meals', sub: 'Keep the quality but cut the cost', icon: 'dollar-sign' },
 ];
 
 const STORES = [
@@ -238,8 +241,9 @@ function OptionCard({ item, selected, onPress }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function OnboardingConciergeScreen({ navigation, route }) {
+export default function SnippdDeepBriefScreen({ navigation, route }) {
   const preHousehold = route?.params?.household ?? {};
+  const returnTo = route?.params?.returnTo;
 
   const [chapter,    setChapter]    = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -259,6 +263,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
   // Ch 4 — Safety Net
   const [allergies,      setAllergies]      = useState([]);
   const [diagnoses,      setDiagnoses]      = useState([]);
+  const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false);
 
   // Ch 5 — Pantry DNA
   const [anchors,        setAnchors]        = useState([]);
@@ -285,7 +290,14 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
   const fadeAnim  = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    tracker.track('deep_brief_started');
+  }, []);
+
   const goToChapter = useCallback((next) => {
+    if (next > chapter) {
+      tracker.track('deep_brief_chapter_completed', { chapter: next + 1 });
+    }
     Animated.parallel([
       Animated.timing(fadeAnim,  { toValue: 0, duration: 140, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: -20, duration: 140, useNativeDriver: true }),
@@ -297,7 +309,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
         Animated.timing(slideAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
       ]).start();
     });
-  }, [fadeAnim, slideAnim]);
+  }, [fadeAnim, slideAnim, chapter]);
 
   const toggleItem = useCallback((list, setList, key) => {
     setList(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
@@ -307,13 +319,13 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
     if (chapter === 0) return true;                              // household optional
     if (chapter === 1) return !!archetype && !!cartVsList;       // archetype required
     if (chapter === 2) return !!kitchenVibe;                     // kitchen vibe required
-    if (chapter === 3) return true;                              // allergies optional
+    if (chapter === 3) return disclaimerAcknowledged;           // disclaimer required
     if (chapter === 4) return anchors.length > 0;               // at least 1 anchor
     if (chapter === 5) return !!priceCheckFreq && !!postShopFeeling; // behavior required
     if (chapter === 6) return !!finGoal && stores.length > 0;   // money & stores required
     if (chapter === 7) return !!stressBehavior && !!autonomy;   // mandate required
     return false;
-  }, [chapter, archetype, cartVsList, kitchenVibe, anchors, priceCheckFreq, postShopFeeling, finGoal, stores, stressBehavior, autonomy]);
+  }, [chapter, archetype, cartVsList, kitchenVibe, disclaimerAcknowledged, anchors, priceCheckFreq, postShopFeeling, finGoal, stores, stressBehavior, autonomy]);
 
   const handleComplete = useCallback(async () => {
     setSubmitting(true);
@@ -322,7 +334,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       if (!user) { navigation.replace('Auth'); return; }
 
       const parsedAges = childAges
-        .split(/[\s,]+/)
+        .split(/[,\s]+/)
         .map(s => parseInt(s, 10))
         .filter(n => !isNaN(n) && n >= 0 && n <= 17);
 
@@ -332,7 +344,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
         ? Math.round(parseFloat(weeklySpend.replace(/[^0-9.]/g, '')) * 100) || null
         : null;
 
-      await supabase.from('user_persona').upsert({
+      const personaData = {
         user_id:                 user.id,
         // Ch 1
         child_ages:              parsedAges,
@@ -346,6 +358,8 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
         // Ch 4
         clinical_allergies:      allergies,
         clinical_diagnoses:      diagnoses,
+        allergy_disclaimer_acknowledged: disclaimerAcknowledged,
+        allergy_disclaimer_acknowledged_at: disclaimerAcknowledged ? new Date().toISOString() : null,
         // Ch 5
         pantry_anchors:          allAnchors,
         // Ch 6
@@ -364,9 +378,45 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
         snippd_solve_for:        snippdSolveFor.trim() || null,
         persona_notes:           personaNotes.trim() || null,
         briefing_completed:      true,
-      }, { onConflict: 'user_id' });
+        completed_at:            new Date().toISOString(),
+      };
 
-      navigation.replace('MainApp');
+      await supabase.from('user_persona').upsert(personaData, { onConflict: 'user_id' });
+
+      // Firebase compatibility placeholder
+      try {
+        if (global.firebase) {
+          const firestore = global.firebase.firestore();
+          await firestore.collection('userPersona').doc(user.id).set(personaData, { merge: true });
+        }
+      } catch (firebaseError) {
+        console.warn('Firebase placeholder write failed:', firebaseError);
+      }
+
+      // Neo4j placeholder sync
+      try {
+        syncDeepBriefToNeo4j(user.id, personaData);
+        tracker.track('neo4j_deep_brief_sync_queued', { userId: user.id });
+      } catch (neoError) {
+        console.warn('Neo4j sync placeholder error:', neoError);
+      }
+
+      tracker.track('persona_saved', { userId: user.id, completed: true });
+      tracker.track('deep_brief_completed', { chapter: chapter + 1 });
+
+      const finishAction = () => {
+        if (returnTo) {
+          navigation.goBack();
+        } else {
+          navigation.replace('MainApp');
+        }
+      };
+      Alert.alert(
+        'Snippd Deep Brief saved',
+        'Your profile is now ready to help Snippd make better weekly plans for your household. You can update this anytime from your profile.',
+        [{ text: 'Done', onPress: finishAction }],
+        { cancelable: false }
+      );
     } catch (e) {
       console.error('DeepBrief save error:', e);
     } finally {
@@ -374,9 +424,9 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
     }
   }, [
     childAges, archetype, cartVsList, dealImpulse, kitchenVibe, weeklyMeal,
-    allergies, diagnoses, anchors, customAnchor, priceCheckFreq, impulseCategory,
+    allergies, diagnoses, anchors, customAnchor, disclaimerAcknowledged, priceCheckFreq, impulseCategory,
     postShopFeeling, finGoal, stores, loyalCards, weeklySpend, multiStore,
-    stressBehavior, autonomy, snippdSolveFor, personaNotes, navigation,
+    stressBehavior, autonomy, snippdSolveFor, personaNotes, navigation, chapter,
   ]);
 
   // ── Chapter renders (called as functions, not mounted as JSX components) ────
@@ -386,13 +436,14 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.chapterContent} showsVerticalScrollIndicator={false}>
         <View style={styles.chapterHeader}>
           <Text style={styles.chapterEyebrow}>Chapter 1 of {TOTAL_CHAPTERS}</Text>
-          <Text style={styles.chapterTitle}>Who's at Your Table?</Text>
+          <Text style={styles.chapterTitle}>Who Are We Planning For?</Text>
           <Text style={styles.chapterSub}>
-            I need to know the exact composition of your household — not just headcount. The age of a child changes everything: formula, school lunches, teenage metabolism. Tell me who I'm feeding.
+            Tell Snippd a little more about your household so your weekly plan fits real life.
           </Text>
         </View>
-        <Text style={styles.fieldLabel}>Ages of your children (optional)</Text>
-        <Text style={styles.fieldHint}>Separate ages with commas — e.g. 3, 8, 14</Text>
+        <Text style={styles.fieldLabel}>Household details help Snippd plan portions, grocery needs, savings opportunities, and food routines more accurately.</Text>
+        <Text style={styles.fieldLabel}>Ages of children, if applicable</Text>
+        <Text style={styles.fieldHint}>Example: 3, 8, 14</Text>
         <TextInput
           style={styles.textInput}
           value={childAges}
@@ -405,13 +456,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
         <View style={styles.infoCard}>
           <Feather name="info" size={14} color={ACCENT} />
           <Text style={styles.infoText}>
-            A teen at 15 costs $40–80/week more than they did at 12. Your agent accounts for this automatically.
-          </Text>
-        </View>
-        <View style={styles.infoCard}>
-          <Feather name="calendar" size={14} color={ACCENT} />
-          <Text style={styles.infoText}>
-            Infant under 12 months? I'll pre-monitor formula, purees, and diaper prices at every connected retailer around the clock.
+            The more I understand your household, the better I can help you save more and stress less.
           </Text>
         </View>
       </ScrollView>
@@ -423,27 +468,33 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.chapterContent} showsVerticalScrollIndicator={false}>
         <View style={styles.chapterHeader}>
           <Text style={styles.chapterEyebrow}>Chapter 2 of {TOTAL_CHAPTERS}</Text>
-          <Text style={styles.chapterTitle}>Your Shopping Archetype</Text>
+          <Text style={styles.chapterTitle}>How Do You Shop?</Text>
           <Text style={styles.chapterSub}>
-            Before I build your stack, I need to understand who you actually are in a grocery store. There's no wrong answer — these tell me how to communicate with you.
+            Everyone shops differently. Snippd uses this to guide your plan in a way that actually fits your habits.
           </Text>
         </View>
 
-        <Text style={styles.fieldLabel}>Pick the one that sounds most like you on a Sunday before groceries:</Text>
+        <Text style={styles.fieldLabel}>Which sounds most like you?</Text>
         {ARCHETYPES.map(a => (
           <OptionCard key={a.key} item={a} selected={archetype === a.key} onPress={() => setArchetype(a.key)} />
         ))}
 
-        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>Your cart compared to your list is usually:</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>How close is your cart to your list?</Text>
         {CART_VS_LIST.map(a => (
           <OptionCard key={a.key} item={a} selected={cartVsList === a.key} onPress={() => setCartVsList(a.key)} />
         ))}
 
-        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>You spot a BOGO deal on something not on your list. You:</Text>
-        <Text style={styles.fieldHint}>This tells me how aggressively to surface opportunistic deals</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>When you see a good deal that was not on your list, you usually:</Text>
         {DEAL_IMPULSE.map(a => (
           <OptionCard key={a.key} item={a} selected={dealImpulse === a.key} onPress={() => setDealImpulse(a.key)} />
         ))}
+
+        <View style={styles.infoCard}>
+          <Feather name="heart" size={14} color={ACCENT} />
+          <Text style={styles.infoText}>
+            No judgment. I just want to help your plan match how you really shop.
+          </Text>
+        </View>
       </ScrollView>
     );
   }
@@ -453,28 +504,35 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.chapterContent} showsVerticalScrollIndicator={false}>
         <View style={styles.chapterHeader}>
           <Text style={styles.chapterEyebrow}>Chapter 3 of {TOTAL_CHAPTERS}</Text>
-          <Text style={styles.chapterTitle}>Your Kitchen DNA</Text>
+          <Text style={styles.chapterTitle}>How Do You Cook?</Text>
           <Text style={styles.chapterSub}>
-            How you cook tells me what to buy and when. A meal-prepper needs bulk deals on Sunday. A spontaneous cook needs daily freshness alerts. Which one are you?
+            Your cooking style helps Snippd recommend meals, grocery items, and eat-out alternatives that fit your week.
           </Text>
         </View>
 
-        <Text style={styles.fieldLabel}>Your kitchen vibe is closest to:</Text>
+        <Text style={styles.fieldLabel}>Which sounds most like your kitchen?</Text>
         {KITCHEN_VIBES.map(k => (
           <OptionCard key={k.key} item={k} selected={kitchenVibe === k.key} onPress={() => setKitchenVibe(k.key)} />
         ))}
 
-        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>That one meal you cook every single week, no matter what:</Text>
-        <Text style={styles.fieldHint}>Could be tacos, pasta, sheet-pan chicken — whatever it is, I'll protect the ingredients.</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>What is one meal you make almost every week?</Text>
+        <Text style={styles.fieldHint}>Example: tacos, pasta, chicken bowls, breakfast sandwiches</Text>
         <TextInput
           style={styles.textInput}
           value={weeklyMeal}
           onChangeText={setWeeklyMeal}
-          placeholder="e.g. Taco Tuesday, Sunday Pasta"
+          placeholder="tacos, pasta, chicken bowls, breakfast sandwiches"
           placeholderTextColor={DIM}
           returnKeyType="done"
           blurOnSubmit
         />
+
+        <View style={styles.infoCard}>
+          <Feather name="heart" size={14} color={ACCENT} />
+          <Text style={styles.infoText}>
+            I'll help protect the ingredients and routines your household already loves.
+          </Text>
+        </View>
       </ScrollView>
     );
   }
@@ -484,48 +542,70 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.chapterContent} showsVerticalScrollIndicator={false}>
         <View style={styles.chapterHeader}>
           <Text style={styles.chapterEyebrow}>Chapter 4 of {TOTAL_CHAPTERS}</Text>
-          <Text style={styles.chapterTitle}>Your Safety Net</Text>
+          <Text style={styles.chapterTitle}>Food Preferences & Safety Notes</Text>
           <Text style={styles.chapterSub}>
-            Your agent will never recommend a product your household can't have. This is stored encrypted, never sold, never shared — it exists only to protect you.
+            Select preferences or allergies you want Snippd to keep in mind when guiding your weekly plan.
           </Text>
         </View>
 
-        <Text style={styles.fieldLabel}>Allergies to flag</Text>
-        <Text style={styles.fieldHint}>Every recommendation is filtered through this</Text>
-        <View style={styles.pillGrid}>
-          {ALLERGIES.map(a => (
-            <Pill key={a.key} item={a} selected={allergies.includes(a.key)} onPress={() => toggleItem(allergies, setAllergies, a.key)} />
-          ))}
-        </View>
-
-        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Medical conditions</Text>
-        <Text style={styles.fieldHint}>Guides ingredient filtering and macro-aware deal scoring</Text>
-        <View style={styles.pillGrid}>
-          {DIAGNOSES.map(d => (
-            <Pill
-              key={d.key}
-              item={d}
-              selected={diagnoses.includes(d.key)}
-              onPress={() => {
-                if (d.key === 'none') {
-                  setDiagnoses(['none']);
-                } else {
-                  setDiagnoses(prev =>
-                    prev.filter(k => k !== 'none').includes(d.key)
-                      ? prev.filter(k => k !== d.key)
-                      : [...prev.filter(k => k !== 'none'), d.key]
-                  );
-                }
-              }}
-            />
-          ))}
-        </View>
-        <View style={styles.infoCard}>
-          <Feather name="lock" size={14} color={ACCENT} />
-          <Text style={styles.infoText}>
-            Encrypted at rest. Used only to filter recommendations. Never shared externally.
+        <View style={styles.disclaimerCard}>
+          <Feather name="alert-triangle" size={16} color={CORAL} />
+          <Text style={styles.disclaimerText}>
+            Important: Snippd does not verify allergens, ingredients, cross-contact, or medical suitability. Always read product labels, review restaurant ingredient information, and consult a qualified medical professional. Snippd provides planning support only.
           </Text>
         </View>
+
+        {!disclaimerAcknowledged && (
+          <TouchableOpacity
+            style={styles.acknowledgeBtn}
+            onPress={() => setDisclaimerAcknowledged(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.acknowledgeBtnText}>I Understand & Continue</Text>
+          </TouchableOpacity>
+        )}
+
+        {disclaimerAcknowledged && (
+          <>
+            <Text style={styles.fieldLabel}>Allergies</Text>
+            <Text style={styles.fieldHint}>Select any allergies to keep in mind</Text>
+            <View style={styles.pillGrid}>
+              {ALLERGIES.map(a => (
+                <Pill key={a.key} item={a} selected={allergies.includes(a.key)} onPress={() => toggleItem(allergies, setAllergies, a.key)} />
+              ))}
+            </View>
+
+            <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Food preferences</Text>
+            <Text style={styles.fieldHint}>Select any preferences to guide suggestions</Text>
+            <View style={styles.pillGrid}>
+              {DIAGNOSES.map(d => (
+                <Pill
+                  key={d.key}
+                  item={d}
+                  selected={diagnoses.includes(d.key)}
+                  onPress={() => {
+                    if (d.key === 'none') {
+                      setDiagnoses(['none']);
+                    } else {
+                      setDiagnoses(prev =>
+                        prev.filter(k => k !== 'none').includes(d.key)
+                          ? prev.filter(k => k !== d.key)
+                          : [...prev.filter(k => k !== 'none'), d.key]
+                      );
+                    }
+                  }}
+                />
+              ))}
+            </View>
+
+            <View style={styles.infoCard}>
+              <Feather name="heart" size={14} color={ACCENT} />
+              <Text style={styles.infoText}>
+                I'll help guide your plan, but labels and medical guidance always come first.
+              </Text>
+            </View>
+          </>
+        )}
       </ScrollView>
     );
   }
@@ -535,25 +615,25 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.chapterContent} showsVerticalScrollIndicator={false}>
         <View style={styles.chapterHeader}>
           <Text style={styles.chapterEyebrow}>Chapter 5 of {TOTAL_CHAPTERS}</Text>
-          <Text style={styles.chapterTitle}>Your Pantry DNA</Text>
+          <Text style={styles.chapterTitle}>Your Everyday Staples</Text>
           <Text style={styles.chapterSub}>
-            These are your non-negotiables. I watch their price at every connected retailer, 24/7. The moment a deal hits your threshold, you're the first to know.
+            Tell Snippd what usually ends up in your cart so future plans can better reflect what your household actually buys.
           </Text>
         </View>
 
-        <Text style={styles.fieldLabel}>What's in your cart almost every week?</Text>
-        <Text style={styles.fieldHint}>Pick everything that never really leaves your list</Text>
+        <Text style={styles.fieldLabel}>What is in your cart almost every week?</Text>
+        <Text style={styles.fieldHint}>Select all that apply</Text>
         <View style={styles.pillGridWrap}>
           {PANTRY_OPTIONS.map(item => (
             <Pill key={item} item={{ label: item }} selected={anchors.includes(item)} onPress={() => toggleItem(anchors, setAnchors, item)} />
           ))}
         </View>
-        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Anything I missed?</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Anything we missed?</Text>
         <TextInput
           style={styles.textInput}
           value={customAnchor}
           onChangeText={setCustomAnchor}
-          placeholder="e.g. Kirkland Protein Bars, Chomps Beef Sticks"
+          placeholder="Add another staple item"
           placeholderTextColor={DIM}
           returnKeyType="done"
           blurOnSubmit
@@ -562,10 +642,17 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
           <View style={styles.anchorCount}>
             <Feather name="check-circle" size={14} color={ACCENT} />
             <Text style={styles.anchorCountText}>
-              {anchors.length} anchor product{anchors.length !== 1 ? 's' : ''} — watched continuously.
+              {anchors.length} staple{anchors.length !== 1 ? 's' : ''} selected.
             </Text>
           </View>
         )}
+
+        <View style={styles.infoCard}>
+          <Feather name="heart" size={14} color={ACCENT} />
+          <Text style={styles.infoText}>
+            Staples matter. I'll use these to help make future plans feel more like your household.
+          </Text>
+        </View>
       </ScrollView>
     );
   }
@@ -575,29 +662,36 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.chapterContent} showsVerticalScrollIndicator={false}>
         <View style={styles.chapterHeader}>
           <Text style={styles.chapterEyebrow}>Chapter 6 of {TOTAL_CHAPTERS}</Text>
-          <Text style={styles.chapterTitle}>The Behavior Map</Text>
+          <Text style={styles.chapterTitle}>Your Real-Life Shopping Patterns</Text>
           <Text style={styles.chapterSub}>
-            These questions don't look like they matter. They do. The answers train the part of your agent that predicts what you'll actually need — before you know you need it.
+            These questions help Snippd understand where your food budget usually gets stretched.
           </Text>
         </View>
 
-        <Text style={styles.fieldLabel}>When's the last time you checked if you could get the same product for less?</Text>
+        <Text style={styles.fieldLabel}>How often do you compare prices?</Text>
         {PRICE_CHECK_FREQ.map(p => (
           <OptionCard key={p.key} item={p} selected={priceCheckFreq === p.key} onPress={() => setPriceCheckFreq(p.key)} />
         ))}
 
-        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>That thing that always ends up in your cart — even when it's not on the list:</Text>
-        <Text style={styles.fieldHint}>Pick the category that gets you most often</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>What usually sneaks into your cart?</Text>
+        <Text style={styles.fieldHint}>Select all that apply</Text>
         <View style={styles.pillGrid}>
           {IMPULSE_CATEGORIES.map(i => (
             <Pill key={i.key} item={i} selected={impulseCategory === i.key} onPress={() => setImpulseCategory(i.key)} />
           ))}
         </View>
 
-        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>After you leave the grocery store, you usually feel:</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>After grocery shopping, you usually feel:</Text>
         {POST_SHOP_FEELINGS.map(p => (
           <OptionCard key={p.key} item={p} selected={postShopFeeling === p.key} onPress={() => setPostShopFeeling(p.key)} />
         ))}
+
+        <View style={styles.infoCard}>
+          <Feather name="heart" size={14} color={ACCENT} />
+          <Text style={styles.infoText}>
+            This helps me catch budget leaks earlier, without making you feel bad about real life.
+          </Text>
+        </View>
       </ScrollView>
     );
   }
@@ -607,13 +701,13 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.chapterContent} showsVerticalScrollIndicator={false}>
         <View style={styles.chapterHeader}>
           <Text style={styles.chapterEyebrow}>Chapter 7 of {TOTAL_CHAPTERS}</Text>
-          <Text style={styles.chapterTitle}>Your Money & Stores</Text>
+          <Text style={styles.chapterTitle}>Budget, Stores & Savings Goals</Text>
           <Text style={styles.chapterSub}>
-            Where you shop and what you're saving for changes everything about how your stack is built. Be specific — even approximate numbers unlock better recommendations.
+            Tell Snippd what you are trying to accomplish financially and where you usually shop.
           </Text>
         </View>
 
-        <Text style={styles.fieldLabel}>What's the financial goal right now?</Text>
+        <Text style={styles.fieldLabel}>What is your main savings goal right now?</Text>
         {FIN_GOALS.map(g => (
           <OptionCard key={g.key} item={g} selected={finGoal === g.key} onPress={() => setFinGoal(g.key)} />
         ))}
@@ -626,7 +720,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
             style={styles.spendInput}
             value={weeklySpend}
             onChangeText={setWeeklySpend}
-            placeholder="150"
+            placeholder="185"
             placeholderTextColor={DIM}
             keyboardType="numeric"
             returnKeyType="done"
@@ -639,7 +733,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
           {[
             { key: 'always',    label: 'Yes, always' },
             { key: 'sometimes', label: 'Sometimes' },
-            { key: 'no',        label: 'No, one store' },
+            { key: 'no',        label: 'No, usually one store' },
           ].map(opt => (
             <TouchableOpacity
               key={opt.key}
@@ -662,8 +756,8 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
           ))}
         </View>
 
-        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Loyalty or rewards cards?</Text>
-        <Text style={styles.fieldHint}>These unlock digital coupon stacking deals</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Which stores have loyalty or rewards accounts?</Text>
+        <Text style={styles.fieldHint}>These help unlock digital savings deals</Text>
         <View style={styles.pillGrid}>
           {STORES.map(s => (
             <Pill key={s.key + '_loyal'} item={{ label: s.label, icon: s.icon }} selected={loyalCards.includes(s.key)} onPress={() => toggleItem(loyalCards, setLoyalCards, s.key)} />
@@ -678,32 +772,30 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.chapterContent} showsVerticalScrollIndicator={false}>
         <View style={styles.chapterHeader}>
           <Text style={styles.chapterEyebrow}>Chapter 8 of {TOTAL_CHAPTERS}</Text>
-          <Text style={styles.chapterTitle}>Your Snippd Mandate</Text>
+          <Text style={styles.chapterTitle}>What Should Snippd Help With Most?</Text>
           <Text style={styles.chapterSub}>
-            Last chapter. These answers define the rules your agent lives by — even when you forget you set them.
+            Last step. Tell Snippd what kind of support would make your food planning feel easier.
           </Text>
         </View>
 
-        <Text style={styles.fieldLabel}>When you're slammed or stressed, what usually happens with food?</Text>
-        <Text style={styles.fieldHint}>I'll pre-build for your stress pattern so you're never caught empty</Text>
+        <Text style={styles.fieldLabel}>When you are busy or stressed, what usually happens with food?</Text>
+        <Text style={styles.fieldHint}>This helps Snippd support your routine, not override it.</Text>
         {STRESS_BEHAVIORS.map(s => (
           <OptionCard key={s.key} item={s} selected={stressBehavior === s.key} onPress={() => setStressBehavior(s.key)} />
         ))}
 
-        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>How much do you want me to handle?</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>How much help do you want from Snippd?</Text>
         {AUTONOMY.map(a => (
           <OptionCard key={a.key} item={a} selected={autonomy === a.key} onPress={() => setAutonomy(a.key)} />
         ))}
 
-        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>The one thing you most want Snippd to solve for you:</Text>
-        <Text style={styles.fieldHint}>
-          This becomes the first priority your agent optimizes for. Be specific. "Stop me from overspending at Target" is better than "save money."
-        </Text>
+        <Text style={[styles.fieldLabel, { marginTop: 24 }]}>What is the one thing you most want Snippd to help solve?</Text>
+        <Text style={styles.fieldHint}>Example: Help me stop overspending when I shop tired.</Text>
         <TextInput
           style={[styles.textInput, { minHeight: 90 }]}
           value={snippdSolveFor}
           onChangeText={setSnippdSolveFor}
-          placeholder={`"Stop me from buying things I don't need at Costco."`}
+          placeholder="Help me stop overspending when I shop tired."
           placeholderTextColor={DIM}
           multiline
           maxLength={300}
@@ -713,12 +805,12 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
           <Text style={styles.charCount}>{300 - snippdSolveFor.length} remaining</Text>
         )}
 
-        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Anything else your agent should always remember? (optional)</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Anything else Snippd should remember?</Text>
         <TextInput
           style={[styles.textInput, { minHeight: 70 }]}
           value={personaNotes}
           onChangeText={setPersonaNotes}
-          placeholder={`"My kids won't eat anything green. My husband is obsessed with Triscuits."`}
+          placeholder="My kids do not like spicy food. We always need easy breakfast options."
           placeholderTextColor={DIM}
           multiline
           maxLength={200}
@@ -737,7 +829,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+      <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       {/* Top bar */}
       <View style={styles.topBar}>
@@ -746,6 +838,16 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
         </View>
         <Text style={styles.topBarLabel}>{CHAPTER_LABELS[chapter]}</Text>
       </View>
+
+      {/* Intro */}
+      {chapter === 0 && (
+        <View style={styles.introContainer}>
+          <Text style={styles.introTitle}>Snippd Deep Brief</Text>
+          <Text style={styles.introText}>
+            Answer a few deeper questions so Snippd can better understand your household, shopping habits, cooking style, savings goals, and food preferences.
+          </Text>
+        </View>
+      )}
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={20}>
         <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -770,7 +872,7 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
             activeOpacity={0.85}
           >
             <Text style={styles.nextBtnText}>
-              {chapter === TOTAL_CHAPTERS - 1 ? (submitting ? 'Activating…' : 'Activate my agent →') : 'Next →'}
+              {chapter === TOTAL_CHAPTERS - 1 ? (submitting ? 'Saving…' : 'Finish & Save') : 'Next →'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -779,21 +881,36 @@ export default function OnboardingConciergeScreen({ navigation, route }) {
   );
 }
 
+function syncDeepBriefToNeo4j(userId, personaData) {
+  console.log('Neo4j sync payload:', {
+    userId,
+    relationships: {
+      shoppingArchetype: personaData.shopping_archetype,
+      kitchenVibe: personaData.kitchen_vibe,
+      preferredStores: personaData.preferred_stores,
+      pantryAnchors: personaData.pantry_anchors,
+      impulseCategory: personaData.impulse_category,
+      financialGoal: personaData.financial_goal,
+      stressBehavior: personaData.stress_behavior,
+      supportProblem: personaData.snippd_solve_for,
+    },
+  });
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
-
   topBar: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14, gap: 8 },
   progressWrap: { height: 3, backgroundColor: DIM, borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: ACCENT, borderRadius: 2 },
+  progressFill: { height: 3, backgroundColor: ACCENT, borderRadius: 2 },
   topBarLabel: { fontSize: 11, fontWeight: '700', color: ACCENT, letterSpacing: 1.5, textTransform: 'uppercase' },
 
   chapterContent: { paddingHorizontal: 24, paddingBottom: 40, gap: 4 },
   chapterHeader: { marginBottom: 24, gap: 6 },
   chapterEyebrow: { fontSize: 11, fontWeight: '700', color: SILVER, letterSpacing: 1.5, textTransform: 'uppercase' },
-  chapterTitle: { fontSize: 28, fontWeight: '900', color: WHITE, lineHeight: 34 },
+  chapterTitle: { fontSize: 28, fontWeight: '900', color: NAVY, lineHeight: 34 },
   chapterSub: { fontSize: 14, color: SILVER, lineHeight: 22, marginTop: 4 },
 
-  fieldLabel: { fontSize: 13, fontWeight: '800', color: WHITE, marginTop: 8, marginBottom: 8 },
+  fieldLabel: { fontSize: 13, fontWeight: '800', color: NAVY, marginTop: 8, marginBottom: 8 },
   fieldHint: { fontSize: 12, color: SILVER, marginBottom: 12, lineHeight: 18 },
 
   textInput: {
@@ -803,14 +920,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: WHITE,
+    color: NAVY,
     fontSize: 15,
     marginBottom: 8,
   },
 
   spendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 8 },
   spendPrefix: { color: ACCENT, fontSize: 18, fontWeight: '800' },
-  spendInput: { flex: 1, color: WHITE, fontSize: 22, fontWeight: '800', padding: 0 },
+  spendInput: { flex: 1, color: NAVY, fontSize: 22, fontWeight: '800', padding: 0 },
   spendSuffix: { color: SILVER, fontSize: 13, fontWeight: '600' },
 
   triToggleRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
@@ -831,12 +948,18 @@ const styles = StyleSheet.create({
   optCardSelected: { borderColor: ACCENT, backgroundColor: ACCENT_DIM },
   optIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: ACCENT_DIM, alignItems: 'center', justifyContent: 'center' },
   optIconWrapSelected: { backgroundColor: ACCENT },
-  optLabel: { fontSize: 14, fontWeight: '800', color: WHITE, marginBottom: 2 },
+  optLabel: { fontSize: 14, fontWeight: '800', color: NAVY, marginBottom: 2 },
   optLabelSelected: { color: MINT_POP },
   optSub: { fontSize: 12, color: SILVER, lineHeight: 17 },
 
   infoCard: { flexDirection: 'row', gap: 10, backgroundColor: SURFACE_HI, borderRadius: 10, padding: 12, marginTop: 8, borderWidth: 1, borderColor: BORDER },
   infoText: { flex: 1, fontSize: 12, color: SILVER, lineHeight: 18 },
+
+  disclaimerCard: { flexDirection: 'row', gap: 10, backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: CORAL },
+  disclaimerText: { flex: 1, fontSize: 12, color: NAVY, lineHeight: 18 },
+
+  acknowledgeBtn: { backgroundColor: ACCENT, borderRadius: 14, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  acknowledgeBtnText: { color: WHITE, fontSize: 15, fontWeight: '900', letterSpacing: 0.3 },
 
   anchorCount: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, padding: 10, backgroundColor: ACCENT_DIM, borderRadius: 8 },
   anchorCountText: { flex: 1, fontSize: 12, color: ACCENT, fontWeight: '700' },
@@ -850,4 +973,8 @@ const styles = StyleSheet.create({
   nextBtn: { flex: 1, backgroundColor: ACCENT, borderRadius: 14, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
   nextBtnDisabled: { backgroundColor: DIM },
   nextBtnText: { color: WHITE, fontSize: 15, fontWeight: '900', letterSpacing: 0.3 },
+
+  introContainer: { paddingHorizontal: 24, paddingVertical: 16, backgroundColor: BG },
+  introTitle: { fontSize: 24, fontWeight: '900', color: NAVY, textAlign: 'center', marginBottom: 8 },
+  introText: { fontSize: 16, color: SILVER, textAlign: 'center', lineHeight: 24 },
 });

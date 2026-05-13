@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
+import { tracker } from '../lib/eventTracker';
 import { resetToScreen } from '../lib/navigationRef';
 import { clearEncryptionKeyCache } from '../lib/fieldEncryption';
 
@@ -313,6 +314,22 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
 
+        <TouchableOpacity
+          style={s.deepBriefProfileCard}
+          onPress={() => {
+            tracker.track('deep_brief_cta_clicked', { source: 'profile' });
+            navigation.navigate('ConciergeOnboarding', { returnTo: 'Profile' });
+          }}
+          activeOpacity={0.88}
+        >
+          <Text style={s.deepBriefProfileTitle}>Personalize your household plan</Text>
+          <Text style={s.deepBriefProfileText}>Optional: tell Snippd more about your cooking, shopping habits, and savings goals so your plan better fits your family.</Text>
+          <View style={s.deepBriefProfileAction}>
+            <Text style={s.deepBriefProfileActionText}>Open Deep Brief</Text>
+            <Ionicons name="arrow-forward" size={16} color={GREEN} />
+          </View>
+        </TouchableOpacity>
+
         {/* ── RECEIPT HISTORY ───────────────────────── */}
         <View style={s.card}>
           <Text style={s.cardLabel}>RECEIPT HISTORY</Text>
@@ -502,6 +519,18 @@ const s = StyleSheet.create({
     marginTop: -10,
     marginBottom: 14,
   },
+  deepBriefProfileCard: {
+    backgroundColor: '#F0FBF0',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C5FFBC',
+    padding: 16,
+    marginBottom: 20,
+  },
+  deepBriefProfileTitle: { fontSize: 14, fontWeight: '900', color: '#0C9E54' },
+  deepBriefProfileText: { fontSize: 12, color: '#38533F', marginTop: 6, marginBottom: 12, lineHeight: 18 },
+  deepBriefProfileAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  deepBriefProfileActionText: { fontSize: 13, fontWeight: '900', color: GREEN },
   noBorder: { borderBottomWidth: 0 },
 
   // ── Loyalty ──

@@ -126,7 +126,7 @@ import CheckoutBreakdownScreen from './screens/CheckoutBreakdownScreen';
 import ReceiptVerifiedScreen from './screens/ReceiptVerifiedScreen';
 import SnippdProScreen from './screens/SnippdProScreen';
 import TermsOfUseScreen from './screens/TermsOfUseScreen';
-import OnboardingConciergeScreen from './screens/OnboardingConciergeScreen';
+import SnippdDeepBriefScreen from './screens/SnippdDeepBriefScreen';
 import BarcodeScannerScreen from './screens/BarcodeScannerScreen';
 import QuickDealsScreen from './screens/QuickDealsScreen';
 import MealDetailScreen from './screens/MealDetailScreen';
@@ -585,7 +585,7 @@ function RootNavigator() {
         <Stack.Screen name="UnlockBeta"            component={UnlockBetaScreen} />
         <Stack.Screen name="DeepPersonalization"   component={DeepPersonalizationScreen} />
         <Stack.Screen name="PersonaReveal"         component={PersonaRevealScreen} />
-        <Stack.Screen name="ConciergeOnboarding"   component={OnboardingConciergeScreen} />
+        <Stack.Screen name="ConciergeOnboarding"   component={SnippdDeepBriefScreen} />
         <Stack.Screen name="MainApp"              component={MainTabs} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
         <Stack.Screen name="TestAgent"       component={AppTestAgent} />
