@@ -499,6 +499,7 @@ export default function HomeScreen({ navigation }) {
   var groceryLabel  = groceryStatus === 'yes' ? 'Shopped' : groceryStatus === 'partially' ? 'Partially' : 'Not yet';
 
   // Setup gate: show banner when profile is incomplete (no budget or onboarding not done)
+  var timeLabel = context ? (context.cookingTimeMin + ' min') : '--';
   var onboardingDone = !!(profile?.onboarding_complete || profile?.onboarding_completed);
   var showSetupBanner = !onboardingDone || weeklyBudget === 0;
 
