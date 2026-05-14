@@ -4,6 +4,12 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — OnboardingScreen step 2: budget redesign with slider (2026-05-14)
+- `screens/OnboardingScreen.js` — "What is your weekly grocery budget?" step redesigned to match brand mockup.
+  - **ProgressHeader**: replaced dot indicators with segmented dash bars (one per step, green = done, gray = future) + "X of 7" label centered + "Snippd" green wordmark right-aligned. Back button is now a white outlined circle.
+  - **Step 2 layout**: white background. Large centered headline + subtitle. White card containing: shopping-bag icon in mint circle, big `$225 / week` display in dark green, custom `BudgetSlider` (PanResponder-based, min $75 max $500 step $25, green filled track + green circle thumb), "$75" / "$500+" labels, divider, "Enter amount manually" label + `$` prefix input. "Continue →" pill button + "I'm not sure yet" secondary link below card.
+  - `BudgetSlider` component: module-scope, PanResponder drag handler, refs prevent stale closure on measure. Syncs with `data.weeklyBudget` bidirectionally (slider ↔ text input).
+
 ### Changed — OnboardingScreen step 1: card-row format matching brand mockup (2026-05-14)
 - `screens/OnboardingScreen.js` — "What matters most to you?" step reformatted to match the mockup design.
   - **ProgressHeader**: replaced pill progress bar with Snippd cart logo + "snippd" wordmark centered at top; back button top-left. New `StepDots` component renders connected dot indicators (filled green = done, outlined green = active, gray = future).

@@ -10,11 +10,11 @@
  *   Stores → Deal Prefs → PersonaReveal → MainApp
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   StyleSheet, ActivityIndicator, Platform, KeyboardAvoidingView,
-  StatusBar,
+  StatusBar, PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -128,49 +128,27 @@ var DEAL_PREFS = [
 function ProgressHeader({ step, onBack }) {
   return (
     <View style={s.header}>
-      {/* Back button */}
+      {/* Back — outlined circle button */}
       <TouchableOpacity
-        style={s.backBtn}
+        style={s.backCircle}
         onPress={onBack}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Feather name="arrow-left" size={22} color={NAVY} />
+        <Feather name="arrow-left" size={18} color={NAVY} />
       </TouchableOpacity>
 
-      {/* Logo centred */}
-      <View style={s.headerLogo}>
-        <Feather name="shopping-cart" size={22} color={GREEN} />
-        <Text style={s.headerLogoText}>snippd</Text>
+      {/* Segmented progress + "X of Y" */}
+      <View style={s.progressCenter}>
+        <View style={s.segRow}>
+          {Array.from({ length: CONTENT_STEPS }).map(function (_, i) {
+            return <View key={i} style={[s.seg, i < step && s.segDone]} />;
+          })}
+        </View>
+        <Text style={s.stepLabel}>{step} of {CONTENT_STEPS}</Text>
       </View>
 
-      {/* Spacer to balance back button */}
-      <View style={s.backBtn} />
-
-      {/* Dot step indicator — full-width row below */}
-    </View>
-  );
-}
-
-function StepDots({ step }) {
-  return (
-    <View style={s.dotsRow}>
-      {Array.from({ length: CONTENT_STEPS }).map(function (_, i) {
-        var dotStep = i + 1;
-        var done    = dotStep < step;
-        var active  = dotStep === step;
-        return (
-          <View key={i} style={s.dotUnit}>
-            {i > 0 && <View style={[s.dotLine, done && s.dotLineDone]} />}
-            <View style={[
-              s.dot,
-              done   && s.dotDone,
-              active && s.dotActive,
-            ]}>
-              {done && <Feather name="check" size={8} color={WHITE} />}
-            </View>
-          </View>
-        );
-      })}
+      {/* Snippd wordmark */}
+      <Text style={s.headerWordmark}>Snippd</Text>
     </View>
   );
 }
@@ -270,6 +248,61 @@ function StoreCard({ label, selected, onPress }) {
         </View>
       ) : null}
     </TouchableOpacity>
+  );
+}
+
+var SLIDER_MIN  = 75;
+var SLIDER_MAX  = 500;
+var SLIDER_STEP = 25;
+
+function BudgetSlider({ value, onChange }) {
+  var trackViewRef = useRef(null);
+  var trackW       = useRef(0);
+  var trackLeft    = useRef(0);
+  var onChangeRef  = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  var panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: function () { return true; },
+      onMoveShouldSetPanResponder:  function () { return true; },
+      onPanResponderGrant: function (e) {
+        if (!trackW.current) return;
+        var x   = e.nativeEvent.pageX - trackLeft.current;
+        var raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
+        var snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
+        onChangeRef.current(Math.max(SLIDER_MIN, Math.min(SLIDER_MAX, snapped)));
+      },
+      onPanResponderMove: function (e) {
+        if (!trackW.current) return;
+        var x   = e.nativeEvent.pageX - trackLeft.current;
+        var raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
+        var snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
+        onChangeRef.current(Math.max(SLIDER_MIN, Math.min(SLIDER_MAX, snapped)));
+      },
+    })
+  ).current;
+
+  var pct = Math.max(0, Math.min(1, (value - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)));
+
+  return (
+    <View
+      ref={trackViewRef}
+      style={s.sliderTrack}
+      onLayout={function () {
+        if (trackViewRef.current) {
+          trackViewRef.current.measure(function (fx, fy, w, h, px) {
+            trackW.current    = w;
+            trackLeft.current = px;
+          });
+        }
+      }}
+      {...panResponder.panHandlers}
+    >
+      <View style={[s.sliderFilled, { width: (pct * 100) + '%' }]} />
+      <View style={s.sliderEmpty} />
+      <View style={[s.sliderThumb, { left: (pct * 100) + '%' }]} />
+    </View>
   );
 }
 
@@ -468,57 +501,91 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep2() {
-    function handleChange(text) {
+    var sliderVal = parseInt(data.weeklyBudget, 10) || SLIDER_MIN;
+
+    function handleSlider(v) {
+      upd('weeklyBudget', String(v));
+      upd('weekly_budget_cents', v * 100);
+      setBWarn('');
+    }
+
+    function handleText(text) {
       var cleaned = text.replace(/[^0-9]/g, '');
       upd('weeklyBudget', cleaned);
       upd('weekly_budget_cents', Math.round((parseFloat(cleaned) || 0) * 100));
       var val = parseInt(cleaned, 10);
-      if (!cleaned)  { setBWarn(''); return; }
-      if (val < 25)  { setBWarn('Plans work best with at least $25 a week.'); return; }
-      if (val > 800) { setBWarn('That seems high — double-check your weekly amount.'); return; }
+      if (!cleaned)         { setBWarn(''); return; }
+      if (val < 25)         { setBWarn('Plans work best with at least $25/week.'); return; }
+      if (val > 800)        { setBWarn('Double-check your weekly amount.'); return; }
       setBWarn('');
     }
 
     return (
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={s.scroll}
+          contentContainerStyle={s.b2Scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={s.headline}>What's your weekly{'\n'}grocery budget?</Text>
-          <Text style={s.sub}>I'll keep every plan and recommendation inside your number.</Text>
-          <View style={s.budgetDisplay}>
-            <Text style={s.budgetSym}>$</Text>
-            <TextInput
-              style={s.budgetInput}
-              keyboardType="number-pad"
-              value={data.weeklyBudget}
-              onChangeText={handleChange}
-              placeholder="0"
-              placeholderTextColor={BORDER}
-              maxLength={4}
-              autoFocus
-              selectionColor={GREEN}
-            />
-            <Text style={s.budgetUnit}>/wk</Text>
+          {/* Headline */}
+          <Text style={s.b2Headline}>What is your weekly{'\n'}grocery budget?</Text>
+          <Text style={s.b2Sub}>Set a weekly target so Snippd can help you plan smarter, save more, and stay on track.</Text>
+
+          {/* Budget card */}
+          <View style={s.b2Card}>
+            {/* Plant icon */}
+            <View style={s.b2IconWrap}>
+              <Feather name="shopping-bag" size={26} color={GREEN} />
+            </View>
+
+            {/* Big amount display */}
+            <View style={s.b2AmountRow}>
+              <Text style={s.b2DollarSym}>$</Text>
+              <Text style={s.b2Amount}>{sliderVal >= SLIDER_MAX ? '500+' : sliderVal}</Text>
+              <Text style={s.b2PerWeek}> / week</Text>
+            </View>
+
+            {/* Slider */}
+            <View style={s.b2SliderWrap}>
+              <BudgetSlider value={sliderVal} onChange={handleSlider} />
+              <View style={s.b2SliderLabels}>
+                <Text style={s.b2SliderLabel}>${SLIDER_MIN}</Text>
+                <Text style={s.b2SliderLabel}>${SLIDER_MAX}+</Text>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={s.b2Divider} />
+
+            {/* Manual input */}
+            <Text style={s.b2ManualLabel}>Enter amount manually</Text>
+            <View style={s.b2InputRow}>
+              <Text style={s.b2InputPrefix}>$</Text>
+              <TextInput
+                style={s.b2Input}
+                keyboardType="number-pad"
+                value={data.weeklyBudget}
+                onChangeText={handleText}
+                placeholder="225"
+                placeholderTextColor={BORDER}
+                maxLength={4}
+                selectionColor={GREEN}
+              />
+            </View>
+            {!!budgetWarn && <Text style={s.budgetWarn}>{budgetWarn}</Text>}
+            <Text style={s.b2Hint}>You can drag the slider or type your amount.</Text>
           </View>
-          {budgetWarn ? <Text style={s.budgetWarn}>{budgetWarn}</Text> : null}
-          <Text style={s.fieldLabel}>Common budgets</Text>
-          <View style={s.pillRow}>
-            {BUDGET_PRESETS.map(function (q) {
-              return (
-                <Pill
-                  key={q}
-                  label={'$' + q}
-                  selected={data.weeklyBudget === q}
-                  onPress={function () { upd('weeklyBudget', q); upd('weekly_budget_cents', parseInt(q, 10) * 100); setBWarn(''); }}
-                />
-              );
-            })}
-          </View>
-          <Text style={s.hint}>You can update this any time from your profile.</Text>
-          <BigBtn label="Continue" onPress={next} />
+
+          {/* Continue */}
+          <TouchableOpacity style={s.b2ContinueBtn} onPress={next} activeOpacity={0.88}>
+            <Text style={s.b2ContinueTxt}>Continue</Text>
+            <Feather name="arrow-right" size={18} color={WHITE} />
+          </TouchableOpacity>
+
+          {/* I'm not sure yet */}
+          <TouchableOpacity style={s.b2SkipWrap} onPress={next} activeOpacity={0.7}>
+            <Text style={s.b2SkipTxt}>I'm not sure yet</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -679,10 +746,9 @@ export default function OnboardingScreen({ navigation }) {
   var stepRenders = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5, renderStep6, renderStep7];
 
   return (
-    <SafeAreaView style={[s.root, step === 1 && s.rootWhite]} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={step === 1 ? WHITE : CREAM} />
+    <SafeAreaView style={[s.root, (step === 1 || step === 2) && s.rootWhite]} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor={(step === 1 || step === 2) ? WHITE : CREAM} />
       <ProgressHeader step={step} onBack={back} />
-      <StepDots step={step} />
       {stepRenders[step]()}
     </SafeAreaView>
   );
@@ -738,30 +804,85 @@ var s = StyleSheet.create({
   // ── Progress header ──
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4,
+    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 14, gap: 12,
   },
-  backBtn:        { width: 36, alignItems: 'flex-start' },
-  headerLogo:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  headerLogoText: { fontSize: 20, fontWeight: '800', color: GREEN, letterSpacing: 0.5 },
-
-  // ── Dot step indicators ──
-  dotsRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 14, paddingHorizontal: 24,
-  },
-  dotUnit:    { flexDirection: 'row', alignItems: 'center' },
-  dotLine:    { width: 24, height: 2, backgroundColor: BORDER },
-  dotLineDone:{ backgroundColor: GREEN },
-  dot: {
-    width: 14, height: 14, borderRadius: 7,
-    backgroundColor: BORDER,
+  backCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: WHITE, borderWidth: 1.5, borderColor: BORDER,
     alignItems: 'center', justifyContent: 'center',
   },
-  dotDone:   { backgroundColor: GREEN },
-  dotActive: {
-    width: 18, height: 18, borderRadius: 9,
-    backgroundColor: WHITE,
-    borderWidth: 2.5, borderColor: GREEN,
+  progressCenter: { flex: 1, alignItems: 'center' },
+  segRow:         { flexDirection: 'row', gap: 4, width: '100%' },
+  seg:            { flex: 1, height: 4, borderRadius: 2, backgroundColor: BORDER },
+  segDone:        { backgroundColor: GREEN },
+  stepLabel:      { fontSize: 11, color: GRAY, marginTop: 5, fontWeight: '500' },
+  headerWordmark: { fontSize: 18, fontWeight: '800', color: GREEN, letterSpacing: 0.3 },
+
+  // ── Step 2: budget ──
+  b2Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 0 },
+  b2Headline:  { fontSize: 28, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 34, marginBottom: 10, textAlign: 'center' },
+  b2Sub:       { fontSize: 14, color: GRAY, lineHeight: 21, textAlign: 'center', marginBottom: 24, paddingHorizontal: 8 },
+  b2Card: {
+    backgroundColor: WHITE, borderRadius: 20,
+    borderWidth: 1, borderColor: BORDER,
+    padding: 24, marginBottom: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    alignItems: 'center',
+  },
+  b2IconWrap: {
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+  },
+  b2AmountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 24 },
+  b2DollarSym: { fontSize: 32, fontWeight: '700', color: GREEN, lineHeight: 52 },
+  b2Amount:    { fontSize: 64, fontWeight: '800', color: GREEN, letterSpacing: -2, lineHeight: 70 },
+  b2PerWeek:   { fontSize: 18, color: GRAY, fontWeight: '400', marginBottom: 8 },
+  b2SliderWrap:   { width: '100%', marginBottom: 12 },
+  b2SliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  b2SliderLabel:  { fontSize: 12, color: GRAY },
+  b2Divider: { width: '100%', height: 1, backgroundColor: BORDER, marginVertical: 20 },
+  b2ManualLabel:  { fontSize: 14, fontWeight: '700', color: NAVY, alignSelf: 'flex-start', marginBottom: 10 },
+  b2InputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    width: '100%', backgroundColor: WHITE, marginBottom: 8,
+  },
+  b2InputPrefix: { fontSize: 18, color: NAVY, fontWeight: '500', marginRight: 8 },
+  b2Input: {
+    flex: 1, fontSize: 18, color: NAVY, fontWeight: '600',
+    backgroundColor: WHITE, padding: 0,
+    ...Platform.select({ web: { outline: 'none' } }),
+  },
+  b2Hint:    { fontSize: 12, color: GRAY, alignSelf: 'flex-start' },
+  b2ContinueBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: GREEN, borderRadius: 16,
+    paddingVertical: 18, marginBottom: 16,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+  },
+  b2ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
+  b2SkipWrap:    { alignItems: 'center', paddingVertical: 4 },
+  b2SkipTxt:     { fontSize: 15, color: GREEN, fontWeight: '600' },
+
+  // ── Budget slider track ──
+  sliderTrack: {
+    width: '100%', height: 28,
+    justifyContent: 'center', flexDirection: 'row',
+    alignItems: 'center', position: 'relative',
+  },
+  sliderFilled: { height: 6, backgroundColor: GREEN, borderRadius: 3, position: 'absolute', left: 0 },
+  sliderEmpty:  { height: 6, backgroundColor: BORDER, borderRadius: 3, position: 'absolute', left: 0, right: 0, zIndex: -1 },
+  sliderThumb: {
+    position: 'absolute',
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: GREEN,
+    marginLeft: -13,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35, shadowRadius: 6, elevation: 4,
   },
 
   // ── Step 1 specific layout (white bg, card rows) ──
