@@ -56,12 +56,12 @@ var DEMO_PROFILE = {
 // ── Static data (module scope to avoid re-creation on render) ─────────────────
 
 var MISSIONS = [
-  { id: 'pure_savings',       label: 'Save as much as possible', icon: 'trending-up' },
-  { id: 'meal_planning',      label: 'Plan weekly meals',         icon: 'calendar' },
-  { id: 'athletic_fuel',      label: 'Fuel my fitness goals',     icon: 'activity' },
-  { id: 'clinical_guardrails',label: 'Manage health conditions',  icon: 'shield' },
-  { id: 'family_optimization',label: 'Feed my whole family',      icon: 'users' },
-  { id: 'convenience',        label: 'Quick and easy meals',      icon: 'zap' },
+  { id: 'pure_savings',        label: 'Save as much as possible', sub: 'Find deals, coupons, and stack the best savings.',    icon: 'trending-up' },
+  { id: 'meal_planning',       label: 'Plan weekly meals',         sub: 'Plan meals and shop with savings in mind.',           icon: 'calendar' },
+  { id: 'athletic_fuel',       label: 'Fuel my fitness goals',     sub: 'High-protein, performance-focused meal choices.',     icon: 'activity' },
+  { id: 'clinical_guardrails', label: 'Manage health conditions',  sub: 'Dietary needs and health-focused grocery planning.',  icon: 'shield' },
+  { id: 'family_optimization', label: 'Feed my whole family',      sub: 'Stretch your budget to feed every household member.', icon: 'users' },
+  { id: 'convenience',         label: 'Quick and easy meals',      sub: 'Get what I need, fast, with minimal effort.',         icon: 'zap' },
 ];
 
 var BUDGET_PRESETS = ['75', '100', '150', '200', '250', '300', '400'];
@@ -126,20 +126,51 @@ var DEAL_PREFS = [
 // ── Atom components (always at module scope) ──────────────────────────────────
 
 function ProgressHeader({ step, onBack }) {
-  var pct = Math.round((step / TOTAL_STEPS) * 100);
   return (
     <View style={s.header}>
+      {/* Back button */}
       <TouchableOpacity
         style={s.backBtn}
         onPress={onBack}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Feather name="arrow-left" size={24} color={NAVY} />
+        <Feather name="arrow-left" size={22} color={NAVY} />
       </TouchableOpacity>
-      <View style={s.progressTrack}>
-        <View style={[s.progressFill, { width: pct + '%' }]} />
+
+      {/* Logo centred */}
+      <View style={s.headerLogo}>
+        <Feather name="shopping-cart" size={22} color={GREEN} />
+        <Text style={s.headerLogoText}>snippd</Text>
       </View>
-      <Text style={s.stepCount}>{step}/{CONTENT_STEPS}</Text>
+
+      {/* Spacer to balance back button */}
+      <View style={s.backBtn} />
+
+      {/* Dot step indicator — full-width row below */}
+    </View>
+  );
+}
+
+function StepDots({ step }) {
+  return (
+    <View style={s.dotsRow}>
+      {Array.from({ length: CONTENT_STEPS }).map(function (_, i) {
+        var dotStep = i + 1;
+        var done    = dotStep < step;
+        var active  = dotStep === step;
+        return (
+          <View key={i} style={s.dotUnit}>
+            {i > 0 && <View style={[s.dotLine, done && s.dotLineDone]} />}
+            <View style={[
+              s.dot,
+              done   && s.dotDone,
+              active && s.dotActive,
+            ]}>
+              {done && <Feather name="check" size={8} color={WHITE} />}
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -238,6 +269,28 @@ function StoreCard({ label, selected, onPress }) {
           <Feather name="check" size={10} color={WHITE} />
         </View>
       ) : null}
+    </TouchableOpacity>
+  );
+}
+
+function MissionCard({ label, sub, icon, selected, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[s.mCard, selected && s.mCardOn]}
+      onPress={onPress}
+      activeOpacity={0.78}
+    >
+      <View style={[s.mIcon, selected && s.mIconOn]}>
+        <Feather name={icon} size={22} color={selected ? WHITE : GREEN} />
+      </View>
+      <View style={s.mBody}>
+        <Text style={[s.mLabel, selected && s.mLabelOn]}>{label}</Text>
+        <Text style={[s.mSub, selected && s.mSubOn]} numberOfLines={2}>{sub}</Text>
+      </View>
+      {selected
+        ? <Feather name="check-circle" size={20} color={GREEN} />
+        : <Feather name="chevron-right" size={18} color={GRAY} />
+      }
     </TouchableOpacity>
   );
 }
@@ -392,15 +445,16 @@ export default function OnboardingScreen({ navigation }) {
 
   function renderStep1() {
     return (
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.headline}>What matters most{'\n'}to you?</Text>
-        <Text style={s.sub}>Choose all that apply. I'll build your plan around these goals.</Text>
-        <View style={s.cardList}>
+      <ScrollView contentContainerStyle={s.step1Scroll} showsVerticalScrollIndicator={false}>
+        <Text style={s.step1Headline}>What matters most{'\n'}to you?</Text>
+        <Text style={s.step1Sub}>Choose everything that applies.</Text>
+        <View style={s.mList}>
           {MISSIONS.map(function (m) {
             return (
-              <OptionTile
+              <MissionCard
                 key={m.id}
                 label={m.label}
+                sub={m.sub}
                 icon={m.icon}
                 selected={data.missions.includes(m.id)}
                 onPress={function () { toggleArr('missions', m.id); }}
@@ -625,9 +679,10 @@ export default function OnboardingScreen({ navigation }) {
   var stepRenders = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5, renderStep6, renderStep7];
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={CREAM} />
+    <SafeAreaView style={[s.root, step === 1 && s.rootWhite]} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor={step === 1 ? WHITE : CREAM} />
       <ProgressHeader step={step} onBack={back} />
+      <StepDots step={step} />
       {stepRenders[step]()}
     </SafeAreaView>
   );
@@ -677,15 +732,62 @@ var s = StyleSheet.create({
   signInRow:  { fontSize: 14, color: 'rgba(255,255,255,0.62)', textAlign: 'center', marginTop: 4 },
   signInBold: { color: WHITE, fontWeight: '700' },
 
+  // ── Root variants ──
+  rootWhite: { backgroundColor: WHITE },
+
   // ── Progress header ──
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14, gap: 14,
+    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4,
   },
-  backBtn:       { width: 32, alignItems: 'flex-start' },
-  progressTrack: { flex: 1, height: 5, backgroundColor: BORDER, borderRadius: 3, overflow: 'hidden' },
-  progressFill:  { height: '100%', backgroundColor: GREEN, borderRadius: 3 },
-  stepCount:     { fontSize: 12, color: GRAY, fontWeight: '600', width: 28, textAlign: 'right' },
+  backBtn:        { width: 36, alignItems: 'flex-start' },
+  headerLogo:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  headerLogoText: { fontSize: 20, fontWeight: '800', color: GREEN, letterSpacing: 0.5 },
+
+  // ── Dot step indicators ──
+  dotsRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 14, paddingHorizontal: 24,
+  },
+  dotUnit:    { flexDirection: 'row', alignItems: 'center' },
+  dotLine:    { width: 24, height: 2, backgroundColor: BORDER },
+  dotLineDone:{ backgroundColor: GREEN },
+  dot: {
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: BORDER,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dotDone:   { backgroundColor: GREEN },
+  dotActive: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: WHITE,
+    borderWidth: 2.5, borderColor: GREEN,
+  },
+
+  // ── Step 1 specific layout (white bg, card rows) ──
+  step1Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 0 },
+  step1Headline:  { fontSize: 30, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 36, marginBottom: 6 },
+  step1Sub:       { fontSize: 15, color: GRAY, lineHeight: 22, fontWeight: '300', marginBottom: 20 },
+  mList:          { gap: 10, marginBottom: 24 },
+  mCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: WHITE, borderRadius: 16,
+    borderWidth: 1.5, borderColor: BORDER,
+    paddingVertical: 16, paddingHorizontal: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  },
+  mCardOn:   { borderColor: GREEN },
+  mIcon: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: MINT, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  mIconOn:   { backgroundColor: GREEN },
+  mBody:     { flex: 1 },
+  mLabel:    { fontSize: 15, fontWeight: '700', color: NAVY, marginBottom: 2 },
+  mLabelOn:  { color: NAVY },
+  mSub:      { fontSize: 12, color: GRAY, lineHeight: 17 },
+  mSubOn:    { color: GRAY },
 
   // ── Content layout ──
   scroll:     { paddingHorizontal: 24, paddingBottom: 56, paddingTop: 4 },

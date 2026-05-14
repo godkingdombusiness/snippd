@@ -4,6 +4,13 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — OnboardingScreen step 1: card-row format matching brand mockup (2026-05-14)
+- `screens/OnboardingScreen.js` — "What matters most to you?" step reformatted to match the mockup design.
+  - **ProgressHeader**: replaced pill progress bar with Snippd cart logo + "snippd" wordmark centered at top; back button top-left. New `StepDots` component renders connected dot indicators (filled green = done, outlined green = active, gray = future).
+  - **Step 1 layout**: white background (not cream). `MissionCard` replaces `OptionTile` — each card has a 48px circle icon on mint-green background, bold title, gray subtitle, chevron (unselected) or check-circle (selected). Border highlights green on selection. No card background fill change on select, just border + icon.
+  - **MISSIONS**: added `sub` description text to all 6 missions displayed as card subtitles.
+  - All other steps (2–7) retain their existing layout; dot indicators and logo header apply to all content steps.
+
 ### Changed — SignInScreen: welcome screen redesigned to match brand mockup (2026-05-14)
 - `screens/SignInScreen.js` — Welcome mode redesigned to match the dark-green brand mockup exactly.
   - Background: `#0B3B1E` deep forest green (full screen including SafeAreaView).
