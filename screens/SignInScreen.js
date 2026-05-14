@@ -31,7 +31,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ActivityIndicator, useWindowDimensions, Platform,
   Animated, KeyboardAvoidingView, ScrollView,
-  StatusBar,
+  StatusBar, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -49,6 +49,8 @@ import {
 // ── Brand palette ──────────────────────────────────────────────────────────────
 var GREEN     = '#0C9E54';
 var GREEN_MID = '#0C6B38';
+var W_BG      = '#0B3B1E';   // welcome screen dark green background
+var W_GREEN   = '#3DBA6F';   // welcome screen feature icon green (lighter, visible on dark)
 var NAVY      = '#172250';
 var MINT      = '#c5ffbc';
 var CREAM     = '#FAF8F1';
@@ -363,74 +365,100 @@ export default function SignInScreen({ navigation }) {
   // Called as {renderWelcome()} — NOT as <Welcome />.
   function renderWelcome() {
     return (
-      <ScrollView
-        contentContainerStyle={welcome.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Wordmark */}
-        <Text style={welcome.wordmark}>
-          snipp<Text style={{ color: GREEN }}>d</Text>
-        </Text>
+      <View style={welcome.root}>
+        <StatusBar barStyle="light-content" />
+        <ScrollView
+          contentContainerStyle={welcome.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo + wordmark */}
+          <View style={welcome.logoBlock}>
+            <Image
+              source={require('../assets/Snippd-White-Cart .png')}
+              style={welcome.logoImg}
+              resizeMode="contain"
+            />
+            <Text style={welcome.wordmark}>snippd</Text>
+          </View>
 
-        {/* Headline */}
-        <Text style={welcome.headline}>
-          Smarter food decisions,{'\n'}
-          <Text style={welcome.headlineAccent}>before the money is spent.</Text>
-        </Text>
+          {/* Headline */}
+          <Text style={welcome.headline}>Welcome to{'\n'}Snippd</Text>
+          <Text style={welcome.sub}>Smarter grocery planning starts here.</Text>
+          <Text style={welcome.sub2}>Save more. Stress less. Live better.</Text>
 
-        <Text style={welcome.sub}>
-          Plan groceries, meals, savings, and eat-out options around your real weekly budget.
-        </Text>
+          {/* Hero image */}
+          <View style={welcome.heroWrap}>
+            <Image
+              source={require('../assets/hero-banner.png')}
+              style={welcome.heroImg}
+              resizeMode="contain"
+            />
+          </View>
 
-        {/* Stat chips */}
-        <View style={welcome.statsRow}>
-          {STATS.map(function (s) {
-            return (
-              <View key={s.value} style={welcome.statCard}>
-                <Text style={welcome.statValue}>{s.value}</Text>
-                <Text style={welcome.statLabel}>{s.label}</Text>
+          {/* Feature rows */}
+          <View style={welcome.featureList}>
+            <View style={welcome.featureRow}>
+              <View style={welcome.featureIconWrap}>
+                <Feather name="tag" size={20} color={W_GREEN} />
               </View>
-            );
-          })}
-        </View>
+              <View style={welcome.featureText}>
+                <Text style={welcome.featureTitle}>Save more</Text>
+                <Text style={welcome.featureBody}>Find relevant deals and coupons.</Text>
+              </View>
+            </View>
+            <View style={welcome.featureRow}>
+              <View style={welcome.featureIconWrap}>
+                <Feather name="calendar" size={20} color={W_GREEN} />
+              </View>
+              <View style={welcome.featureText}>
+                <Text style={welcome.featureTitle}>Stress less</Text>
+                <Text style={welcome.featureBody}>Plan meals and shopping with less guesswork.</Text>
+              </View>
+            </View>
+            <View style={welcome.featureRow}>
+              <View style={welcome.featureIconWrap}>
+                <Feather name="heart" size={20} color={W_GREEN} />
+              </View>
+              <View style={welcome.featureText}>
+                <Text style={welcome.featureTitle}>Live better</Text>
+                <Text style={welcome.featureBody}>Stay on budget while feeding your household.</Text>
+              </View>
+            </View>
+          </View>
 
-        {/* CTAs */}
-        <View style={welcome.ctaGroup}>
-          <TouchableOpacity
-            style={welcome.primaryBtn}
-            onPress={function () { goForm('signup'); }}
-            activeOpacity={0.88}
-          >
-            <Text style={welcome.primaryBtnTxt}>Get Started</Text>
-            <Feather name="arrow-right" size={18} color={WHITE} style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
+          {/* CTAs */}
+          <View style={welcome.ctaGroup}>
+            <TouchableOpacity
+              style={welcome.primaryBtn}
+              onPress={function () { goForm('signup'); }}
+              activeOpacity={0.88}
+            >
+              <Text style={welcome.primaryBtnTxt}>Get Started</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={welcome.demoBtn}
-            onPress={handleDemoMode}
-            activeOpacity={0.8}
-          >
-            <Feather name="play-circle" size={16} color={GREEN} style={{ marginRight: 8 }} />
-            <Text style={welcome.demoBtnTxt}>Try Demo Mode</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={welcome.demoBtn}
+              onPress={handleDemoMode}
+              activeOpacity={0.8}
+            >
+              <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
+              <Text style={welcome.demoBtnTxt}>Try Demo Mode</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={function () { goForm('signin'); }}
-            style={welcome.signInLink}
-            activeOpacity={0.7}
-          >
-            <Text style={welcome.signInLinkTxt}>
-              Already have an account?{' '}
-              <Text style={{ color: GREEN, fontWeight: '700' }}>Sign in</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={welcome.trustCopy}>
-          No commitment. Cancel before your trial ends to pay nothing.
-        </Text>
-      </ScrollView>
+            <TouchableOpacity
+              onPress={function () { goForm('signin'); }}
+              style={welcome.signInLink}
+              activeOpacity={0.7}
+            >
+              <Text style={welcome.signInLinkTxt}>
+                Already have an account?{'  '}
+                <Text style={welcome.signInLinkAccent}>Sign in</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -644,8 +672,7 @@ export default function SignInScreen({ navigation }) {
   }
 
   return (
-    <View style={root.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[root.container, mode === 'welcome' && { backgroundColor: W_BG }]}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         {mode === 'welcome' ? renderWelcome() : renderFormPanel()}
       </SafeAreaView>
@@ -697,52 +724,70 @@ var hero = StyleSheet.create({
 
 // ── Welcome landing styles ─────────────────────────────────────────────────────
 var welcome = StyleSheet.create({
+  root:  { flex: 1, backgroundColor: W_BG },
   scroll: {
-    flexGrow: 1, padding: 28, paddingTop: 48,
-    justifyContent: 'center',
-    backgroundColor: CREAM,
+    flexGrow: 1,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 32,
+    backgroundColor: W_BG,
   },
-  wordmark: {
-    fontFamily: 'Sublima-ExtraBold', fontSize: 32,
-    color: NAVY, letterSpacing: -0.5, marginBottom: 28,
+
+  // Logo block
+  logoBlock: { alignItems: 'center', marginBottom: 20 },
+  logoImg:   { width: 72, height: 72, marginBottom: 8 },
+  wordmark:  {
+    fontSize: 26, fontWeight: '800', color: WHITE,
+    letterSpacing: 1,
   },
+
+  // Headlines
   headline: {
-    fontSize: 30, fontWeight: '800', color: NAVY,
-    letterSpacing: -0.8, lineHeight: 36, marginBottom: 14,
+    fontSize: 38, fontWeight: '900', color: WHITE,
+    textAlign: 'center', letterSpacing: -0.5,
+    lineHeight: 44, marginBottom: 12,
   },
-  headlineAccent: { fontWeight: '300', color: GREEN_MID },
-  sub: { fontSize: 15, color: GRAY, lineHeight: 22, marginBottom: 28 },
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 40 },
-  statCard: {
-    flex: 1, backgroundColor: WHITE, borderRadius: 14,
-    borderWidth: 1, borderColor: BORDER, padding: 12, alignItems: 'center',
-  },
-  statValue: { fontSize: 12, fontWeight: '800', color: GREEN, textAlign: 'center', marginBottom: 3 },
-  statLabel: { fontSize: 9, color: GRAY, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center' },
-  ctaGroup: { gap: 12, marginBottom: 20 },
-  primaryBtn: {
-    flexDirection: 'row',
+  sub:  { fontSize: 16, color: 'rgba(255,255,255,0.85)', textAlign: 'center', fontWeight: '400', marginBottom: 4 },
+  sub2: { fontSize: 15, color: 'rgba(255,255,255,0.65)', textAlign: 'center', fontWeight: '300', marginBottom: 0 },
+
+  // Hero image
+  heroWrap: { alignItems: 'center', marginVertical: 20 },
+  heroImg:  { width: '90%', height: 200 },
+
+  // Feature rows
+  featureList: { gap: 14, marginBottom: 28 },
+  featureRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  featureIconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(61,186,111,0.20)',
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: GREEN,
-    paddingVertical: 18, borderRadius: 16,
-    shadowColor: GREEN, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3, shadowRadius: 12, elevation: 5,
+    flexShrink: 0,
   },
-  primaryBtnTxt: { color: WHITE, fontSize: 17, fontWeight: '700', letterSpacing: 0.2 },
+  featureText:  { flex: 1, paddingTop: 2 },
+  featureTitle: { fontSize: 16, fontWeight: '700', color: WHITE, marginBottom: 2 },
+  featureBody:  { fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 20 },
+
+  // CTAs
+  ctaGroup: { gap: 12 },
+  primaryBtn: {
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#22C55E',
+    paddingVertical: 18, borderRadius: 14,
+    shadowColor: '#22C55E', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, shadowRadius: 12, elevation: 6,
+  },
+  primaryBtnTxt: { color: WHITE, fontSize: 17, fontWeight: '700', letterSpacing: 0.3 },
   demoBtn: {
     flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: GREEN,
-    paddingVertical: 15, borderRadius: 16,
-    backgroundColor: WHITE,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
+    paddingVertical: 15, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  demoBtnTxt: { color: GREEN, fontSize: 15, fontWeight: '600' },
-  signInLink: { alignItems: 'center', paddingVertical: 6 },
-  signInLinkTxt: { fontSize: 14, color: GRAY },
-  trustCopy: {
-    textAlign: 'center', fontSize: 11, color: GRAY,
-    lineHeight: 16, marginTop: 4, letterSpacing: 0.2,
-  },
+  demoBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '600' },
+  signInLink:       { alignItems: 'center', paddingVertical: 8 },
+  signInLinkTxt:    { fontSize: 14, color: 'rgba(255,255,255,0.75)' },
+  signInLinkAccent: { color: '#22C55E', fontWeight: '700' },
 });
 
 // ── Form styles ────────────────────────────────────────────────────────────────

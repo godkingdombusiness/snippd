@@ -4,6 +4,19 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — SignInScreen: welcome screen redesigned to match brand mockup (2026-05-14)
+- `screens/SignInScreen.js` — Welcome mode redesigned to match the dark-green brand mockup exactly.
+  - Background: `#0B3B1E` deep forest green (full screen including SafeAreaView).
+  - Top: `Snippd-White-Cart .png` logo (72×72) centered + "snippd" white wordmark.
+  - Headline: "Welcome to Snippd" (38px, 900 weight, white, centered).
+  - Subtext: "Smarter grocery planning starts here." + "Save more. Stress less. Live better." (lighter opacity).
+  - Hero image: `hero-banner.png` (200px height, centered).
+  - 3 feature rows with semi-transparent green icon circles: Save more (tag icon) / Stress less (calendar) / Live better (heart).
+  - "Get Started" bright green `#22C55E` full-width button.
+  - "Try Demo Mode" translucent outlined button (white text/border).
+  - "Already have an account? Sign in" link (green accent on "Sign in").
+  - `StatusBar` set to `light-content` on welcome screen.
+
 ### Changed — SignInScreen: reverted to original with welcome mode + Get Started / Demo Mode (2026-05-14)
 - `screens/SignInScreen.js` — Reverted to the original two-panel cream/navy design. Added a `welcome` mode (default) that shows the brand landing before the sign-in form.
   - **Welcome mode** (default, cream background): Snippd wordmark, headline, tagline, 3 stat chips, "Get Started" green CTA → signup form, "Try Demo Mode" outlined button → `navigation.navigate('PersonaReveal', DEMO_PROFILE)` (no auth), "Already have an account? Sign in" link → sign-in form.
