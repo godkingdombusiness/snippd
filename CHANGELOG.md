@@ -4,6 +4,22 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Missing components and screen (2026-05-13)
+- `src/components/pantry/PantryScanResultCard.js` — Confidence-coded pantry scan result card (Likely/Maybe/Needs review). Confirm and Remove actions. Distinct from PantryItemCard: lighter weight, no inline editing, used immediately after a scan before user makes edits.
+- `src/components/weeklyPlan/ShiftPlanConfirmationCard.js` — Post-shift confirmation card shown after MealShiftModal resolves. Three states: shift (plan moved), skip (meal removed), keep (unchanged). Shows waste freshness warning if perishables affected. Budget impact row. "View updated plan" + Done CTAs.
+- `src/components/weeklyPlan/CookingMethodSelector.js` — Standalone cooking method selector component. Supports horizontal (ScrollView chip bar) and grid (wrap) layouts. 7 methods: Air Fryer, Oven, Stovetop, Grill, Slow Cooker, Microwave, No-cook. Exports `METHODS` constant. Can be used independently of ContextualCookingScreen.
+- `src/components/weeklyPlan/CookingInstructionCard.js` — Standalone cooking instruction card. Renders numbered steps with meal name header, method badge, time note, and always-on safety disclaimer. Designed to be embedded in any meal detail screen.
+- `src/components/store/StoreExportButton.js` — Reusable store export button. Three variants: store (green outline), uber (amber filled), copy (neutral). Small prop for compact use. Disabled state support.
+- `screens/SavedRecipesScreen.js` — User's saved recipe history. "Your saved recipes stay yours" ownership banner. 5 seeded saved recipes with date, meal type, personal notes, and "How to cook" route to ContextualCooking. Unsave action tracks `recipe_saved` (unsave). Empty state with guidance copy. Registered in App.js as `SavedRecipes`.
+
+### Changed — Screen copy corrections (2026-05-13)
+- `screens/PantryScanScreen.js` — Updated subheadline to match spec: "Take a quick photo of your pantry, fridge, or counter. Snippd will help spot what may already be available before you buy more." Added Stash message card: "Before we spend more, let's see what your kitchen can already do." (green S bubble + MINT background). Changed disclaimer from privacy copy to spec-required: "Pantry scan results are estimates. Please review and confirm items before using them in your plan."
+- `screens/PantryReviewScreen.js` — Added "Here's what Snippd found." headline and "Review the items below so your plan starts with what you may already have." subheadline above the summary strip. Added `heroSection`, `heroHeadline`, `heroSub` styles.
+- `screens/ContextualCookingScreen.js` — Added "How do you want to cook this?" headline and "Snippd can adjust the steps to match your kitchen and your energy today." subheadline above the meal name. Reduced `mealTitle` size to 16px (was 22px) to preserve visual hierarchy.
+
+### Changed — DemoAdminScreen expanded (2026-05-13)
+- `screens/DemoAdminScreen.js` — Added "Shift Logic Demo" section: "Shift Modal Demo" tile opens MealShiftModal inline with seeded wasteItems. After selection, `ShiftPlanConfirmationCard` renders below the grid showing the result. Added "Saved Recipes" tile to Cooking & Recipes section. Expanded Uber Eats Sandbox section: Uber Eats Pickup, Uber Eats Delivery (passes `uber_eats_delivery` optionType), Sandbox Status tile. Sandbox Status panel shows real-time integration status table (Sandbox testing / Not connected / Seeded demo data) and disclaimer. Imports MealShiftModal + ShiftPlanConfirmationCard.
+
 ### Changed — DemoAdmin hidden entry point (2026-05-13)
 - `screens/ProfileScreen.js` — Avatar initials circle now has a 5-tap hidden trigger. Tapping the avatar 5 times within 2 seconds navigates to `DemoAdmin`. Uses `useRef` (no re-render on each tap). Timer resets to zero if taps stop before 5.
 

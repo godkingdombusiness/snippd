@@ -64,9 +64,19 @@ function PantryScanScreen(props) {
         {/* Hero copy */}
         <Text style={styles.headline}>Scan what you have.</Text>
         <Text style={styles.sub}>
-          Point your camera at your pantry shelf, fridge, or a pile of groceries.
-          Snippd reads what you have and builds your plan around it.
+          Take a quick photo of your pantry, fridge, or counter. Snippd will help spot what may
+          already be available before you buy more.
         </Text>
+
+        {/* Stash message */}
+        <View style={styles.stashRow}>
+          <View style={styles.stashBubble}>
+            <Text style={styles.stashInitial}>S</Text>
+          </View>
+          <Text style={styles.stashText}>
+            Before we spend more, let's see what your kitchen can already do.
+          </Text>
+        </View>
 
         {/* Viewfinder mock */}
         <View style={styles.viewfinder}>
@@ -88,11 +98,11 @@ function PantryScanScreen(props) {
           )}
         </View>
 
-        {/* Trust note */}
+        {/* Disclaimer */}
         <View style={styles.trustRow}>
-          <Feather name="lock" size={13} color={GRAY} />
+          <Feather name="info" size={13} color={GRAY} />
           <Text style={styles.trustText}>
-            Photos are processed on-device. Nothing is stored without your confirmation.
+            Pantry scan results are estimates. Please review and confirm items before using them in your plan.
           </Text>
         </View>
 
@@ -157,8 +167,26 @@ var styles = StyleSheet.create({
     fontSize: 14,
     color: GRAY,
     lineHeight: 21,
-    marginBottom: 28,
+    marginBottom: 16,
   },
+  stashRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: MINT,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+  },
+  stashBubble: {
+    width: 28, height: 28,
+    borderRadius: 14,
+    backgroundColor: GREEN,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  stashInitial: { fontSize: 13, fontWeight: '900', color: WHITE },
+  stashText:    { flex: 1, fontSize: 13, color: NAVY, fontWeight: '500', lineHeight: 18 },
   viewfinder: {
     height: 260,
     borderRadius: 18,

@@ -81,6 +81,14 @@ function PantryReviewScreen(props) {
         <View style={{ width: 40 }} />
       </View>
 
+      {/* Headline */}
+      <View style={styles.heroSection}>
+        <Text style={styles.heroHeadline}>Here's what Snippd found.</Text>
+        <Text style={styles.heroSub}>
+          Review the items below so your plan starts with what you may already have.
+        </Text>
+      </View>
+
       {/* Header summary */}
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
@@ -160,6 +168,22 @@ var styles = StyleSheet.create({
     borderWidth: 1, borderColor: BORDER,
   },
   navTitle: { fontSize: 17, fontWeight: '700', color: NAVY },
+  heroSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+  },
+  heroHeadline: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: NAVY,
+    letterSpacing: -0.4,
+    marginBottom: 6,
+  },
+  heroSub: {
+    fontSize: 14,
+    color: GRAY,
+    lineHeight: 20,
+  },
   summaryRow: {
     flexDirection: 'row',
     gap: 10,

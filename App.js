@@ -164,6 +164,7 @@ import PantryReviewScreen from './screens/PantryReviewScreen';
 import ContextualCookingScreen from './screens/ContextualCookingScreen';
 import StoreExportScreen from './screens/StoreExportScreen';
 import RecipeVaultScreen from './screens/RecipeVaultScreen';
+import SavedRecipesScreen from './screens/SavedRecipesScreen';
 import TodayRecommendationScreen from './screens/TodayRecommendationScreen';
 import DemoAdminScreen from './screens/DemoAdminScreen';
 
@@ -641,6 +642,7 @@ function RootNavigator() {
         <Stack.Screen name="ContextualCooking"     component={ContextualCookingScreen} />
         <Stack.Screen name="StoreExport"           component={StoreExportScreen} />
         <Stack.Screen name="RecipeVault"           component={RecipeVaultScreen} />
+        <Stack.Screen name="SavedRecipes"          component={SavedRecipesScreen} />
         <Stack.Screen name="TodayRecommendation"   component={TodayRecommendationScreen} />
         <Stack.Screen name="DemoAdmin"             component={DemoAdminScreen} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />

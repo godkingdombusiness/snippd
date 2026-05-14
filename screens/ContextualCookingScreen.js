@@ -72,6 +72,10 @@ function ContextualCookingScreen(props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
+        <Text style={styles.screenHeadline}>How do you want to cook this?</Text>
+        <Text style={styles.screenSub}>
+          Snippd can adjust the steps to match your kitchen and your energy today.
+        </Text>
         <Text style={styles.mealTitle}>{meal.meal_name}</Text>
         <Text style={styles.mealSub}>Choose your cooking method:</Text>
 
@@ -159,7 +163,9 @@ var styles = StyleSheet.create({
   },
   navTitle: { fontSize: 17, fontWeight: '700', color: NAVY },
   scroll:   { paddingHorizontal: 16, paddingTop: 4 },
-  mealTitle: { fontSize: 22, fontWeight: '800', color: NAVY, marginBottom: 4 },
+  screenHeadline: { fontSize: 26, fontWeight: '800', color: NAVY, letterSpacing: -0.4, marginBottom: 6 },
+  screenSub:      { fontSize: 14, color: GRAY, lineHeight: 20, marginBottom: 18 },
+  mealTitle: { fontSize: 16, fontWeight: '700', color: NAVY, marginBottom: 4 },
   mealSub:   { fontSize: 14, color: GRAY, marginBottom: 16 },
   methodGrid: {
     flexDirection: 'row',

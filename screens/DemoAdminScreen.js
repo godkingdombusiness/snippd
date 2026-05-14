@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import MealShiftModal from '../src/components/weeklyPlan/MealShiftModal';
+import ShiftPlanConfirmationCard from '../src/components/weeklyPlan/ShiftPlanConfirmationCard';
 
 var GREEN  = '#0C9E54';
 var NAVY   = '#172250';
@@ -33,28 +35,38 @@ var DEMO_FLOWS = [
   {
     section: 'Pantry Intelligence',
     items: [
-      { label: 'Pantry Scan',             icon: 'camera',      route: 'PantryScan',             color: NAVY  },
-      { label: 'Pantry Review',           icon: 'list',        route: 'PantryReview',           color: NAVY  },
+      { label: 'Pantry Scan',             icon: 'camera',       route: 'PantryScan',            color: NAVY  },
+      { label: 'Pantry Review',           icon: 'list',         route: 'PantryReview',          color: NAVY  },
+    ],
+  },
+  {
+    section: 'Shift Logic Demo',
+    items: [
+      { label: 'Shift Modal Demo',        icon: 'shuffle',      route: '__ShiftDemo',           color: GREEN },
+      { label: 'Weekly Plan (Shift)',     icon: 'calendar',     route: 'WeeklyDinnerPlan',      color: GREEN },
     ],
   },
   {
     section: 'Cooking & Recipes',
     items: [
-      { label: 'How to Cook It',          icon: 'book-open',   route: 'ContextualCooking',      color: NAVY  },
-      { label: 'Recipe Vault',            icon: 'bookmark',    route: 'RecipeVault',            color: NAVY  },
+      { label: 'How to Cook It',          icon: 'book-open',    route: 'ContextualCooking',     color: NAVY  },
+      { label: 'Recipe Vault',            icon: 'bookmark',     route: 'RecipeVault',           color: NAVY  },
+      { label: 'Saved Recipes',           icon: 'heart',        route: 'SavedRecipes',          color: NAVY  },
     ],
   },
   {
     section: 'Shopping & Stores',
     items: [
-      { label: 'Your Store Lists',        icon: 'shopping-bag',route: 'StoreExport',            color: NAVY  },
+      { label: 'Your Store Lists',        icon: 'shopping-bag', route: 'StoreExport',           color: NAVY  },
       { label: 'Shopping List',           icon: 'shopping-cart',route: 'ShoppingList',          color: NAVY  },
     ],
   },
   {
-    section: 'Uber Eats (Sandbox)',
+    section: 'Uber Eats Sandbox',
     items: [
-      { label: 'Uber Eats Handoff',       icon: 'external-link',route: 'UberEatsHandoff',       color: AMBER },
+      { label: 'Uber Eats Pickup',        icon: 'map-pin',      route: 'UberEatsHandoff',       color: AMBER },
+      { label: 'Uber Eats Delivery',      icon: 'truck',        route: '__UberDelivery',        color: AMBER },
+      { label: 'Sandbox Status',          icon: 'wifi',         route: '__UberStatus',          color: AMBER },
     ],
   },
   {
@@ -77,10 +89,28 @@ var DEMO_FLOWS = [
   },
 ];
 
+var UBER_STATUS = [
+  { label: 'Pickup integration',   status: 'Sandbox testing',  color: AMBER },
+  { label: 'Delivery integration', status: 'Sandbox testing',  color: AMBER },
+  { label: 'Cart handoff',         status: 'Not connected',    color: CORAL },
+  { label: 'Menu data',            status: 'Seeded demo data', color: GRAY  },
+];
+
 function DemoAdminScreen(props) {
   var navigation = props.navigation;
+  var [shiftModal,   setShiftModal]   = useState(false);
+  var [shiftDone,    setShiftDone]    = useState(false);
+  var [shiftChoice,  setShiftChoice]  = useState(null);
+  var [uberStatus,   setUberStatus]   = useState(false);
 
   function handleNav(route, item) {
+    if (route === '__ShiftDemo')   { setShiftDone(false); setShiftModal(true);  return; }
+    if (route === '__UberDelivery') {
+      navigation.navigate('UberEatsHandoff', { optionType: 'uber_eats_delivery', score: 41 });
+      return;
+    }
+    if (route === '__UberStatus')  { setUberStatus(true); return; }
+
     var params = {};
     if (route === 'UberEatsHandoff') {
       params = { optionType: 'uber_eats_pickup', score: 62 };
@@ -94,6 +124,12 @@ function DemoAdminScreen(props) {
     } catch (e) {
       // Route may not be registered; no-op
     }
+  }
+
+  function handleShiftConfirm(choice) {
+    setShiftModal(false);
+    setShiftChoice(choice);
+    setShiftDone(true);
   }
 
   return (
@@ -138,8 +174,57 @@ function DemoAdminScreen(props) {
           );
         })}
 
+        {/* Shift plan confirmation — shown after demo modal */}
+        {shiftDone && (
+          <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
+            <ShiftPlanConfirmationCard
+              shiftType={shiftChoice || 'shift'}
+              mealName="Tonight's dinner"
+              budgetImpact={0}
+              wasteItems={[]}
+              onViewPlan={function () { navigation.navigate('WeeklyDinnerPlan'); }}
+              onDismiss={function () { setShiftDone(false); }}
+            />
+          </View>
+        )}
+
+        {/* Uber Eats sandbox status */}
+        {uberStatus && (
+          <View style={styles.uberPanel}>
+            <View style={styles.uberPanelHeader}>
+              <Text style={styles.uberPanelTitle}>Uber Eats Sandbox Status</Text>
+              <TouchableOpacity onPress={function () { setUberStatus(false); }} activeOpacity={0.7}>
+                <Feather name="x" size={18} color={GRAY} />
+              </TouchableOpacity>
+            </View>
+            {UBER_STATUS.map(function (s) {
+              return (
+                <View key={s.label} style={styles.uberRow}>
+                  <Text style={styles.uberRowLabel}>{s.label}</Text>
+                  <View style={[styles.uberBadge, { backgroundColor: s.color + '20' }]}>
+                    <Text style={[styles.uberBadgeText, { color: s.color }]}>{s.status}</Text>
+                  </View>
+                </View>
+              );
+            })}
+            <Text style={styles.uberDisclaimer}>
+              Uber Eats integration is in sandbox mode. No real orders are placed.
+            </Text>
+          </View>
+        )}
+
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <MealShiftModal
+        visible={shiftModal}
+        mealName="Tonight's dinner (demo)"
+        onShift={function ()  { handleShiftConfirm('shift'); }}
+        onSkip={function ()   { handleShiftConfirm('skip');  }}
+        onKeep={function ()   { handleShiftConfirm('keep');  }}
+        onDismiss={function () { setShiftModal(false); }}
+        wasteItems={[{ name: 'chicken' }, { name: 'salad greens' }]}
+      />
     </SafeAreaView>
   );
 }
@@ -196,6 +281,18 @@ var styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   gridLabel: { fontSize: 13, fontWeight: '600', color: NAVY, textAlign: 'center', lineHeight: 18 },
+  uberPanel: {
+    marginHorizontal: 16, marginTop: 8,
+    backgroundColor: WHITE, borderRadius: 16, borderWidth: 1,
+    borderColor: '#FDE68A', padding: 16, gap: 10,
+  },
+  uberPanelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  uberPanelTitle:  { fontSize: 14, fontWeight: '700', color: NAVY },
+  uberRow:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  uberRowLabel:    { fontSize: 13, color: GRAY },
+  uberBadge:       { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  uberBadgeText:   { fontSize: 11, fontWeight: '700' },
+  uberDisclaimer:  { fontSize: 11, color: GRAY, lineHeight: 16, marginTop: 4 },
 });
 
 export default DemoAdminScreen;
