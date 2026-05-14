@@ -4,6 +4,29 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — SignInScreen: reverted to original with welcome mode + Get Started / Demo Mode (2026-05-14)
+- `screens/SignInScreen.js` — Reverted to the original two-panel cream/navy design. Added a `welcome` mode (default) that shows the brand landing before the sign-in form.
+  - **Welcome mode** (default, cream background): Snippd wordmark, headline, tagline, 3 stat chips, "Get Started" green CTA → signup form, "Try Demo Mode" outlined button → `navigation.navigate('PersonaReveal', DEMO_PROFILE)` (no auth), "Already have an account? Sign in" link → sign-in form.
+  - **Form mode** (original preserved): Sign In / Create Account tab toggle, Google + Apple OAuth, email/password fields, forgot password, trial notice.
+  - **Signup tab**: Added "YOUR NAME" field (name required before account creation). After successful `signUpWithEmail`, upserts `full_name` + `first_name` to `profiles`, then `navigation.reset` to Onboarding.
+  - **Back button** on phone: returns from form mode to welcome landing.
+  - `DEMO_PROFILE` constant: seeds all onboarding fields, bypasses auth entirely.
+  - Tablet: two-panel layout (green gradient left + form right) — unaffected, always shows form.
+  - All form panels remain render functions called as `{renderX()}`, not inner components (Android TextInput safety).
+
+### Changed — App.js tab bar: Today | Plan | Pantry | Stores | You (2026-05-14)
+- `App.js` — Replaced 6-tab layout (Home / Plan / Discover / Snippd FAB / Studio / Profile) with clean 5-tab layout matching the product spec.
+  - **Today** (sun icon) → HomeStack (unchanged content)
+  - **Plan** (calendar icon) → PlanStack (unchanged)
+  - **Pantry** (package icon) → new `PantryStack`: PantryScreen root + PantryInventory, PantryScan, PantryReview, PantryCookOptions, ReceiptUpload, BarcodeScanner
+  - **Stores** (map-pin icon) → new `StoresStack`: PreferredStoresScreen root + StoreExport, StorePickupHandoff, StoreCartHandoff, StoreItemBreakdown
+  - **You** (user icon) → ProfileStack (unchanged)
+  - Removed Discover tab, Snippd FAB (diamond center button), and Studio tab from the visible tab bar.
+  - All removed stacks (CartStack, DiscoverStack) remain defined and reachable from within other stacks.
+
+### Changed — HomeScreen: setup gate banner for incomplete profiles (2026-05-14)
+- `screens/HomeScreen.js` — Added a non-blocking amber banner shown when `onboarding_complete` is false or `weekly_budget` is 0. Tapping the banner navigates to `TodaySetupGate`. Banner disappears automatically once the profile is complete.
+
 ### Changed — SignInScreen: three-mode welcome screen (2026-05-14)
 - `screens/SignInScreen.js` — Full rewrite. Implements three display modes (`welcome` | `signup` | `signin`) with a fade animation between them. No separate route changes required.
   - **Welcome mode** (default): Dark forest-green background (`#0B3B1E`), `Snippd-White-Logo.png` + "snippd" wordmark, "Welcome to Snippd" headline, `hero-banner.png` hero image, 3 feature rows (Save more / Stress less / Live better with icon circles), full-width "Get Started" green button → signup mode, translucent outline "Try Demo Mode" button → `navigation.navigate('PersonaReveal', DEMO_PROFILE)`, "Already have an account? Sign in" text link → signin mode.

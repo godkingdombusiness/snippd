@@ -188,11 +188,14 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 // ── PER-TAB STACK NAVIGATORS ─────────────────────────────────────────────────
-const HomeStackNav     = createNativeStackNavigator();
+const HomeStackNav    = createNativeStackNavigator();
+const PlanStackNav    = createNativeStackNavigator();
+const PantryStackNav  = createNativeStackNavigator();
+const StoresStackNav  = createNativeStackNavigator();
+const ProfileStackNav = createNativeStackNavigator();
+// Legacy stacks kept for cross-stack navigation — not mounted as tabs
 const DiscoverStackNav = createNativeStackNavigator();
-const PlanStackNav     = createNativeStackNavigator();
 const CartStackNav     = createNativeStackNavigator();
-const ProfileStackNav  = createNativeStackNavigator();
 const StudioStack      = createStudioStack(createNativeStackNavigator);
 
 const GREEN = '#0C9E54';
@@ -281,6 +284,34 @@ function PlanStack() {
       <PlanStackNav.Screen name="SavingsAction"             component={SavingsActionScreen} />
       <PlanStackNav.Screen name="NextWeekBuilder"           component={NextWeekBuilderScreen} />
     </PlanStackNav.Navigator>
+  );
+}
+
+// ── PANTRY STACK ─────────────────────────────────────────────────────────────
+function PantryStack() {
+  return (
+    <PantryStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <PantryStackNav.Screen name="PantryMain"      component={PantryScreen} />
+      <PantryStackNav.Screen name="PantryInventory" component={PantryInventoryScreen} />
+      <PantryStackNav.Screen name="PantryScan"      component={PantryScanScreen} />
+      <PantryStackNav.Screen name="PantryReview"    component={PantryReviewScreen} />
+      <PantryStackNav.Screen name="PantryCookOptions" component={PantryCookOptionsScreen} />
+      <PantryStackNav.Screen name="ReceiptUpload"   component={ReceiptUploadScreen} />
+      <PantryStackNav.Screen name="BarcodeScanner"  component={BarcodeScannerScreen} />
+    </PantryStackNav.Navigator>
+  );
+}
+
+// ── STORES STACK ─────────────────────────────────────────────────────────────
+function StoresStack() {
+  return (
+    <StoresStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <StoresStackNav.Screen name="StoresMain"       component={PreferredStoresScreen} />
+      <StoresStackNav.Screen name="StoreExport"      component={StoreExportScreen} />
+      <StoresStackNav.Screen name="StorePickupHandoff" component={StorePickupHandoffScreen} />
+      <StoresStackNav.Screen name="StoreCartHandoff"   component={StoreCartHandoffScreen} />
+      <StoresStackNav.Screen name="StoreItemBreakdown" component={StoreItemBreakdownScreen} />
+    </StoresStackNav.Navigator>
   );
 }
 
@@ -400,12 +431,11 @@ function TrialBanner() {
 // ── TAB NAVIGATOR ────────────────────────────────────────────────────────────
 function MainTabs() {
   const tabs = filterEnabledItems([
-    { name: 'HomeTab', component: HomeStack, label: 'Home', iconName: 'home' },
-    { name: 'PlanTab', component: PlanStack, label: 'Plan', iconName: 'calendar' },
-    { name: 'DiscoverTab', component: DiscoverStack, label: 'Discover', iconName: 'search' },
-    { name: 'SnippdTab', component: CartStack, isCart: true },
-    studioTab(StudioStack),
-    { name: 'ProfileTab', component: ProfileStack, label: 'Profile', iconName: 'user' },
+    { name: 'HomeTab',    component: HomeStack,    label: 'Today',  iconName: 'sun' },
+    { name: 'PlanTab',    component: PlanStack,    label: 'Plan',   iconName: 'calendar' },
+    { name: 'PantryTab',  component: PantryStack,  label: 'Pantry', iconName: 'package' },
+    { name: 'StoresTab',  component: StoresStack,  label: 'Stores', iconName: 'map-pin' },
+    { name: 'ProfileTab', component: ProfileStack, label: 'You',    iconName: 'user' },
   ]);
 
   return (
@@ -424,19 +454,7 @@ function MainTabs() {
           name={tab.name}
           component={tab.component}
           options={{
-            tabBarIcon: ({ focused }) => tab.isCart ? (
-              <View style={styles.fabWrap}>
-                <View style={[styles.fabBorder, focused && { borderColor: MINT_POP }]}>
-                  <View style={[styles.fab, focused && { backgroundColor: WHITE }]}>
-                    <Image
-                      source={require('./assets/Snippd-White-Cart .png')}
-                      style={[styles.fabLogo, { tintColor: focused ? GREEN : WHITE }]}
-                      resizeMode="contain"
-                    />
-                  </View>
-                </View>
-              </View>
-            ) : (
+            tabBarIcon: ({ focused }) => (
               <TabIcon focused={focused} label={tab.label} iconName={tab.iconName} />
             ),
           }}

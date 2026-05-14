@@ -498,6 +498,10 @@ export default function HomeScreen({ navigation }) {
   var groceryStatus = profile?.grocery_status;
   var groceryLabel  = groceryStatus === 'yes' ? 'Shopped' : groceryStatus === 'partially' ? 'Partially' : 'Not yet';
 
+  // Setup gate: show banner when profile is incomplete (no budget or onboarding not done)
+  var onboardingDone = !!(profile?.onboarding_complete || profile?.onboarding_completed);
+  var showSetupBanner = !onboardingDone || weeklyBudget === 0;
+
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
@@ -567,6 +571,24 @@ export default function HomeScreen({ navigation }) {
             <Feather name="trending-up" size={16} color={GREEN} style={styles.budgetIcon} />
           </TouchableOpacity>
         </View>
+
+        {/* ── Setup Gate Banner ── */}
+        {showSetupBanner && (
+          <TouchableOpacity
+            style={styles.setupBanner}
+            onPress={function () { navigation.navigate('TodaySetupGate'); }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.setupBannerIconWrap}>
+              <Feather name="alert-circle" size={18} color={AMBER} />
+            </View>
+            <View style={styles.setupBannerText}>
+              <Text style={styles.setupBannerTitle}>Finish your profile</Text>
+              <Text style={styles.setupBannerSub}>Add your budget and preferences to get personalized recommendations.</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={GRAY} />
+          </TouchableOpacity>
+        )}
 
         {/* ── Context Stats ── */}
         <ScrollView
@@ -725,6 +747,25 @@ var styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll:      { flex: 1 },
   scrollContent: { paddingBottom: 120 },
+
+  // Setup gate banner
+  setupBanner: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: WHITE, borderRadius: 14,
+    borderWidth: 1, borderColor: AMBER + '55',
+    padding: 14, gap: 12,
+    shadowColor: AMBER, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+  },
+  setupBannerIconWrap: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: AMBER + '18',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  setupBannerText: { flex: 1 },
+  setupBannerTitle: { fontSize: 13, fontWeight: '700', color: NAVY, marginBottom: 2 },
+  setupBannerSub:   { fontSize: 11, color: GRAY, lineHeight: 15 },
 
   // Header
   header: {
