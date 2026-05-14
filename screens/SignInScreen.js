@@ -386,15 +386,6 @@ export default function SignInScreen({ navigation }) {
           <Text style={welcome.headline}>Welcome</Text>
           <Text style={welcome.sub}>Save More . Stress Less. Live Better.</Text>
 
-          {/* Hero grocery bag image */}
-          <View style={welcome.heroWrap}>
-            <Image
-              source={require('../assets/hero-banner.png')}
-              style={welcome.heroImg}
-              resizeMode="contain"
-            />
-          </View>
-
           {/* Feature rows — rounded-square icon style matching mockup */}
           <View style={welcome.featureList}>
             {[
@@ -739,12 +730,8 @@ var welcome = StyleSheet.create({
     letterSpacing: 0.2, marginBottom: 0,
   },
 
-  // Hero image — larger, centered, with leaf/shadow atmosphere
-  heroWrap: { alignItems: 'center', marginVertical: 18 },
-  heroImg:  { width: '85%', height: 220 },
-
   // Feature rows — rounded square icons (not circles)
-  featureList: { gap: 12, marginBottom: 24 },
+  featureList: { gap: 12, marginBottom: 24, marginTop: 28 },
   featureRow:  { flexDirection: 'row', alignItems: 'center', gap: 14 },
   featureIconWrap: {
     width: 42, height: 42, borderRadius: 12,

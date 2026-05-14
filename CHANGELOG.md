@@ -4,6 +4,11 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — SignInScreen: removed incorrect hero-banner.png from welcome screen (2026-05-14)
+- `screens/SignInScreen.js` — Removed `hero-banner.png` hero image block from `renderWelcome()`. The asset did not match the intended AI-generated grocery bag image and rendered with a visible white background against the dark green canvas.
+- Cleaned up `heroWrap` and `heroImg` styles from the welcome StyleSheet.
+- Added `marginTop: 28` to `featureList` so the layout flows cleanly from subtitle → feature rows → CTAs.
+
 ### Changed — OnboardingScreen step 3: "Who are you shopping for?" household redesign (2026-05-14)
 - `screens/OnboardingScreen.js` — Replaced adult/children number chips with a 2-column `HouseholdCard` grid matching the brand mockup.
   - 6 household types: Adults (18+), Children (2–17), Teens (13–17), Seniors (65+), Pets, Guests/Roommates.
