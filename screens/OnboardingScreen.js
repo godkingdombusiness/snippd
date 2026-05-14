@@ -123,6 +123,15 @@ var DEAL_PREFS = [
   { id: 'lowest_total',     label: 'Lowest Total',     icon: 'dollar-sign' },
 ];
 
+var HOUSEHOLD_TYPES = [
+  { id: 'adults',   label: 'Adults',             sub: 'Ages 18+',            icon: 'user' },
+  { id: 'children', label: 'Children',           sub: 'Ages 2–17',           icon: 'users' },
+  { id: 'teens',    label: 'Teens',              sub: 'Ages 13–17',          icon: 'user' },
+  { id: 'seniors',  label: 'Seniors',            sub: 'Ages 65+',            icon: 'user-check' },
+  { id: 'pets',     label: 'Pets',               sub: 'Dogs or cats',        icon: 'heart' },
+  { id: 'guests',   label: 'Guests /\nRoommates',sub: 'Others in household', icon: 'users' },
+];
+
 // ── Atom components (always at module scope) ──────────────────────────────────
 
 function ProgressHeader({ step, onBack }) {
@@ -306,6 +315,23 @@ function BudgetSlider({ value, onChange }) {
   );
 }
 
+function HouseholdCard({ label, sub, icon, selected, onPress }) {
+  return (
+    <TouchableOpacity style={[s.hCard, selected && s.hCardOn]} onPress={onPress} activeOpacity={0.78}>
+      <View style={s.hCardCheckWrap}>
+        <View style={[s.hCardCheck, selected && s.hCardCheckOn]}>
+          {selected && <Feather name="check" size={10} color={WHITE} />}
+        </View>
+      </View>
+      <View style={[s.hCardIconWrap, selected && s.hCardIconWrapOn]}>
+        <Feather name={icon} size={22} color={selected ? WHITE : GREEN} />
+      </View>
+      <Text style={[s.hCardLabel, selected && s.hCardLabelOn]}>{label}</Text>
+      <Text style={s.hCardSub}>{sub}</Text>
+    </TouchableOpacity>
+  );
+}
+
 function MissionCard({ label, sub, icon, selected, onPress }) {
   return (
     <TouchableOpacity
@@ -339,13 +365,13 @@ export default function OnboardingScreen({ navigation }) {
     missions:            [],
     weeklyBudget:        '',
     weekly_budget_cents: 0,
+    householdTypes:      ['adults'],   // default: Adults pre-selected
     household:           { adults: 2, children: 0 },
     cookingStyle:        [],
     foodsAvoided:        [],
     dietPreferences:     [],
     preferred_stores:    [],
     dealPreferences:     [],
-    // Compat fields for existing Supabase schema
     grocery_pct:         70,
     brand_swap:          'sometimes',
     stash_style:         'smart',
@@ -415,7 +441,12 @@ export default function OnboardingScreen({ navigation }) {
           user_id:              user.id,
           weekly_budget:        budget,
           grocery_pct:          data.grocery_pct,
-          household_size:       (data.household.adults || 2) + (data.household.children || 0),
+          household_size:       (data.householdTypes.includes('adults')   ? 2 : 0)
+                              + (data.householdTypes.includes('seniors')  ? 1 : 0)
+                              + (data.householdTypes.includes('guests')   ? 1 : 0)
+                              + (data.householdTypes.includes('children') ? 1 : 0)
+                              + (data.householdTypes.includes('teens')    ? 1 : 0)
+                              || 2,
           food_goals:           allGoals,
           preferred_stores:     data.preferred_stores,
           avoids:               data.foodsAvoided,
@@ -593,40 +624,47 @@ export default function OnboardingScreen({ navigation }) {
 
   function renderStep3() {
     return (
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.headline}>Tell us about{'\n'}your household</Text>
-        <Text style={s.sub}>I'll scale portions, quantities, and budget to fit your family.</Text>
+      <ScrollView contentContainerStyle={s.h3Scroll} showsVerticalScrollIndicator={false}>
+        <Text style={s.h3Headline}>Who are you{'\n'}shopping for?</Text>
+        <Text style={s.h3Sub}>Tell us about your household so we can personalize your plan.</Text>
 
-        <Text style={s.fieldLabel}>Adults in your household</Text>
-        <View style={s.hChipRow}>
-          {ADULT_OPTIONS.map(function (n) {
+        {/* 2-col grid */}
+        <View style={s.hGrid}>
+          {HOUSEHOLD_TYPES.map(function (ht) {
             return (
-              <HChip
-                key={n}
-                label={n === 4 ? '4+' : String(n)}
-                selected={data.household.adults === n}
-                onPress={function () { updHousehold('adults', n); }}
+              <HouseholdCard
+                key={ht.id}
+                label={ht.label}
+                sub={ht.sub}
+                icon={ht.icon}
+                selected={data.householdTypes.includes(ht.id)}
+                onPress={function () { toggleArr('householdTypes', ht.id); }}
               />
             );
           })}
         </View>
 
-        <Text style={[s.fieldLabel, { marginTop: 24 }]}>Children (under 18)</Text>
-        <View style={s.hChipRow}>
-          {CHILD_OPTIONS.map(function (n) {
-            return (
-              <HChip
-                key={n}
-                label={n === 4 ? '4+' : String(n)}
-                selected={data.household.children === n}
-                onPress={function () { updHousehold('children', n); }}
-              />
-            );
-          })}
+        {/* Why we ask */}
+        <View style={s.h3WhyCard}>
+          <View style={s.h3WhyIconWrap}>
+            <Feather name="info" size={18} color={GREEN} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.h3WhyTitle}>Why we ask</Text>
+            <Text style={s.h3WhySub}>This helps us suggest the right meal ideas, serving sizes, and savings for your household.</Text>
+          </View>
         </View>
 
-        <View style={{ height: 24 }} />
-        <BigBtn label="Continue" onPress={next} />
+        {/* Continue */}
+        <TouchableOpacity style={s.h3ContinueBtn} onPress={next} activeOpacity={0.88}>
+          <Text style={s.h3ContinueTxt}>Continue</Text>
+        </TouchableOpacity>
+
+        {/* Privacy */}
+        <View style={s.h3Privacy}>
+          <Feather name="lock" size={12} color={GRAY} />
+          <Text style={s.h3PrivacyTxt}>Your info is private and never shared</Text>
+        </View>
       </ScrollView>
     );
   }
@@ -746,8 +784,8 @@ export default function OnboardingScreen({ navigation }) {
   var stepRenders = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5, renderStep6, renderStep7];
 
   return (
-    <SafeAreaView style={[s.root, (step === 1 || step === 2) && s.rootWhite]} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={(step === 1 || step === 2) ? WHITE : CREAM} />
+    <SafeAreaView style={[s.root, (step === 1 || step === 2 || step === 3) && s.rootWhite]} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor={(step === 1 || step === 2 || step === 3) ? WHITE : CREAM} />
       <ProgressHeader step={step} onBack={back} />
       {stepRenders[step]()}
     </SafeAreaView>
@@ -884,6 +922,56 @@ var s = StyleSheet.create({
     shadowColor: GREEN, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35, shadowRadius: 6, elevation: 4,
   },
+
+  // ── Step 3: household ──
+  h3Scroll:    { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 0 },
+  h3Headline:  { fontSize: 30, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 36, marginBottom: 8, textAlign: 'center' },
+  h3Sub:       { fontSize: 14, color: GRAY, lineHeight: 21, textAlign: 'center', marginBottom: 24, paddingHorizontal: 8 },
+  hGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
+  hCard: {
+    width: '47.5%', backgroundColor: WHITE,
+    borderRadius: 16, borderWidth: 1.5, borderColor: BORDER,
+    padding: 14, minHeight: 110, position: 'relative',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+  },
+  hCardOn:         { borderColor: GREEN },
+  hCardCheckWrap:  { position: 'absolute', top: 10, right: 10 },
+  hCardCheck: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 1.5, borderColor: BORDER,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: WHITE,
+  },
+  hCardCheckOn:    { backgroundColor: GREEN, borderColor: GREEN },
+  hCardIconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 8,
+  },
+  hCardIconWrapOn: { backgroundColor: GREEN },
+  hCardLabel:      { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 2 },
+  hCardLabelOn:    { color: NAVY },
+  hCardSub:        { fontSize: 11, color: GRAY, lineHeight: 15 },
+  h3WhyCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    backgroundColor: MINT, borderRadius: 14, padding: 14, marginBottom: 20,
+  },
+  h3WhyIconWrap: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  h3WhyTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 3 },
+  h3WhySub:   { fontSize: 12, color: GRAY, lineHeight: 18 },
+  h3ContinueBtn: {
+    backgroundColor: GREEN, borderRadius: 16,
+    paddingVertical: 18, alignItems: 'center', marginBottom: 14,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+  },
+  h3ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
+  h3Privacy:     { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
+  h3PrivacyTxt:  { fontSize: 11, color: GRAY },
 
   // ── Step 1 specific layout (white bg, card rows) ──
   step1Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 0 },

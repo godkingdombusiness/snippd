@@ -382,12 +382,11 @@ export default function SignInScreen({ navigation }) {
             <Text style={welcome.wordmark}>snippd</Text>
           </View>
 
-          {/* Headline */}
-          <Text style={welcome.headline}>Welcome to{'\n'}Snippd</Text>
-          <Text style={welcome.sub}>Smarter grocery planning starts here.</Text>
-          <Text style={welcome.sub2}>Save more. Stress less. Live better.</Text>
+          {/* "Welcome" headline — logo already has brand name */}
+          <Text style={welcome.headline}>Welcome</Text>
+          <Text style={welcome.sub}>Save More . Stress Less. Live Better.</Text>
 
-          {/* Hero image */}
+          {/* Hero grocery bag image */}
           <View style={welcome.heroWrap}>
             <Image
               source={require('../assets/hero-banner.png')}
@@ -396,35 +395,25 @@ export default function SignInScreen({ navigation }) {
             />
           </View>
 
-          {/* Feature rows */}
+          {/* Feature rows — rounded-square icon style matching mockup */}
           <View style={welcome.featureList}>
-            <View style={welcome.featureRow}>
-              <View style={welcome.featureIconWrap}>
-                <Feather name="tag" size={20} color={W_GREEN} />
-              </View>
-              <View style={welcome.featureText}>
-                <Text style={welcome.featureTitle}>Save more</Text>
-                <Text style={welcome.featureBody}>Find relevant deals and coupons.</Text>
-              </View>
-            </View>
-            <View style={welcome.featureRow}>
-              <View style={welcome.featureIconWrap}>
-                <Feather name="calendar" size={20} color={W_GREEN} />
-              </View>
-              <View style={welcome.featureText}>
-                <Text style={welcome.featureTitle}>Stress less</Text>
-                <Text style={welcome.featureBody}>Plan meals and shopping with less guesswork.</Text>
-              </View>
-            </View>
-            <View style={welcome.featureRow}>
-              <View style={welcome.featureIconWrap}>
-                <Feather name="heart" size={20} color={W_GREEN} />
-              </View>
-              <View style={welcome.featureText}>
-                <Text style={welcome.featureTitle}>Live better</Text>
-                <Text style={welcome.featureBody}>Stay on budget while feeding your household.</Text>
-              </View>
-            </View>
+            {[
+              { icon: 'tag',      title: 'Save more',    body: 'Find relevant deals and coupons.' },
+              { icon: 'calendar', title: 'Stress less',  body: 'Plan meals and shopping with less guesswork.' },
+              { icon: 'heart',    title: 'Live better',  body: 'Stay on budget while feeding your household.' },
+            ].map(function (f) {
+              return (
+                <View key={f.title} style={welcome.featureRow}>
+                  <View style={welcome.featureIconWrap}>
+                    <Feather name={f.icon} size={18} color={WHITE} />
+                  </View>
+                  <View style={welcome.featureText}>
+                    <Text style={welcome.featureTitle}>{f.title}</Text>
+                    <Text style={welcome.featureBody}>{f.body}</Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
 
           {/* CTAs */}
@@ -734,38 +723,38 @@ var welcome = StyleSheet.create({
   },
 
   // Logo block
-  logoBlock: { alignItems: 'center', marginBottom: 20 },
-  logoImg:   { width: 72, height: 72, marginBottom: 8 },
-  wordmark:  {
-    fontSize: 26, fontWeight: '800', color: WHITE,
-    letterSpacing: 1,
-  },
+  logoBlock: { alignItems: 'center', marginBottom: 14 },
+  logoImg:   { width: 64, height: 64, marginBottom: 6 },
+  wordmark:  { fontSize: 22, fontWeight: '800', color: WHITE, letterSpacing: 1 },
 
   // Headlines
   headline: {
-    fontSize: 38, fontWeight: '900', color: WHITE,
-    textAlign: 'center', letterSpacing: -0.5,
-    lineHeight: 44, marginBottom: 12,
+    fontSize: 52, fontWeight: '900', color: WHITE,
+    textAlign: 'center', letterSpacing: -1,
+    lineHeight: 56, marginBottom: 10,
   },
-  sub:  { fontSize: 16, color: 'rgba(255,255,255,0.85)', textAlign: 'center', fontWeight: '400', marginBottom: 4 },
-  sub2: { fontSize: 15, color: 'rgba(255,255,255,0.65)', textAlign: 'center', fontWeight: '300', marginBottom: 0 },
+  sub: {
+    fontSize: 17, color: 'rgba(255,255,255,0.80)',
+    textAlign: 'center', fontWeight: '500',
+    letterSpacing: 0.2, marginBottom: 0,
+  },
 
-  // Hero image
-  heroWrap: { alignItems: 'center', marginVertical: 20 },
-  heroImg:  { width: '90%', height: 200 },
+  // Hero image — larger, centered, with leaf/shadow atmosphere
+  heroWrap: { alignItems: 'center', marginVertical: 18 },
+  heroImg:  { width: '85%', height: 220 },
 
-  // Feature rows
-  featureList: { gap: 14, marginBottom: 28 },
-  featureRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  // Feature rows — rounded square icons (not circles)
+  featureList: { gap: 12, marginBottom: 24 },
+  featureRow:  { flexDirection: 'row', alignItems: 'center', gap: 14 },
   featureIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(61,186,111,0.20)',
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  featureText:  { flex: 1, paddingTop: 2 },
-  featureTitle: { fontSize: 16, fontWeight: '700', color: WHITE, marginBottom: 2 },
-  featureBody:  { fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 20 },
+  featureText:  { flex: 1 },
+  featureTitle: { fontSize: 15, fontWeight: '700', color: WHITE, marginBottom: 1 },
+  featureBody:  { fontSize: 13, color: 'rgba(255,255,255,0.62)', lineHeight: 18 },
 
   // CTAs
   ctaGroup: { gap: 12 },

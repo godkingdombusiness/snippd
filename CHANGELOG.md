@@ -4,6 +4,24 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — OnboardingScreen step 3: "Who are you shopping for?" household redesign (2026-05-14)
+- `screens/OnboardingScreen.js` — Replaced adult/children number chips with a 2-column `HouseholdCard` grid matching the brand mockup.
+  - 6 household types: Adults (18+), Children (2–17), Teens (13–17), Seniors (65+), Pets, Guests/Roommates.
+  - `HouseholdCard`: white card, green border when selected, circle checkbox top-right (gray outline → green filled checkmark), mint icon circle, bold label + gray age range.
+  - "Why we ask" info card below grid (mint bg, lightbulb icon, explanation text).
+  - "Continue" full-width green button + "Your info is private and never shared" lock footer.
+  - White background (matching step 1 + 2).
+  - `householdTypes: []` added to data state; `finishOnboarding` derives `household_size` from selected types.
+  - Adults pre-selected by default.
+
+### Changed — SignInScreen: welcome screen updated to match final brand mockup (2026-05-14)
+- `screens/SignInScreen.js` — Welcome mode updated to match third screenshot exactly.
+  - Headline changed from "Welcome to Snippd" to "Welcome" (logo already shows brand name).
+  - Subtitle: "Save More . Stress Less. Live Better." (single line, medium weight).
+  - Hero image (`hero-banner.png`) enlarged to 220px height.
+  - Feature row icons changed from circles to rounded-square style (`borderRadius: 12`) with `rgba(255,255,255,0.18)` background, white icons inside.
+  - Logo block tightened (64px image, smaller wordmark).
+
 ### Changed — OnboardingScreen step 2: budget redesign with slider (2026-05-14)
 - `screens/OnboardingScreen.js` — "What is your weekly grocery budget?" step redesigned to match brand mockup.
   - **ProgressHeader**: replaced dot indicators with segmented dash bars (one per step, green = done, gray = future) + "X of 7" label centered + "Snippd" green wordmark right-aligned. Back button is now a white outlined circle.
