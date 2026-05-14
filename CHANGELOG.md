@@ -4,6 +4,16 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — Stripe webhook full billing_plan wiring (2026-05-14)
+- `supabase/functions/stripe-webhook/index.ts` — Now handles 6 Stripe events. `checkout.session.completed`: sets `billing_plan` (trial/monthly/yearly from metadata), `subscription_status` (trialing/active), `stripe_customer_id`, `stripe_subscription_id`, `trial_ends_at` (now+3d if trial). `customer.subscription.created`: enriches plan from subscription interval + metadata. `customer.subscription.updated`: syncs plan changes. `customer.subscription.deleted`: marks `subscription_status='cancelled'`. `invoice.payment_succeeded`: renews `subscription_period_end`; upgrades `billing_plan` from 'trial' → 'yearly' on first real charge. `invoice.payment_failed`: marks `subscription_status='past_due'`. New helper `findUserByCustomerId()` looks up profile by `stripe_customer_id`. New `resolveBillingPlan()` helper for interval detection.
+
+### Added — SQL migration: subscription tracking (2026-05-14)
+- `supabase/migrations/20260514_subscription_tracking.sql` — Adds to profiles: `subscription_status` (none/trialing/active/past_due/cancelled), `stripe_customer_id`, `stripe_subscription_id`, `subscription_period_end`, `trial_ends_at`. Indexes on both Stripe ID columns. View `v_expired_trials` for users whose trial has lapsed but subscription is not yet active.
+
+### Deployed — Edge functions (2026-05-14)
+- `stripe-webhook` — redeployed to production (gsnbpfpekqqjlmkgvwvb)
+- `fatsecret-health`, `fatsecret-search`, `fatsecret-get`, `fatsecret-estimate` — deployed to production for first time
+
 ### Added — Today Decision flow screens (2026-05-13)
 - `screens/TodaySetupGateScreen.js` — Single-page setup gate. Collects budget, household, people eating, grocery status, time before dinner, pantry preference, today goal, allergy acknowledgment. Pre-fills from Supabase profile. Upserts on submit, routes to TodayOptionsRanked with full context.
 - `screens/TodayOptionsRankedScreen.js` — Premium ranked options screen using decisionEngineService. Context pill row, OptionCard at module scope (green top pick, white others), price range, per-person cost, time, reason, CTA per route rule.
