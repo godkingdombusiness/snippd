@@ -62,6 +62,10 @@ export default function ProfileScreen({ navigation }) {
   const [couponCounts, setCouponCounts] = useState({});
   const [activeGoals, setActiveGoals] = useState([]);
 
+  // These refs must live here — before any early returns — to satisfy Rules of Hooks.
+  const tapCount = useRef(0);
+  const tapTimer = useRef(null);
+
   const fetchProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -207,9 +211,6 @@ export default function ProfileScreen({ navigation }) {
   const displayName  = profile?.full_name || authEmail.split('@')[0] || 'Snippd User';
   const initials     = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const personaLabel = getPersonaLabel(profile?.preferences?.persona_type);
-
-  const tapCount  = useRef(0);
-  const tapTimer  = useRef(null);
 
   function handleAvatarTap() {
     tapCount.current += 1;

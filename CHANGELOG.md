@@ -4,6 +4,18 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — ProfileScreen runtime crash: Rendered more hooks than during the previous render (2026-05-14)
+- `screens/ProfileScreen.js` — `useRef(0)` and `useRef(null)` for avatar tap detection were declared AFTER the `if (loading) return (...)` early exit, violating Rules of Hooks (hooks must be called unconditionally in the same order on every render). Fixed by moving both `useRef` declarations to the top of the component, with the other hook calls. Removed the duplicate declarations that remained after the early return. This was causing a hard crash for every user who visited the Profile tab.
+
+### Fixed — Expo package patch version drift (2026-05-14)
+- Updated 11 expo packages to their expected patch versions for the installed Expo SDK: `expo@~55.0.24`, `expo-auth-session@~55.0.16`, `expo-crypto@~55.0.15`, `expo-linear-gradient@~55.0.14`, `expo-location@~55.1.10`, `expo-media-library@~55.0.17`, `expo-notifications@~55.0.23`, `expo-secure-store@~55.0.14`, `expo-sharing@~55.0.19`, `expo-splash-screen@~55.0.21`, `expo-web-browser@~55.0.16`.
+
+### Added — authService.js: centralized auth with Google sign-in (2026-05-14)
+- `src/services/authService.js` — `signInWithEmail(email, password)`, `signUpWithEmail(email, password)` (sets billing_plan=trial, no pricing UI at sign-up), `signInWithGoogle()` (Supabase OAuth + expo-web-browser PKCE flow), `signInWithApple()` (iOS only), `signOut()`, `resetPassword(email)`, `getCurrentUser()`, `getUserProfile(userId)`, `getAuthRedirectRoute(userId)` (checks onboarding, subscription, first_shop_started, Deep Brief, and Today setup to return the correct post-login route), `formatAuthError(error)` (user-friendly error messages). Analytics events tracked: `signin_screen_viewed`, `email_signin_started/success/failed`, `google_signin_started/success/failed/canceled`, `forgot_password_clicked`.
+
+### Changed — SignInScreen: wired to authService (2026-05-14)
+- `screens/SignInScreen.js` — All auth calls now go through `authService` (`signInWithEmail`, `signUpWithEmail`, `signInWithGoogle`, `signInWithApple`, `resetPassword`, `formatAuthError`). Removed direct `supabase.auth.*` calls, `WebBrowser`, `makeRedirectUri` imports from the screen. Added `signin_screen_viewed` analytics on mount. Google OAuth cancel + error now shows friendly copy from `formatAuthError`. Screen remains the single-file, no-inner-components pattern.
+
 ### Added — Paywall flow: PersonalizationSummary → FirstShopPaywall → PaymentSuccessRedirect (2026-05-14)
 - `screens/PersonalizationSummaryScreen.js` — Post-onboarding summary screen. Shows profile summary cards (budget, household, cooking nights, stores, goals, pantry style, eat-out, stash mode). "Begin My First Shop" CTA calls `paywallGateService.checkFirstShopAccess()`. If subscription not active → routes to `FirstShopPaywall`. If active → routes directly to `TodaySetupGate`.
 - `screens/FirstShopPaywallScreen.js` — Premium paywall. Headline: "Your first smarter shop is ready." Value bullets: 5 Snippd benefits. Plan chooser: 3-day trial ($97/year) or $4.99/month. "Start My Trial" CTA activates mock trial and routes to `PaymentSuccessRedirect`. "Not Now" routes to `MainApp` (basic history preserved). No lockout of saved recipes.

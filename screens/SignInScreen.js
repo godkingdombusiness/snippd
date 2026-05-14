@@ -26,12 +26,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
-import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
+import {
+  signInWithEmail,
+  signUpWithEmail,
+  signInWithGoogle,
+  signInWithApple,
+  resetPassword,
+  formatAuthError,
+} from '../src/services/authService';
 
-WebBrowser.maybeCompleteAuthSession();
+// WebBrowser.maybeCompleteAuthSession() is called inside authService.js
 
 // ── Brand palette ──────────────────────────────────────────────────────────────
 var GREEN     = '#0C9E54';
@@ -216,6 +221,7 @@ export default function SignInScreen({ navigation }) {
   var slideAnim = useRef(new Animated.Value(16)).current;
 
   useEffect(function () {
+    tracker.track('signin_screen_viewed', {});
     Animated.parallel([
       Animated.timing(fadeAnim,  { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
@@ -238,29 +244,20 @@ export default function SignInScreen({ navigation }) {
     setLoading(true);
     try {
       if (tab === 'signin') {
-        var { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password: password });
+        var { data: signInData, error: signInErr } = await signInWithEmail(trimmedEmail, password);
         if (signInErr) throw signInErr;
-        if (signInData?.session?.access_token) {
-          tracker.setAccessToken(signInData.session.access_token);
+        if (!signInData?.session) {
+          setInfoMsg('Check your inbox to confirm your account, then sign in.');
         }
       } else {
-        var { data: signUpData, error: signUpErr } = await supabase.auth.signUp({ email: trimmedEmail, password: password });
+        var { data: signUpData, error: signUpErr } = await signUpWithEmail(trimmedEmail, password);
         if (signUpErr) throw signUpErr;
-        if (signUpData?.user) {
-          await supabase.from('profiles').upsert({
-            user_id:       signUpData.user.id,
-            email:         signUpData.user.email,
-            billing_plan:  'trial',
-          }, { onConflict: 'user_id', ignoreDuplicates: true });
-          if (signUpData.session) {
-            tracker.setAccessToken(signUpData.session.access_token);
-          } else {
-            setInfoMsg('Check your inbox to confirm your account, then sign in.');
-          }
+        if (!signUpData?.session) {
+          setInfoMsg('Check your inbox to confirm your account, then sign in.');
         }
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Authentication failed. Please try again.');
+      setErrorMsg(formatAuthError(err));
     } finally {
       setLoading(false);
     }
@@ -270,21 +267,14 @@ export default function SignInScreen({ navigation }) {
     clearError();
     setOauthLoading(provider);
     try {
-      var redirectTo = makeRedirectUri({ scheme: 'snippd', path: 'auth/callback' });
-      var { data: oauthData, error: oauthErr } = await supabase.auth.signInWithOAuth({
-        provider: provider,
-        options: { redirectTo: redirectTo, skipBrowserRedirect: true },
-      });
-      if (oauthErr) throw oauthErr;
-      if (oauthData?.url) {
-        var result = await WebBrowser.openAuthSessionAsync(oauthData.url, redirectTo);
-        if (result.type === 'success' && result.url) {
-          var { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(result.url);
-          if (exchangeErr) throw exchangeErr;
-        }
-      }
+      var result = provider === 'google'
+        ? await signInWithGoogle()
+        : await signInWithApple();
+      if (result.error) throw result.error;
+      // Successful OAuth — App.js onAuthStateChange handles routing
     } catch (err) {
-      setErrorMsg((provider === 'google' ? 'Google' : 'Apple') + ' sign-in failed. Try email instead.');
+      var friendly = formatAuthError(err);
+      setErrorMsg(friendly || (provider === 'google' ? 'Google' : 'Apple') + ' sign-in failed. Try email instead.');
     } finally {
       setOauthLoading(null);
     }
@@ -298,11 +288,11 @@ export default function SignInScreen({ navigation }) {
     }
     setLoading(true);
     try {
-      var { error: resetErr } = await supabase.auth.resetPasswordForEmail(trimmedEmail);
+      var { error: resetErr } = await resetPassword(trimmedEmail);
       if (resetErr) throw resetErr;
       setInfoMsg('Reset link sent to ' + trimmedEmail);
     } catch (err) {
-      setErrorMsg(err.message);
+      setErrorMsg(formatAuthError(err) || err.message);
     } finally {
       setLoading(false);
     }
