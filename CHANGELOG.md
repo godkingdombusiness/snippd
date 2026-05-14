@@ -4,6 +4,18 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — HomeScreen redesigned as Today Decision Hub (2026-05-14)
+- `screens/HomeScreen.js` — Complete rewrite to match the Snippd premium UI template. Previous screen was a deal-browsing feed. New screen is the Today Decision Hub.
+- **Header**: Snippd logo + "Save more, stress less." tagline + notification bell (badge) + profile icon (5-tap easter egg → DemoAdmin).
+- **Greeting + Budget widget**: Time-based greeting ("Good morning/afternoon/evening, [Name]") + remaining weekly budget card with trend arrow. Budget derived from `profiles.weekly_budget` with a midweek heuristic for remaining amount.
+- **Context stats row**: Horizontal scrollable cards — People eating tonight (household_size), Time before dinner (30 min default), Grocery status (from profile or "Not yet"), Cooking rhythm (cooking_days / eat_out_days), Pantry checked (pantry_items count).
+- **Best Match hero card**: Top-ranked option from `decisionEngineService.rankOptions()` rendered as a large hero card with "BEST MATCH" green badge, meal name (e.g. "Chicken Rice Bowls"), 3 value bullets, estimated additional cost, time, food photo placeholder, and "View Meal ›" CTA.
+- **Other great options**: Remaining ranked options (5 cards) displayed as horizontal scroll mini cards, each showing icon, label, subtitle, estimated cost, time, and "Good fit"/"Possible" badge.
+- **Smart insight card**: Behavioral insight generated from cooking_days, eat_out_days, and day of week.
+- All 6 option types route correctly: cook_from_pantry → PantryInventory, quick_grocery_run → QuickGroceryRun, grocery_pickup → StorePickupHandoff, uber_eats_pickup → UberEatsPickupHandoff, eat_out_smart → EatOutSmart, uber_eats_delivery → UberEatsDelivery.
+- Loads profile + pantry count in parallel from Supabase on focus. Graceful fallbacks when data is unavailable. Pull-to-refresh supported.
+- Full Snippd design system: cream background, white cards, navy text, green CTAs, no dark mode, no emojis (wave hand kept per mockup).
+
 ### Added — Full codebase audit + QuickGroceryRunScreen (2026-05-14)
 - **Full audit**: Verified all 100 screens exist and are registered in App.js. Navigation wiring is complete. No screens were overwritten or disconnected.
 - `screens/QuickGroceryRunScreen.js` — New "Quick grocery run for tonight." screen. Shows 4 seeded meal options (chicken stir fry, pasta marinara, ground beef tacos, salmon) requiring ≤5 items from the store. Context pills show remaining budget, household size, time. Each card shows estimated household cost, per-person cost, items needed, time, and goal fit. "Build quick cart" CTA navigates to `ShoppingList` with pre-filled items. "See full week plan" secondary routes to `WeeklyDinnerPlan`. Fully styled to Snippd premium design system (cream, white cards, navy, green CTA). No emojis.
