@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — HomeScreen crash: timeLabel ReferenceError (2026-05-14)
+- `screens/HomeScreen.js` — Added `var timeLabel = context ? (context.cookingTimeMin + ' min') : '--';` to the component's derived-values block. `timeLabel` was only defined inside `MiniOptionCard` but was referenced directly in the context stats `StatCard` JSX, causing a `ReferenceError` crash on every render.
+
 ### Fixed — SignInScreen: removed incorrect hero-banner.png from welcome screen (2026-05-14)
 - `screens/SignInScreen.js` — Removed `hero-banner.png` hero image block from `renderWelcome()`. The asset did not match the intended AI-generated grocery bag image and rendered with a visible white background against the dark green canvas.
 - Cleaned up `heroWrap` and `heroImg` styles from the welcome StyleSheet.
