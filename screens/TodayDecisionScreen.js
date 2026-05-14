@@ -188,7 +188,7 @@ export default function TodayDecisionScreen(props) {
   function handleOptionPress(option) {
     switch (option.optionType) {
       case 'cook_from_pantry':
-        navigation.navigate('WeeklyDinnerPlan');
+        navigation.navigate('TodayRecommendation');
         break;
       case 'quick_grocery_run':
       case 'grocery_pickup':
@@ -201,7 +201,7 @@ export default function TodayDecisionScreen(props) {
         navigation.navigate('UberEatsHandoff', { optionType: 'uber_eats_delivery', score: option.totalScore });
         break;
       case 'eat_out_smart':
-        navigation.navigate('WeeklyDinnerPlan');
+        navigation.navigate('TodayRecommendation');
         break;
       default:
         navigation.navigate('MainApp');

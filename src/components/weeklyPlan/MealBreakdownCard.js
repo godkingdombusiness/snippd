@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { formatCents } from '../../utils/weeklyPlan/formatMoney';
 import { getBestStoreForMeal } from '../../utils/weeklyPlan/getBestStoreForMeal';
 
@@ -14,6 +15,7 @@ function MealBreakdownCard(props) {
   var meal = props.meal;
   var nutrition = props.nutrition;
   var stores = props.stores || [];
+  var onCook = props.onCook;
 
   var storeInfo = getBestStoreForMeal(meal, stores, {});
   var hasSavings = meal.estimated_savings_cents > 0;
@@ -64,9 +66,16 @@ function MealBreakdownCard(props) {
         <TouchableOpacity style={styles.btnOutlineGreen} activeOpacity={0.75}>
           <Text style={styles.btnOutlineGreenText}>Add to Cart</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btnOutlineGray} activeOpacity={0.75}>
-          <Text style={styles.btnOutlineGrayText}>Swap Meal</Text>
-        </TouchableOpacity>
+        {onCook && (
+          <TouchableOpacity
+            style={styles.btnCook}
+            onPress={function () { onCook(meal); }}
+            activeOpacity={0.75}
+          >
+            <Feather name="book-open" size={13} color={GREEN} />
+            <Text style={styles.btnCookText}>How to Cook</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -165,18 +174,21 @@ var styles = StyleSheet.create({
     fontWeight: '600',
     color: GREEN,
   },
-  btnOutlineGray: {
+  btnCook: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
     borderWidth: 1.5,
-    borderColor: BORDER,
+    borderColor: GREEN,
     borderRadius: 10,
     paddingVertical: 10,
-    alignItems: 'center',
   },
-  btnOutlineGrayText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: GRAY,
+  btnCookText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: GREEN,
   },
 });
 

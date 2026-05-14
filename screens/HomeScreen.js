@@ -1167,6 +1167,7 @@ export default function HomeScreen({ navigation }) {
         >
           <View style={s.scanIconWrap}>
             <Feather name="camera" size={22} color="#0C9E54" />
+
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.scanTitle}>Scan Receipt & Earn</Text>
@@ -1174,6 +1175,24 @@ export default function HomeScreen({ navigation }) {
           </View>
           <View style={s.scanCameraBtn}>
             <Feather name="camera" size={18} color="#94A3B8" />
+          </View>
+        </TouchableOpacity>
+
+        {/* PANTRY SCAN */}
+        <TouchableOpacity
+          style={[s.scanRow, { marginTop: -8 }]}
+          onPress={() => handlePress('PantryScan')}
+          activeOpacity={0.85}
+        >
+          <View style={[s.scanIconWrap, { backgroundColor: '#E8F5E9' }]}>
+            <Feather name="package" size={22} color="#0C9E54" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.scanTitle}>Scan Your Pantry</Text>
+            <Text style={s.scanSub}>See what you already have before you shop</Text>
+          </View>
+          <View style={s.scanCameraBtn}>
+            <Feather name="chevron-right" size={18} color="#94A3B8" />
           </View>
         </TouchableOpacity>
 

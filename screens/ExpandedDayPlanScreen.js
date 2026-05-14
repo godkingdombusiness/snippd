@@ -65,6 +65,16 @@ function ExpandedDayPlanScreen(props) {
     }
   }
 
+  function handleCookMeal(meal) {
+    navigation.navigate('ContextualCooking', {
+      meal: { meal_id: meal.meal_id, meal_name: meal.meal_name, ingredients: meal.ingredients || [] },
+    });
+  }
+
+  function handleAddToPlan() {
+    navigation.navigate('ShoppingList');
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={CREAM} />
@@ -120,13 +130,14 @@ function ExpandedDayPlanScreen(props) {
               meal={meal}
               nutrition={nutritionMap[meal.meal_id] || null}
               stores={stores}
+              onCook={handleCookMeal}
             />
           );
         })}
 
         {/* CTA buttons */}
         <View style={styles.ctaSection}>
-          <TouchableOpacity style={styles.ctaPrimary} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.ctaPrimary} onPress={handleAddToPlan} activeOpacity={0.8}>
             <Text style={styles.ctaPrimaryText}>Add Today to Plan</Text>
           </TouchableOpacity>
           <TouchableOpacity

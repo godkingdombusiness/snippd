@@ -4,6 +4,15 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — Navigation wiring (2026-05-13)
+- `screens/TodayDecisionScreen.js` — `cook_from_pantry` and `eat_out_smart` option types now navigate to `TodayRecommendation` (Tonight's Best Move screen) instead of `WeeklyDinnerPlan`.
+- `screens/ExpandedDayPlanScreen.js` — Each MealBreakdownCard now receives `onCook` callback routing to `ContextualCooking`. "Add Today to Plan" CTA now navigates to `ShoppingList` (was a dead no-op).
+- `src/components/weeklyPlan/MealBreakdownCard.js` — Added `onCook` prop. When provided, renders "How to Cook" button (book-open icon, green outline) alongside "Add to Cart". Removed dead "Swap Meal" button.
+- `screens/HomeScreen.js` — Added "Scan Your Pantry" quick-action card below "Scan Receipt & Earn", routes to `PantryScan`.
+
+### Added — HomeHeader component (2026-05-13)
+- `src/components/home/HomeHeader.js` — Standalone gradient header component. Props: onNotificationPress, onProfilePress, userName. Fixed from untracked state: removed broken theme/colors and theme/spacing imports (no such files), replaced with inline constants. Removed emoji from greeting copy.
+
 ### Added — Missing components and screen (2026-05-13)
 - `src/components/pantry/PantryScanResultCard.js` — Confidence-coded pantry scan result card (Likely/Maybe/Needs review). Confirm and Remove actions. Distinct from PantryItemCard: lighter weight, no inline editing, used immediately after a scan before user makes edits.
 - `src/components/weeklyPlan/ShiftPlanConfirmationCard.js` — Post-shift confirmation card shown after MealShiftModal resolves. Three states: shift (plan moved), skip (meal removed), keep (unchanged). Shows waste freshness warning if perishables affected. Budget impact row. "View updated plan" + Done CTAs.
