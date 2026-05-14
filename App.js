@@ -158,6 +158,14 @@ import { getNextBestAction } from './src/services/nextBestActionService';
 import WeeklyDinnerPlanScreen from './screens/WeeklyDinnerPlanScreen';
 import ExpandedDayPlanScreen from './screens/ExpandedDayPlanScreen';
 import StoreItemBreakdownScreen from './screens/StoreItemBreakdownScreen';
+// ── COMPETITOR-INFORMED FEATURE SET ─────────────────────────────────────────
+import PantryScanScreen from './screens/PantryScanScreen';
+import PantryReviewScreen from './screens/PantryReviewScreen';
+import ContextualCookingScreen from './screens/ContextualCookingScreen';
+import StoreExportScreen from './screens/StoreExportScreen';
+import RecipeVaultScreen from './screens/RecipeVaultScreen';
+import TodayRecommendationScreen from './screens/TodayRecommendationScreen';
+import DemoAdminScreen from './screens/DemoAdminScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -627,6 +635,14 @@ function RootNavigator() {
         <Stack.Screen name="WeeklyDinnerPlan"      component={WeeklyDinnerPlanScreen} />
         <Stack.Screen name="ExpandedDayPlan"       component={ExpandedDayPlanScreen} />
         <Stack.Screen name="StoreItemBreakdown"    component={StoreItemBreakdownScreen} />
+        {/* ── Competitor-informed feature set ───────────────────────────── */}
+        <Stack.Screen name="PantryScan"            component={PantryScanScreen} />
+        <Stack.Screen name="PantryReview"          component={PantryReviewScreen} />
+        <Stack.Screen name="ContextualCooking"     component={ContextualCookingScreen} />
+        <Stack.Screen name="StoreExport"           component={StoreExportScreen} />
+        <Stack.Screen name="RecipeVault"           component={RecipeVaultScreen} />
+        <Stack.Screen name="TodayRecommendation"   component={TodayRecommendationScreen} />
+        <Stack.Screen name="DemoAdmin"             component={DemoAdminScreen} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
         <Stack.Screen name="TestAgent"       component={AppTestAgent} />
         <Stack.Screen name="MFAVerify"       component={MFAVerifyScreen} />

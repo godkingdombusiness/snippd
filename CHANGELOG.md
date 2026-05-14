@@ -4,6 +4,33 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Competitor-informed feature set: screens + components + services (2026-05-13)
+- `screens/PantryScanScreen.js` — Pantry photo scan screen. "Scan what you have." headline, viewfinder mock with green corner brackets, 1.4s simulated scan using `pantryVisionService.returnSeededPantryScan()`, routes to PantryReview on completion.
+- `screens/PantryReviewScreen.js` — Pantry confirmation screen. Shows 8 seeded scan results using `PantryItemCard`. Keep/Edit/Remove per item. "Use X items in my plan" CTA routes to WeeklyDinnerPlan. Detected / Confirmed / Unreviewed summary strip.
+- `screens/ContextualCookingScreen.js` — Contextual cooking instructions screen. 7-method selector (Air Fryer, Oven, Stovetop, Grill, Slow Cooker, Microwave, No-cook) using `contextualCookingService.adjustCookingInstructions()`. Step-by-step display with metadata strip (time, temp, difficulty). Safety note always shown.
+- `screens/StoreExportScreen.js` — Store list export screen. Aldi/Publix/Walmart cards using `StoreHandoffCard` with seeded item counts, estimated totals, and savings. Uber Eats sandbox card. Routes to ShoppingList or UberEatsHandoff.
+- `screens/RecipeVaultScreen.js` — Recipe vault. "Your saved recipes stay yours" ownership banner. 6 seeded recipes filterable by meal type. Each card shows cost/serving, cook time, serves count, tags, and "How to cook this" → ContextualCooking route.
+- `screens/TodayRecommendationScreen.js` — Tonight's best move screen. Hero card: score badge, "Cook Chicken Rice Bowls" recommendation, 4-quadrant impact grid (cost/time/pantry/nutrition), missing items amber row, "How to cook this" CTA. Ranked comparison list for all other options including Uber Eats (with sandbox disclaimer). 
+- `screens/DemoAdminScreen.js` — Internal demo navigator. 7 sections, 20+ routes. Tapping any tile jumps directly to that screen with appropriate seeded params. Internal badge (coral). Used for demo walkthroughs.
+- `src/components/pantry/PantryItemCard.js` — Confidence-coded pantry item card. Likely=green, Maybe=amber, Needs review=coral. Keep/Edit/Remove actions. Inline TextInput editing via `onEdit` callback. Kept state turns card mint.
+- `src/components/weeklyPlan/MealShiftModal.js` — Bottom sheet modal. Three-option meal shift flow: "Shift the plan", "Skip this meal only", "Keep the plan as-is". Perishable warning card when `wasteItems` prop is populated. Requires selection before enabling primary CTA.
+- `src/components/weeklyPlan/MealTypeFilterBar.js` — Horizontal chip filter bar for meal type. All / Breakfast / Lunch / Dinner / Snacks with Feather icons. Active chip: green filled. Used in WeeklyDinnerPlanScreen meals tab.
+- `src/components/store/StoreHandoffCard.js` — Reusable store handoff card. Regular variant: store name, item count, estimated total, savings, "View [Store] List" CTA (green). Uber Eats variant (`isUberEats` prop): amber styling, "Sandbox testing" pill, "Open in Uber Eats" CTA.
+- `src/services/pantryVisionService.js` — Pantry scan simulation service. 8-item seeded results (Rice, Pasta, Broccoli, Eggs, Greek yogurt, Frozen veg, Chicken broth, Tortillas) with Likely/Maybe/Needs review confidence. `scanPantryImage()` simulates 1.2s vision call. `confirmPantryItems()` deduplicates. `syncPantryToProfile()` writes `pantry_item_count` to Supabase.
+- `src/services/mealShiftService.js` — Meal shift logic service. Shifts day plans forward 1 day from `fromDate`. Calculates perishable waste risk after shift. Recalculates daily totals. Compares eat-out cost vs. home cook cost.
+- `src/services/contextualCookingService.js` — Contextual cooking instructions service. 7 methods each with 5 seeded steps, time/temp/difficulty metadata. `adjustCookingInstructions(meal, method)` returns adapted steps. SAFETY_NOTE always appended.
+- `src/services/safetyScrubService.js` — Safety scrub service. Checks meal ingredients against user's `avoids` and `allergies`. Returns `{ safe, needsReview, blocked }` per option. `REQUIRED_DISCLAIMER` always shown. Never makes medical claims or says "verified allergen-free".
+- `src/services/imageTrustService.js` — Image trust service. Returns illustration placeholders by meal type instead of AI-generated food photos. `IMAGE_DISCLAIMER` always returned with any illustration. Prevents misleading food imagery.
+- `src/services/budgetCappedMealService.js` — Budget-capped meal plan service. Generates plan within `weeklyBudgetCents` using seeded data. 5% grace threshold. `checkPlanBudgetFit()` returns status + overage. `generateCheaperVariant()` returns 85% cost alternative.
+- `src/services/portionIntelligenceService.js` — Portion intelligence service. No-Hallucination guarantee: maps meal ingredients to real store package sizes ("Family Pack Chicken at Aldi for $9.99", "Pasta 1lb Box $1.29 at Aldi"). `validateMealPortions()` checks servings vs effectivePeople (adults + children×0.75 + toddlers×0.4). Returns `portion_status`, `recommended_adjustments`, `store_anchor`.
+
+### Changed — WeeklyDinnerPlanScreen + ExpandedDayPlanScreen (2026-05-13)
+- `screens/WeeklyDinnerPlanScreen.js` — Added `MealTypeFilterBar` (All/Breakfast/Lunch/Dinner/Snacks) on meals tab. Added "Change tonight's plan" tappable CTA → `MealShiftModal`. Modal wired with shift/skip/keep handlers.
+- `screens/ExpandedDayPlanScreen.js` — "Swap a Meal" CTA renamed to "Eating out tonight?" with shuffle icon. Tapping opens `MealShiftModal` (shift/skip/keep options).
+
+### Changed — App.js routes (2026-05-13)
+- `App.js` — Registered 7 new routes: PantryScan, PantryReview, ContextualCooking, StoreExport, RecipeVault, TodayRecommendation, DemoAdmin.
+
 ### Changed — SignInScreen copy + design system alignment (2026-05-13)
 - `screens/SignInScreen.js` — Full copy overhaul. Removed: "Stack every deal. Miss nothing.", "autonomous shopping intelligence", "100% autonomous", "$2.4k avg annual savings", "stores tracked" stat. Replaced left-panel headline with "Smarter food decisions, before the money is spent." Sub: "Snippd helps you plan groceries, meals, store choices, savings, and eat-out options around your real weekly budget." Motto: "Save more, stress less." Stats: Budget-first / weekly planning · Meals + stores / guided together · Receipt-based / learning. Palette migrated from dark forest-green to Snippd brand (Navy `#172250`, Green `#0C9E54`, Mint `#c5ffbc`, Cream `#FAF8F1`). Added mobile hero section (wordmark + headline + stat cards) so phone users see value prop before the form. Form copy: email placeholder "Email address", password placeholder "Password", submit "Sign In" / "Create an Account", trust copy "Plan smarter. Save more. Stress less." Removed stats useEffect that pulled profile count.
 

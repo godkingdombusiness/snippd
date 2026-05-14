@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import MealBreakdownCard from '../src/components/weeklyPlan/MealBreakdownCard';
+import MealShiftModal from '../src/components/weeklyPlan/MealShiftModal';
 import { formatCents } from '../src/utils/weeklyPlan/formatMoney';
 import { SEEDED_NUTRITION } from '../src/utils/weeklyPlan/seededPlanData';
 
@@ -41,6 +42,7 @@ function ExpandedDayPlanScreen(props) {
   var dayPlan = params.dayPlan || {};
   var meals = params.meals || [];
   var stores = params.stores || [];
+  var [shiftModal, setShiftModal] = useState(false);
 
   var sortedMeals = meals.slice().sort(function (a, b) {
     var oa = MEAL_ORDER[a.meal_type] !== undefined ? MEAL_ORDER[a.meal_type] : 99;
@@ -127,13 +129,28 @@ function ExpandedDayPlanScreen(props) {
           <TouchableOpacity style={styles.ctaPrimary} activeOpacity={0.8}>
             <Text style={styles.ctaPrimaryText}>Add Today to Plan</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.ctaSecondary} activeOpacity={0.8}>
-            <Text style={styles.ctaSecondaryText}>Swap a Meal</Text>
+          <TouchableOpacity
+            style={styles.ctaSecondary}
+            onPress={function () { setShiftModal(true); }}
+            activeOpacity={0.8}
+          >
+            <Feather name="shuffle" size={14} color={NAVY} />
+            <Text style={styles.ctaSecondaryText}>Eating out tonight?</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      <MealShiftModal
+        visible={shiftModal}
+        mealName="Tonight's dinner"
+        onShift={function () { setShiftModal(false); }}
+        onSkip={function ()  { setShiftModal(false); }}
+        onKeep={function ()  { setShiftModal(false); }}
+        onDismiss={function () { setShiftModal(false); }}
+        wasteItems={[]}
+      />
     </SafeAreaView>
   );
 }
@@ -228,11 +245,14 @@ var styles = StyleSheet.create({
     color: WHITE,
   },
   ctaSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
     borderWidth: 1.5,
     borderColor: BORDER,
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: 'center',
     backgroundColor: WHITE,
   },
   ctaSecondaryText: {

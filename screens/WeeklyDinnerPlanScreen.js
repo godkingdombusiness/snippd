@@ -14,6 +14,8 @@ import PlanTabBar from '../src/components/weeklyPlan/PlanTabBar';
 import MealsByDayTab from '../src/components/weeklyPlan/MealsByDayTab';
 import StorePlanTab from '../src/components/weeklyPlan/StorePlanTab';
 import NutritionComplianceTab from '../src/components/weeklyPlan/NutritionComplianceTab';
+import MealTypeFilterBar from '../src/components/weeklyPlan/MealTypeFilterBar';
+import MealShiftModal from '../src/components/weeklyPlan/MealShiftModal';
 
 import {
   SEEDED_WEEKLY_PLAN,
@@ -35,13 +37,15 @@ function WeeklyDinnerPlanScreen(props) {
   var navigation = props.navigation;
   var route = props.route;
 
-  var [activeTab, setActiveTab] = useState('meals');
-  var [weeklyPlan, setWeeklyPlan] = useState(null);
-  var [dayPlans, setDayPlans] = useState([]);
-  var [meals, setMeals] = useState([]);
-  var [stores, setStores] = useState([]);
-  var [nutrition, setNutrition] = useState([]);
-  var [userProfile, setUserProfile] = useState(SEEDED_USER_PROFILE);
+  var [activeTab, setActiveTab]         = useState('meals');
+  var [weeklyPlan, setWeeklyPlan]       = useState(null);
+  var [dayPlans, setDayPlans]           = useState([]);
+  var [meals, setMeals]                 = useState([]);
+  var [stores, setStores]               = useState([]);
+  var [nutrition, setNutrition]         = useState([]);
+  var [userProfile, setUserProfile]     = useState(SEEDED_USER_PROFILE);
+  var [activeMealType, setMealType]     = useState('all');
+  var [shiftModalVisible, setShiftModal] = useState(false);
 
   useEffect(function () {
     // Load seeded data synchronously — no Supabase call yet
@@ -61,6 +65,10 @@ function WeeklyDinnerPlanScreen(props) {
   function handleRefresh() {
     // No-op for seeded data; real implementation would re-fetch
   }
+
+  function handleShift()  { setShiftModal(false); }
+  function handleSkip()   { setShiftModal(false); }
+  function handleKeep()   { setShiftModal(false); }
 
   if (!weeklyPlan) {
     return (
@@ -99,6 +107,26 @@ function WeeklyDinnerPlanScreen(props) {
         onTabChange={setActiveTab}
       />
 
+      {/* Meal type filter — visible only on meals tab */}
+      {activeTab === 'meals' && (
+        <MealTypeFilterBar
+          activeMealType={activeMealType}
+          onFilterChange={setMealType}
+        />
+      )}
+
+      {/* Change tonight CTA */}
+      {activeTab === 'meals' && (
+        <TouchableOpacity
+          style={styles.shiftCta}
+          onPress={function () { setShiftModal(true); }}
+          activeOpacity={0.8}
+        >
+          <Feather name="shuffle" size={14} color={GREEN} />
+          <Text style={styles.shiftCtaText}>Change tonight's plan</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Tab content — each tab manages its own scroll */}
       <View style={styles.tabContent}>
         {activeTab === 'meals' && (
@@ -128,6 +156,16 @@ function WeeklyDinnerPlanScreen(props) {
           />
         )}
       </View>
+
+      <MealShiftModal
+        visible={shiftModalVisible}
+        mealName="Tonight's dinner"
+        onShift={handleShift}
+        onSkip={handleSkip}
+        onKeep={handleKeep}
+        onDismiss={function () { setShiftModal(false); }}
+        wasteItems={[]}
+      />
     </SafeAreaView>
   );
 }
@@ -172,6 +210,15 @@ var styles = StyleSheet.create({
   tabContent: {
     flex: 1,
   },
+  shiftCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
+  shiftCtaText: { fontSize: 13, fontWeight: '600', color: GREEN },
 });
 
 export default WeeklyDinnerPlanScreen;
