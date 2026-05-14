@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Alert, ActivityIndicator,
@@ -207,6 +207,20 @@ export default function ProfileScreen({ navigation }) {
   const displayName  = profile?.full_name || authEmail.split('@')[0] || 'Snippd User';
   const initials     = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const personaLabel = getPersonaLabel(profile?.preferences?.persona_type);
+
+  const tapCount  = useRef(0);
+  const tapTimer  = useRef(null);
+
+  function handleAvatarTap() {
+    tapCount.current += 1;
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    if (tapCount.current >= 5) {
+      tapCount.current = 0;
+      navigation.navigate('DemoAdmin');
+      return;
+    }
+    tapTimer.current = setTimeout(function () { tapCount.current = 0; }, 2000);
+  }
   const credits      = profile?.credits_balance ?? 0;
   const preferredStores = profile?.preferred_stores ?? [];
 
@@ -225,9 +239,11 @@ export default function ProfileScreen({ navigation }) {
         {/* ── PROFILE HERO CARD ─────────────────────── */}
         <LinearGradient colors={[GREEN, GREEN_DARK]} style={s.heroCard}>
           <View style={s.heroRow}>
-            <View style={s.avatar}>
-              <Text style={s.avatarText}>{initials}</Text>
-            </View>
+            <TouchableOpacity onPress={handleAvatarTap} activeOpacity={0.9}>
+              <View style={s.avatar}>
+                <Text style={s.avatarText}>{initials}</Text>
+              </View>
+            </TouchableOpacity>
             <View style={s.heroInfo}>
               <Text style={s.heroName}>{displayName}</Text>
               <Text style={s.heroPersona}>{personaLabel}</Text>

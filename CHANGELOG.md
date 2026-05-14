@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — DemoAdmin hidden entry point (2026-05-13)
+- `screens/ProfileScreen.js` — Avatar initials circle now has a 5-tap hidden trigger. Tapping the avatar 5 times within 2 seconds navigates to `DemoAdmin`. Uses `useRef` (no re-render on each tap). Timer resets to zero if taps stop before 5.
+
 ### Changed — SignInScreen pricing/trial disclosure (2026-05-13)
 - `screens/SignInScreen.js` — Added pricing section to the signup tab. Two billing options: (1) 3-day free trial → $97/year founding member rate auto-billed at trial end; (2) $4.99/month, no trial, cancel anytime. Radio-style plan selector with "Best value" badge on trial option. Submit button changes to "Start 3-day Free Trial" or "Subscribe at $4.99/mo" based on selection. Trust copy under submit: "No surprise charges. Cancel before trial ends to pay nothing." Bottom link updated to "Start your free trial". Billing plan stored in `profiles.billing_plan` on sign-up. Pricing disclosure text updates per selected plan.
 
