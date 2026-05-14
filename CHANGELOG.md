@@ -4,6 +4,38 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — OnboardingScreen expanded to 8-step premium flow (2026-05-14)
+- `screens/OnboardingScreen.js` — Rewritten from 12-step legacy flow to 8-step premium onboarding matching the visual design template.
+  - Step 0: Welcome — dark-green hero screen, "Get Started" CTA + **"Try Demo Mode"** button + "Sign in" link
+  - Step 1: What matters most — missions multi-select (pure_savings, meal_planning, athletic_fuel, clinical_guardrails, family_optimization, convenience)
+  - Step 2: Weekly budget — large number display, preset chips $75–$500, writes `weekly_budget_cents`
+  - Step 3: Household profile — adults selector (1–4+) + children selector (0–4+)
+  - Step 4: Food preferences — foodsAvoided chips + dietPreferences chips
+  - Step 5: Cooking style — cookingStyle multi-select (from_scratch, meal_prep, quick_meals, frozen, takeout, variety)
+  - Step 6: Favorite stores — 10-store grid (2-col)
+  - Step 7: Deal preferences — dealPreferences grid (weekly_ads, digital_coupons, bogos, loyalty_offers, health_savings, lowest_total) → final step navigates to PersonaReveal
+- Unified `onboardingProfile` field keys (missions, weeklyBudget, weekly_budget_cents, household, cookingStyle, foodsAvoided, dietPreferences, preferred_stores, dealPreferences) match PersonaReveal params contract
+- Demo mode: `DEMO_PROFILE` constant, skips Supabase writes, navigates directly to PersonaReveal — no permanent data written
+- Visual: dark-green hero screens, cream content steps, larger text (16px body), large tap targets (paddingVertical 17), progress bar 1–7/7
+
+### Changed — PersonaRevealScreen visual redesign (2026-05-14)
+- `screens/PersonaRevealScreen.js` — Premium mint/cream visual design replacing dark navy background. All persona calculation logic and animation logic unchanged.
+  - Background: `#F7FAF8` (light mint cream) instead of dark navy
+  - Snippd shopping-bag logo icon centered above AI badge (replaces oversized emoji-first layout)
+  - AI badge: green text/icon on light mint background
+  - Persona card: white with 8px colored top bar, NAVY text throughout
+  - Stats card: white bordered card with NAVY values (was dark translucent)
+  - "What I'm building" section: NAVY text on cream background
+  - CTA button: larger (paddingVertical 20), green with stronger shadow
+  - StatusBar: dark-content to match light background
+
+### Added — Weekly deals data layer (2026-05-14)
+- `src/services/weeklyDealsService.js` — Mock weekly deals array (10 seeded deals across Publix, Aldi, Walmart, Target, Kroger, Whole Foods). Each deal has: id, store_key, store_name, title, description, deal_type, original_price_cents, sale_price_cents, coupon_value_cents, final_price_cents, savings_percent, expires_at, requires_loyalty.
+- `getPersonalizedDeals(profile, allDeals)` — Filters by preferred_stores, matches dealPreferences, sorts by preference match (30pts) + savings_percent + urgency (soonest expiring). Returns top 8.
+
+### Changed — HomeScreen: weekly deals section added (2026-05-14)
+- `screens/HomeScreen.js` — Added "This week's best savings for you" deals section after the Smart Insight card. Loads personalized deals via `getPersonalizedDeals()` on profile load. Shows up to 5 deal cards with store badge, title, description, savings%, loyalty indicator, expiration date, and final price.
+
 ### Changed — HomeScreen redesigned as Today Decision Hub (2026-05-14)
 - `screens/HomeScreen.js` — Complete rewrite to match the Snippd premium UI template. Previous screen was a deal-browsing feed. New screen is the Today Decision Hub.
 - **Header**: Snippd logo + "Save more, stress less." tagline + notification bell (badge) + profile icon (5-tap easter egg → DemoAdmin).

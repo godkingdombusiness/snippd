@@ -33,6 +33,7 @@ import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
 
 var { rankOptions, OPTION_TYPES } = require('../src/services/foodOptions/decisionEngineService');
+var { getPersonalizedDeals }      = require('../src/services/weeklyDealsService');
 
 // ── Colors ────────────────────────────────────────────────────────────────────
 var GREEN  = '#0C9E54';
@@ -385,6 +386,7 @@ export default function HomeScreen({ navigation }) {
   var [options,    setOptions]    = useState([]);
   var [context,    setContext]    = useState(null);
   var [notifCount, setNotifCount] = useState(3);
+  var [weeklyDeals, setWeeklyDeals] = useState([]);
   var tapCount = useRef(0);
   var tapTimer = useRef(null);
 
@@ -412,6 +414,13 @@ export default function HomeScreen({ navigation }) {
       setProfile(prof);
       setPantryCount(pCount);
       setUserName(extractFirstName(prof, user.email));
+
+      var profileForDeals = {
+        preferred_stores: prof.preferred_stores || [],
+        dealPreferences:  prof.deal_preferences || [],
+        weeklyBudget:     prof.weekly_budget    || 0,
+      };
+      setWeeklyDeals(getPersonalizedDeals(profileForDeals));
 
       var ctx = buildContextFromProfile(prof, pCount);
       setContext(ctx);
@@ -653,6 +662,55 @@ export default function HomeScreen({ navigation }) {
 
         {/* ── Smart Insight ── */}
         <InsightCard insight={insight} onPress={handleInsightPress} />
+
+        {/* ── Weekly Deals ── */}
+        {weeklyDeals.length > 0 && (
+          <View style={styles.dealsSection}>
+            <Text style={styles.dealsSectionTitle}>This week's best savings for you</Text>
+            <Text style={styles.dealsSectionSub}>Based on your stores, budget, and preferences.</Text>
+            {weeklyDeals.slice(0, 5).map(function (deal) {
+              var savingsLabel = deal.savings_percent ? deal.savings_percent + '% off' : null;
+              var priceLabel = deal.final_price_cents
+                ? '$' + (deal.final_price_cents / 100).toFixed(2)
+                : null;
+              var expiresLabel = deal.expires_at
+                ? 'Expires ' + deal.expires_at.slice(5).replace('-', '/')
+                : null;
+              return (
+                <View key={deal.id} style={styles.dealCard}>
+                  <View style={styles.dealCardLeft}>
+                    <View style={styles.dealStoreBadge}>
+                      <Text style={styles.dealStoreText}>{deal.store_name.slice(0, 2).toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.dealCardBody}>
+                    <Text style={styles.dealTitle} numberOfLines={1}>{deal.title}</Text>
+                    <Text style={styles.dealDesc} numberOfLines={1}>{deal.description}</Text>
+                    <View style={styles.dealMeta}>
+                      {savingsLabel ? (
+                        <View style={styles.dealSavingsBadge}>
+                          <Text style={styles.dealSavingsText}>{savingsLabel}</Text>
+                        </View>
+                      ) : null}
+                      {deal.requires_loyalty ? (
+                        <View style={styles.dealLoyaltyBadge}>
+                          <Feather name="star" size={10} color={AMBER} />
+                          <Text style={styles.dealLoyaltyText}>Loyalty</Text>
+                        </View>
+                      ) : null}
+                      {expiresLabel ? (
+                        <Text style={styles.dealExpires}>{expiresLabel}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  {priceLabel ? (
+                    <Text style={styles.dealPrice}>{priceLabel}</Text>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -981,4 +1039,38 @@ var styles = StyleSheet.create({
   insightBody:  { fontSize: 12, color: GRAY,  lineHeight: 17 },
 
   bottomSpacer: { height: 20 },
+
+  // Weekly deals section
+  dealsSection: { paddingHorizontal: 16, marginTop: 8, marginBottom: 8 },
+  dealsSectionTitle: { fontSize: 17, fontWeight: '800', color: NAVY, marginBottom: 4 },
+  dealsSectionSub:   { fontSize: 13, color: GRAY, marginBottom: 14, lineHeight: 18 },
+  dealCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: WHITE, borderRadius: 14, borderWidth: 1, borderColor: BORDER,
+    padding: 14, marginBottom: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  dealCardLeft: {},
+  dealStoreBadge: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
+  },
+  dealStoreText:  { fontSize: 14, fontWeight: '800', color: GREEN },
+  dealCardBody:   { flex: 1 },
+  dealTitle:      { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 2 },
+  dealDesc:       { fontSize: 12, color: GRAY, marginBottom: 6, lineHeight: 17 },
+  dealMeta:       { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  dealSavingsBadge: {
+    backgroundColor: '#DCFCE7', borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 3,
+  },
+  dealSavingsText:  { fontSize: 11, fontWeight: '700', color: GREEN },
+  dealLoyaltyBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#FEF3C7', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
+  },
+  dealLoyaltyText:  { fontSize: 11, fontWeight: '600', color: AMBER },
+  dealExpires:      { fontSize: 11, color: GRAY },
+  dealPrice:        { fontSize: 16, fontWeight: '800', color: GREEN, flexShrink: 0 },
 });

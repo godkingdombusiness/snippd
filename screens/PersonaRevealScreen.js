@@ -15,9 +15,12 @@ const GREEN      = '#0C9E54';
 const GREEN_SOFT = 'rgba(12,158,84,0.12)';
 const MINT       = '#F0FBF0';
 const MINT_DEEP  = '#E8F5E9';
+const CREAM      = '#F7FAF8';
 const NAVY       = '#172250';
 const NAVY_DEEP  = '#0E1634';
 const WHITE      = '#FFFFFF';
+const GRAY       = '#6B7280';
+const BORDER     = '#E5E7EB';
 const SLATE      = '#64748B';
 const CORAL      = '#FF7043';
 const AMBER      = '#F59E0B';
@@ -176,7 +179,7 @@ export default function PersonaRevealScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor={NAVY_DEEP} />
+      <StatusBar barStyle="dark-content" backgroundColor={CREAM} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -185,8 +188,14 @@ export default function PersonaRevealScreen({ route, navigation }) {
         {/* ── Eyebrow ────────────────────────────────────────────────────── */}
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <View style={styles.eyebrowRow}>
+            <View style={styles.snippdLogo}>
+              <Feather name="shopping-bag" size={18} color={GREEN} />
+            </View>
+          </View>
+
+          <View style={styles.aiBadgeWrap}>
             <View style={styles.aiBadge}>
-              <Feather name="cpu" size={12} color={MINT_POP} />
+              <Feather name="cpu" size={12} color={GREEN} />
               <Text style={styles.aiBadgeText}>AI Persona Generated</Text>
             </View>
           </View>
@@ -321,83 +330,91 @@ export default function PersonaRevealScreen({ route, navigation }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: NAVY_DEEP },
+  safe: { flex: 1, backgroundColor: CREAM },
 
   content: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 48,
+    paddingBottom: 56,
     maxWidth: 540,
     alignSelf: 'center',
     width: '100%',
   },
 
-  // ── Eyebrow ───────────────────────────────────────────────────────────────
+  // ── Eyebrow / logo ────────────────────────────────────────────────────────
   eyebrowRow: { alignItems: 'center', marginBottom: 12 },
+  snippdLogo: {
+    width: 52, height: 52, borderRadius: 16,
+    backgroundColor: MINT_DEEP,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1.5, borderColor: '#C8E6C9',
+  },
+  aiBadgeWrap: { alignItems: 'center', marginBottom: 16 },
   aiBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(197,255,188,0.15)',
+    gap: 6,
+    backgroundColor: GREEN_SOFT,
     borderWidth: 1,
-    borderColor: 'rgba(197,255,188,0.30)',
+    borderColor: 'rgba(12,158,84,0.25)',
     borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
-  aiBadgeText: { fontSize: 11, fontWeight: '700', color: MINT_POP, letterSpacing: 0.8 },
+  aiBadgeText: { fontSize: 12, fontWeight: '700', color: GREEN, letterSpacing: 0.5 },
   revealLabel: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.5)',
+    fontSize: 15,
+    color: GRAY,
     fontWeight: '500',
     textAlign: 'center',
     marginBottom: 20,
-    letterSpacing: 0.3,
   },
 
   // ── Persona card ──────────────────────────────────────────────────────────
   personaCard: {
     backgroundColor: WHITE,
     borderRadius: 24,
-    borderWidth: 2,
+    borderWidth: 0,
     overflow: 'hidden',
     marginBottom: 20,
     ...Platform.select({
-      web: { boxShadow: '0 8px 40px rgba(0,0,0,0.35)' },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 10 },
+      web: { boxShadow: '0 4px 24px rgba(0,0,0,0.08)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 6 },
     }),
   },
-  personaTopBar: { height: 6 },
+  personaTopBar: { height: 8 },
   personaEmoji: {
-    fontSize: 52,
+    fontSize: 36,
     textAlign: 'center',
     marginTop: 20,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   personaName: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '900',
     textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
+    color: NAVY,
     marginBottom: 6,
     paddingHorizontal: 20,
   },
   personaTagline: {
-    fontSize: 14,
+    fontSize: 15,
     color: SLATE,
     textAlign: 'center',
-    fontStyle: 'italic',
-    lineHeight: 20,
+    lineHeight: 22,
     paddingHorizontal: 24,
     marginBottom: 16,
+    fontStyle: 'italic',
   },
-  personaDivider: { height: 1, marginHorizontal: 20, marginBottom: 16 },
+  personaDivider: { height: 1, marginHorizontal: 20, marginBottom: 16, backgroundColor: BORDER },
   personaDesc: {
-    fontSize: 14,
+    fontSize: 15,
     color: NAVY,
-    lineHeight: 22,
+    lineHeight: 23,
     paddingHorizontal: 20,
-    marginBottom: 18,
+    marginBottom: 20,
     textAlign: 'center',
   },
   traitRow: {
@@ -412,84 +429,81 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
-  traitText: { fontSize: 12, fontWeight: '700' },
+  traitText: { fontSize: 13, fontWeight: '700' },
 
   // ── Stats card ────────────────────────────────────────────────────────────
   statsCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: WHITE,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: BORDER,
     marginBottom: 24,
     overflow: 'hidden',
+    ...Platform.select({
+      web: { boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+    }),
   },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomColor: BORDER,
   },
   statIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: GREEN_SOFT,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 38, height: 38, borderRadius: 11,
+    backgroundColor: MINT_DEEP,
+    alignItems: 'center', justifyContent: 'center',
   },
-  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: '500', marginBottom: 2 },
-  statValue: { fontSize: 16, fontWeight: '800', color: WHITE },
+  statLabel: { fontSize: 12, color: GRAY, fontWeight: '500', marginBottom: 2 },
+  statValue: { fontSize: 18, fontWeight: '800', color: NAVY },
 
   // ── Next steps ────────────────────────────────────────────────────────────
   nextTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.5)',
+    color: GRAY,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   nextRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 12,
+    gap: 14,
+    marginBottom: 14,
   },
   nextIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: GREEN_SOFT,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    marginTop: 1,
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: MINT_DEEP,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, marginTop: 1,
   },
   nextText: {
     flex: 1,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: 21,
+    fontSize: 15,
+    color: NAVY,
+    lineHeight: 22,
   },
 
   // ── CTA ───────────────────────────────────────────────────────────────────
   ctaBtn: {
     backgroundColor: GREEN,
     borderRadius: 16,
-    paddingVertical: 18,
+    paddingVertical: 20,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 28,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(12,158,84,0.45)' },
-      default: { shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 6 },
+      web: { boxShadow: '0 4px 20px rgba(12,158,84,0.40)' },
+      default: { shadowColor: GREEN, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 7 },
     }),
   },
-  ctaBtnText: { fontSize: 17, fontWeight: '800', color: WHITE },
+  ctaBtnText: { fontSize: 18, fontWeight: '800', color: WHITE },
 });
