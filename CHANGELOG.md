@@ -4,6 +4,43 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Today Decision flow screens (2026-05-13)
+- `screens/TodaySetupGateScreen.js` — Single-page setup gate. Collects budget, household, people eating, grocery status, time before dinner, pantry preference, today goal, allergy acknowledgment. Pre-fills from Supabase profile. Upserts on submit, routes to TodayOptionsRanked with full context.
+- `screens/TodayOptionsRankedScreen.js` — Premium ranked options screen using decisionEngineService. Context pill row, OptionCard at module scope (green top pick, white others), price range, per-person cost, time, reason, CTA per route rule.
+- `screens/ChefStashRecipeScreen.js` — Recipe detail. Why picked, cost/servings/time, nutrition (labeled), pantry vs missing items, 7-method switcher, numbered instructions, safety disclaimer, Add Missing Items CTA.
+- `screens/PantryInventoryScreen.js` — Pantry list with confidence filter chips, summary strip, per-item badges. CTAs to PantryScan and PantryCookOptions.
+- `screens/PantryCookOptionsScreen.js` — Meals from pantry. Have-items (green), missing (coral) with add-on cost, score badge, View Meal → ChefStashRecipe.
+
+### Changed — Today Decision routing + App.js + nextBestAction (2026-05-13)
+- `screens/TodayDecisionScreen.js` — Checks profile completeness on mount; routes to TodaySetupGate via navigation.replace() if budget or household_size missing.
+- `src/services/nextBestActionService.js` — Added TODAY_SETUP + SHOW_TODAY_OPTIONS actions. Added checkTodaySetupComplete() + getTodayDecisionRoute() export.
+- `App.js` — Added 10 new route imports and Stack.Screen registrations: TodaySetupGate, TodayOptionsRanked, ChefStashRecipe, PantryInventory, PantryCookOptions, StorePickupHandoff, StoreCartHandoff, EatOutSmart, UberEatsPickupHandoff, UberEatsDelivery.
+- `screens/DemoAdminScreen.js` — Added Today Decision Flow section, extended Pantry + Shopping + Uber Eats sections with all new routes.
+
+### Added — SQL migration (2026-05-13)
+- `supabase/migrations/20260513_today_decision_and_pantry.sql` — Adds to profiles: billing_plan, people_eating_today, grocery_shopped_status, time_before_dinner_text, pantry_preference, today_goal, allergy_acknowledgment_status. Creates: pantry_items (RLS), fatsecret_nutrition_cache, today_setup_log tables.
+
+### Added — FatSecret Edge Functions (2026-05-13)
+- `supabase/functions/fatsecret-health/` — Health check. No FatSecret call — checks env vars only.
+- `supabase/functions/fatsecret-search/` — Bearer JWT. Food search. Seeded fallback when creds absent.
+- `supabase/functions/fatsecret-get/` — Bearer JWT. Food nutrition by food_id. Seeded fallback.
+- `supabase/functions/fatsecret-estimate/` — Bearer JWT. Meal nutrition estimate from ingredients. Returns calories, protein, carbs, fat, sodium, sugar, confidence_score, disclaimer.
+
+### Added — Store pickup, cart handoff, eat-out, and Uber Eats screens (2026-05-13)
+- `screens/StorePickupHandoffScreen.js` — Grocery pickup store selector. Ranks Aldi, Publix, and Walmart by total estimated cost; highlights best-value store with green badge. StoreCard shows price, item count, meals covered, savings vs list price, pickup availability, and select/continue CTA. After selection shows CTA panel with "Open Store App" (Linking.openURL to store-specific URL) and "Copy Shopping List" (Clipboard with console fallback). Tracks `store_pickup_handoff_viewed`, `store_pickup_store_selected`, `store_pickup_opened`, `store_list_copied`.
+- `screens/StoreCartHandoffScreen.js` — Final pickup handoff screen showing a FlatList of cart items with name, qty, aisle, and estimated price. Accepts `storeName` and `items` route params; falls back to 4 seeded items. Summary strip shows item count and running total. Separate "Missing items" section renders items flagged missing in CORAL. Bottom actions: Open Store App, Copy List, and a gray link to ShoppingList screen. Tracks `store_cart_handoff_viewed`, `store_app_opened`, `store_list_copied`.
+- `screens/EatOutSmartScreen.js` — Local eat-out option browser. 4 seeded options (Chick-fil-A, Chipotle, Panda Express, Chili's) with estimated household cost, per-person cost, ETA, goal fit, and budget fit. Horizontal filter chip row (All / Pickup / Delivery / Under budget / High protein / Kid-friendly / Fastest) with live client-side filtering. Budget context pills show remaining budget, people eating, and max per-person. EatOutCard CTA opens Uber Eats via Linking. Disclaimer at bottom. Tracks `eat_out_smart_viewed`, `eat_out_option_selected`.
+- `screens/UberEatsPickupHandoffScreen.js` — Uber Eats pickup-specific screen. 2 seeded pickup options with restaurant, item, household total, per-person cost, ETA, budget impact (amber), and nutrition note (italic gray). PickupCard CTA tracks `uber_eats_pickup_opened` and opens Uber Eats URL. Budget and people context pills. Sandbox testing note and disclaimer. Tracks `uber_eats_pickup_handoff_viewed`.
+- `screens/UberEatsDeliveryScreen.js` — Uber Eats delivery screen with full fee transparency. 2 seeded options; each DeliveryCard shows food total, delivery fee, service fee, and grand total (bold green) in a styled fee breakdown table, plus per-person cost, ETA badge, and amber budget impact row. Stash note warns delivery adds 25-40% to food total. CTA tracks `uber_eats_delivery_opened`. Tracks `uber_eats_delivery_viewed` on mount.
+
+### Added — Nutrition, pantry, store handoff, and cost estimation services (2026-05-13)
+- `src/services/fatSecretNutritionService.js` — Frontend nutrition service. Routes all FatSecret calls through Supabase Edge Functions (`fatsecret-search`, `fatsecret-get`, `fatsecret-estimate`, `fatsecret-health`). Falls back to seeded nutrition data (Chicken Rice Bowls, Pasta with Garlic and Olive Oil, Egg Fried Rice, default) when edge function is unreachable. Exports `searchNutritionFood`, `getNutritionFood`, `estimateMealNutrition`, `getNutritionProviderStatus`.
+- `src/services/pantryInventoryService.js` — Pantry CRUD service backed by Supabase `pantry_items` table. Falls back to 8-item seeded pantry when table empty or unavailable. Exports `getPantryItems`, `addPantryItem`, `removePantryItem`, `confirmPantryItem`. Also exports `getMealOptionsFromPantry` — pure function that matches pantry contents against 5 seeded meal templates and returns viable meals with `have_items`/`missing_items`/`score`.
+- `src/services/storeHandoffService.js` — Store handoff prep service. Ranks Aldi/Walmart/Publix for pickup with seeded per-item price bands (Aldi $2.50, Walmart $3.20, Publix $4.20). Exports `getBestStoreForPickup`, `getStorePickupUrl`, `formatShoppingListText`, `getStoreHandoffStatus`. No direct cart API — all stores return `has_direct_integration: false`.
+
+### Changed — decisionEngineService cost estimation and option generation (2026-05-13)
+- `src/services/foodOptions/decisionEngineService.js` — Added `estimateCosts(optionType, context)`: returns per-option cost range in cents (low/mid/high/fees/perPerson) with `budgetImpactLabel` (Under budget / Moderate / Watch budget / Over budget) and `costRangeLabel`/`perPersonLabel` strings. Added `formatCentsRange(low, high)` and `formatCentsPerPerson(mid, people)` formatting helpers. Added `generateTodayOptions(context)`: calls `rankOptions()` across all six option types, merges cost estimates into each result, returns array sorted by `totalScore` descending. All prior exports preserved.
+
 ### Changed — Navigation wiring (2026-05-13)
 - `screens/TodayDecisionScreen.js` — `cook_from_pantry` and `eat_out_smart` option types now navigate to `TodayRecommendation` (Tonight's Best Move screen) instead of `WeeklyDinnerPlan`.
 - `screens/ExpandedDayPlanScreen.js` — Each MealBreakdownCard now receives `onCook` callback routing to `ContextualCooking`. "Add Today to Plan" CTA now navigates to `ShoppingList` (was a dead no-op).

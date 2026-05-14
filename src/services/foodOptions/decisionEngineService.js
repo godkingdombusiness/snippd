@@ -224,9 +224,178 @@ function getOptionMeta(optionType, score) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Cost estimation
+// ---------------------------------------------------------------------------
+
+/**
+ * Estimate the real-money cost of a given option for today's meal(s).
+ *
+ * @param {string} optionType — one of OPTION_TYPES values
+ * @param {object} context
+ *   weeklyBudgetCents    {number}  — total weekly budget (default 15000)
+ *   remainingBudgetCents {number}  — what's left this week (default 8000)
+ *   householdSize        {number}  — total people in household (default 4)
+ *   peopleEatingToday    {number}  — people eating this meal (default householdSize)
+ *   groceryStatus        {string}  — 'yes' | 'no' | 'partially'
+ * @returns {{
+ *   estimatedLowCents:     number,
+ *   estimatedHighCents:    number,
+ *   estimatedMidCents:     number,
+ *   estimatedPerPersonCents: number,
+ *   estimatedFeesCents:    number,
+ *   budgetImpactLabel:     string,
+ *   remainingAfterCents:   number,
+ *   costRangeLabel:        string,
+ *   perPersonLabel:        string,
+ * }}
+ */
+function estimateCosts(optionType, context) {
+  const {
+    weeklyBudgetCents    = 15000,
+    remainingBudgetCents = 8000,
+    householdSize        = 4,
+  } = context;
+
+  const peopleEatingToday = context.peopleEatingToday ?? householdSize;
+  const p = peopleEatingToday;
+
+  let low  = 0;
+  let high = 0;
+  let fees = 0;
+
+  switch (optionType) {
+    case OPTION_TYPES.COOK_FROM_PANTRY:
+      low  = 0;
+      high = p * 250;
+      fees = 0;
+      break;
+
+    case OPTION_TYPES.QUICK_GROCERY_RUN:
+      low  = p * 350;
+      high = p * 550;
+      fees = 0;
+      break;
+
+    case OPTION_TYPES.GROCERY_PICKUP:
+      low  = p * 450;
+      high = p * 750;
+      fees = 150;
+      break;
+
+    case OPTION_TYPES.UBER_EATS_PICKUP:
+      low  = p * 900;
+      high = p * 1300;
+      fees = 0;
+      break;
+
+    case OPTION_TYPES.EAT_OUT_SMART:
+      low  = p * 800;
+      high = p * 1400;
+      fees = 0;
+      break;
+
+    case OPTION_TYPES.UBER_EATS_DELIVERY:
+      low  = p * 1100;
+      high = p * 1600;
+      fees = Math.round(p * 150);
+      break;
+
+    default:
+      low  = p * 400;
+      high = p * 800;
+      fees = 0;
+  }
+
+  const mid                  = Math.round((low + high) / 2);
+  const estimatedPerPersonCents = p > 0 ? Math.round(mid / p) : mid;
+  const remainingAfterCents  = remainingBudgetCents - mid - fees;
+
+  // Budget impact label
+  let budgetImpactLabel;
+  const totalSpend = mid + fees;
+  if (totalSpend < remainingBudgetCents * 0.30) {
+    budgetImpactLabel = 'Under budget';
+  } else if (totalSpend < remainingBudgetCents * 0.55) {
+    budgetImpactLabel = 'Moderate';
+  } else if (totalSpend < remainingBudgetCents * 0.80) {
+    budgetImpactLabel = 'Watch budget';
+  } else {
+    budgetImpactLabel = 'Over budget';
+  }
+
+  return {
+    estimatedLowCents:      low,
+    estimatedHighCents:     high,
+    estimatedMidCents:      mid,
+    estimatedPerPersonCents,
+    estimatedFeesCents:     fees,
+    budgetImpactLabel,
+    remainingAfterCents,
+    costRangeLabel:         formatCentsRange(low, high),
+    perPersonLabel:         formatCentsPerPerson(mid, p),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Formatting helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Format a low/high cost range as a human-readable string.
+ *
+ * @param {number} lowCents
+ * @param {number} highCents
+ * @returns {string} — e.g. "~$4–$8" or "~$0"
+ */
+function formatCentsRange(lowCents, highCents) {
+  if (lowCents === 0 && highCents === 0) return '~$0';
+  const lo = Math.round(lowCents  / 100);
+  const hi = Math.round(highCents / 100);
+  if (lo === hi) return `~$${lo}`;
+  return `~$${lo}–$${hi}`;
+}
+
+/**
+ * Format a per-person cost label.
+ *
+ * @param {number} midCents — mid-point cost in cents
+ * @param {number} people   — number of people eating
+ * @returns {string} — e.g. "~$4 per person"
+ */
+function formatCentsPerPerson(midCents, people) {
+  if (!people || people <= 0) return '';
+  const perPerson = Math.round(midCents / people / 100);
+  return `~$${perPerson} per person`;
+}
+
+// ---------------------------------------------------------------------------
+// generateTodayOptions — ranked + costed options in one call
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate and rank all food options for today, enriched with cost estimates.
+ *
+ * @param {object} context — same shape as scoreOption + estimateCosts context
+ * @returns {Array<{ optionType, totalScore, factors, label, why, ...costFields }>}
+ *   Sorted by totalScore descending.
+ */
+function generateTodayOptions(context) {
+  const allTypes = Object.values(OPTION_TYPES);
+
+  return rankOptions(allTypes, context).map(ranked => {
+    const costs = estimateCosts(ranked.optionType, context);
+    return { ...ranked, ...costs };
+  });
+}
+
 module.exports = {
   OPTION_TYPES,
   WEIGHTS,
   scoreOption,
   rankOptions,
+  estimateCosts,
+  formatCentsRange,
+  formatCentsPerPerson,
+  generateTodayOptions,
 };

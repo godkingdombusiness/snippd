@@ -24,12 +24,21 @@ var CORAL  = '#fb5b5b';
 
 var DEMO_FLOWS = [
   {
+    section: 'Today Decision Flow',
+    items: [
+      { label: 'Today Setup Gate',        icon: 'sliders',     route: 'TodaySetupGate',         color: GREEN },
+      { label: 'Today Options Ranked',    icon: 'target',      route: 'TodayOptionsRanked',     color: GREEN },
+      { label: 'Today Decision (legacy)', icon: 'clock',       route: 'TodayDecision',          color: GRAY  },
+      { label: 'Tonight\'s Best Move',    icon: 'star',        route: 'TodayRecommendation',    color: GREEN },
+      { label: 'Eat Out Smart',           icon: 'map-pin',     route: 'EatOutSmart',            color: GREEN },
+    ],
+  },
+  {
     section: 'Core Planning',
     items: [
-      { label: 'Weekly Dinner Plan',      icon: 'calendar',    route: 'WeeklyDinnerPlan',      color: GREEN },
+      { label: 'Weekly Dinner Plan',      icon: 'calendar',    route: 'WeeklyDinnerPlan',       color: GREEN },
       { label: 'Plan Review',             icon: 'check-square',route: 'PlanReview',             color: GREEN },
-      { label: 'Today\'s Decision',        icon: 'target',      route: 'TodayDecision',          color: GREEN },
-      { label: 'Tonight\'s Best Move',     icon: 'star',        route: 'TodayRecommendation',    color: GREEN },
+      { label: 'Chef Stash Recipe',       icon: 'book-open',   route: 'ChefStashRecipe',        color: GREEN },
     ],
   },
   {
@@ -37,6 +46,8 @@ var DEMO_FLOWS = [
     items: [
       { label: 'Pantry Scan',             icon: 'camera',       route: 'PantryScan',            color: NAVY  },
       { label: 'Pantry Review',           icon: 'list',         route: 'PantryReview',          color: NAVY  },
+      { label: 'Pantry Inventory',        icon: 'package',      route: 'PantryInventory',       color: NAVY  },
+      { label: 'Cook from Pantry',        icon: 'home',         route: 'PantryCookOptions',     color: NAVY  },
     ],
   },
   {
@@ -57,15 +68,18 @@ var DEMO_FLOWS = [
   {
     section: 'Shopping & Stores',
     items: [
-      { label: 'Your Store Lists',        icon: 'shopping-bag', route: 'StoreExport',           color: NAVY  },
+      { label: 'Store Pickup Handoff',    icon: 'shopping-bag', route: 'StorePickupHandoff',    color: NAVY  },
+      { label: 'Store Cart Handoff',      icon: 'check-circle', route: 'StoreCartHandoff',      color: NAVY  },
+      { label: 'Your Store Lists',        icon: 'list',         route: 'StoreExport',           color: NAVY  },
       { label: 'Shopping List',           icon: 'shopping-cart',route: 'ShoppingList',          color: NAVY  },
     ],
   },
   {
     section: 'Uber Eats Sandbox',
     items: [
-      { label: 'Uber Eats Pickup',        icon: 'map-pin',      route: 'UberEatsHandoff',       color: AMBER },
-      { label: 'Uber Eats Delivery',      icon: 'truck',        route: '__UberDelivery',        color: AMBER },
+      { label: 'Uber Eats Pickup Flow',   icon: 'map-pin',      route: 'UberEatsPickupHandoff', color: AMBER },
+      { label: 'Uber Eats Delivery Flow', icon: 'truck',        route: 'UberEatsDelivery',      color: AMBER },
+      { label: 'Uber Eats (legacy)',      icon: 'external-link',route: 'UberEatsHandoff',       color: GRAY  },
       { label: 'Sandbox Status',          icon: 'wifi',         route: '__UberStatus',          color: AMBER },
     ],
   },

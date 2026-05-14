@@ -167,6 +167,17 @@ import RecipeVaultScreen from './screens/RecipeVaultScreen';
 import SavedRecipesScreen from './screens/SavedRecipesScreen';
 import TodayRecommendationScreen from './screens/TodayRecommendationScreen';
 import DemoAdminScreen from './screens/DemoAdminScreen';
+// ── TODAY DECISION FLOW ──────────────────────────────────────────────────────
+import TodaySetupGateScreen from './screens/TodaySetupGateScreen';
+import TodayOptionsRankedScreen from './screens/TodayOptionsRankedScreen';
+import ChefStashRecipeScreen from './screens/ChefStashRecipeScreen';
+import PantryInventoryScreen from './screens/PantryInventoryScreen';
+import PantryCookOptionsScreen from './screens/PantryCookOptionsScreen';
+import StorePickupHandoffScreen from './screens/StorePickupHandoffScreen';
+import StoreCartHandoffScreen from './screens/StoreCartHandoffScreen';
+import EatOutSmartScreen from './screens/EatOutSmartScreen';
+import UberEatsPickupHandoffScreen from './screens/UberEatsPickupHandoffScreen';
+import UberEatsDeliveryScreen from './screens/UberEatsDeliveryScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -645,6 +656,17 @@ function RootNavigator() {
         <Stack.Screen name="SavedRecipes"          component={SavedRecipesScreen} />
         <Stack.Screen name="TodayRecommendation"   component={TodayRecommendationScreen} />
         <Stack.Screen name="DemoAdmin"             component={DemoAdminScreen} />
+        {/* ── Today Decision Flow ───────────────────────────────────────── */}
+        <Stack.Screen name="TodaySetupGate"        component={TodaySetupGateScreen} />
+        <Stack.Screen name="TodayOptionsRanked"    component={TodayOptionsRankedScreen} />
+        <Stack.Screen name="ChefStashRecipe"       component={ChefStashRecipeScreen} />
+        <Stack.Screen name="PantryInventory"       component={PantryInventoryScreen} />
+        <Stack.Screen name="PantryCookOptions"     component={PantryCookOptionsScreen} />
+        <Stack.Screen name="StorePickupHandoff"    component={StorePickupHandoffScreen} />
+        <Stack.Screen name="StoreCartHandoff"      component={StoreCartHandoffScreen} />
+        <Stack.Screen name="EatOutSmart"           component={EatOutSmartScreen} />
+        <Stack.Screen name="UberEatsPickupHandoff" component={UberEatsPickupHandoffScreen} />
+        <Stack.Screen name="UberEatsDelivery"      component={UberEatsDeliveryScreen} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
         <Stack.Screen name="TestAgent"       component={AppTestAgent} />
         <Stack.Screen name="MFAVerify"       component={MFAVerifyScreen} />

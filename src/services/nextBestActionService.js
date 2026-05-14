@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 // ── Action constants ──────────────────────────────────────────────────────────
 export const NBA_ACTIONS = {
   RESUME_ONBOARDING:             'RESUME_ONBOARDING',
+  TODAY_SETUP:                   'TODAY_SETUP',
+  SHOW_TODAY_OPTIONS:            'SHOW_TODAY_OPTIONS',
   START_WEEKLY_PLAN:             'START_WEEKLY_PLAN',
   REVIEW_PLAN:                   'REVIEW_PLAN',
   CONTINUE_SHOPPING_OR_RECEIPT:  'CONTINUE_SHOPPING_OR_RECEIPT',
@@ -14,6 +16,8 @@ export const NBA_ACTIONS = {
 // Map action → root-stack route name
 export const NBA_TO_ROUTE = {
   RESUME_ONBOARDING:            'Onboarding',
+  TODAY_SETUP:                  'TodaySetupGate',
+  SHOW_TODAY_OPTIONS:           'TodayOptionsRanked',
   START_WEEKLY_PLAN:            'SmartStart',
   REVIEW_PLAN:                  'SmartStart',
   CONTINUE_SHOPPING_OR_RECEIPT: 'SmartStart',
@@ -25,6 +29,8 @@ export const NBA_TO_ROUTE = {
 // Human-readable labels used by SmartStartScreen to highlight the right card
 export const NBA_LABELS = {
   RESUME_ONBOARDING:            'Finish your setup',
+  TODAY_SETUP:                  'Personalize today\'s options',
+  SHOW_TODAY_OPTIONS:           'See your best options for tonight',
   START_WEEKLY_PLAN:            'Build this week\'s grocery plan',
   REVIEW_PLAN:                  'Your plan is ready — review it',
   CONTINUE_SHOPPING_OR_RECEIPT: 'Continue shopping or check in',
@@ -32,6 +38,52 @@ export const NBA_LABELS = {
   VIEW_WEEKLY_INSIGHTS:         'See your weekly insights',
   HOME_DASHBOARD:               'View your dashboard',
 };
+
+// Required fields for Today Decision (must have to skip setup gate)
+const TODAY_REQUIRED_FIELDS = [
+  'weekly_budget',
+  'household_size',
+];
+
+async function checkTodaySetupComplete(userId) {
+  const data = await safe(() =>
+    supabase
+      .from('profiles')
+      .select('weekly_budget, household_size, today_goal, grocery_shopped_status')
+      .eq('user_id', userId)
+      .single()
+      .then(r => r.data)
+  );
+  if (!data) return false;
+  return TODAY_REQUIRED_FIELDS.every(f => data[f] != null && data[f] !== '');
+}
+
+export async function getTodayDecisionRoute(userId) {
+  if (!userId) return { route: 'TodaySetupGate', context: null };
+  const complete = await checkTodaySetupComplete(userId);
+  if (!complete) return { route: 'TodaySetupGate', context: null };
+  const data = await safe(() =>
+    supabase
+      .from('profiles')
+      .select('weekly_budget, household_size, today_goal, grocery_shopped_status, time_before_dinner_text, pantry_preference, people_eating_today')
+      .eq('user_id', userId)
+      .single()
+      .then(r => r.data)
+  );
+  return {
+    route: 'TodayOptionsRanked',
+    context: {
+      weeklyBudgetCents:     Math.round((data?.weekly_budget || 150) * 100),
+      remainingBudgetCents:  Math.round((data?.weekly_budget || 150) * 100 * 0.53),
+      householdSize:         data?.household_size || 4,
+      peopleEatingToday:     data?.people_eating_today || data?.household_size || 4,
+      groceryStatus:         data?.grocery_shopped_status || 'no',
+      timeBeforeDinner:      data?.time_before_dinner_text || '30_45',
+      pantryPreference:      data?.pantry_preference || 'use_first',
+      todayGoal:             data?.today_goal || 'spend_least',
+    },
+  };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

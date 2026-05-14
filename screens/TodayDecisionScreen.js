@@ -161,6 +161,18 @@ export default function TodayDecisionScreen(props) {
           return;
         }
 
+        // Check if profile has enough data to skip setup gate
+        var profileCheck = await supabase
+          .from('profiles')
+          .select('weekly_budget, household_size')
+          .eq('user_id', user.id)
+          .single();
+        var profile = profileCheck.data || {};
+        if (!profile.weekly_budget || !profile.household_size) {
+          navigation.replace('TodaySetupGate', { existingProfile: profile });
+          return;
+        }
+
         var profileResult = await supabase
           .from('profiles')
           .select('full_name, weekly_budget, household_size, cooking_time, food_goals, pantry_item_count, has_kids, stash_style, stores')
