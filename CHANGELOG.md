@@ -4,6 +4,14 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — SignInScreen: three-mode welcome screen (2026-05-14)
+- `screens/SignInScreen.js` — Full rewrite. Implements three display modes (`welcome` | `signup` | `signin`) with a fade animation between them. No separate route changes required.
+  - **Welcome mode** (default): Dark forest-green background (`#0B3B1E`), `Snippd-White-Logo.png` + "snippd" wordmark, "Welcome to Snippd" headline, `hero-banner.png` hero image, 3 feature rows (Save more / Stress less / Live better with icon circles), full-width "Get Started" green button → signup mode, translucent outline "Try Demo Mode" button → `navigation.navigate('PersonaReveal', DEMO_PROFILE)`, "Already have an account? Sign in" text link → signin mode.
+  - **Signup mode**: Back button to welcome, single-screen name + email + password form, "Create Account" CTA → `signUpWithEmail` + profile `upsert` (full_name, first_name) + `navigation.reset` to Onboarding.
+  - **Signin mode**: Back button to welcome, Google OAuth button + email/password form (preserves original sign-in behavior via `signInWithEmail`).
+  - `DEMO_PROFILE` constant: seeds full onboardingProfile (missions, weeklyBudget, household, preferred_stores, dealPreferences), navigates to PersonaReveal — no Supabase writes.
+  - All form panels are render functions called inline (not inner components) — prevents Android TextInput black-box remount.
+
 ### Changed — OnboardingScreen expanded to 8-step premium flow (2026-05-14)
 - `screens/OnboardingScreen.js` — Rewritten from 12-step legacy flow to 8-step premium onboarding matching the visual design template.
   - Step 0: Welcome — dark-green hero screen, "Get Started" CTA + **"Try Demo Mode"** button + "Sign in" link
