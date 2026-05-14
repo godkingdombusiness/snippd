@@ -26,7 +26,6 @@ CREATE INDEX IF NOT EXISTS idx_profiles_stripe_sub
 CREATE OR REPLACE VIEW public.v_expired_trials AS
 SELECT
   user_id,
-  full_name,
   stripe_customer_id,
   stripe_subscription_id,
   trial_ends_at,

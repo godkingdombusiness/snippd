@@ -1,6 +1,8 @@
 -- ============================================================
 -- Snippd — Today Decision Flow + Pantry + FatSecret Cache
 -- Idempotent: safe to run on fresh or existing DB
+-- Fix: drops partially-created tables before recreating to avoid
+--      "column user_id does not exist" on CREATE INDEX.
 -- ============================================================
 
 -- ── 1. PROFILES — Today setup fields ────────────────────────────────────────
@@ -14,7 +16,10 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS allergy_acknowledgment_status text DEFAULT 'pending'; -- 'pending' | 'on_file' | 'skipped'
 
 -- ── 2. PANTRY ITEMS ─────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS public.pantry_items (
+-- Drop and recreate to fix any partial schema from a previous failed run.
+DROP TABLE IF EXISTS public.pantry_items CASCADE;
+
+CREATE TABLE public.pantry_items (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid        REFERENCES auth.users NOT NULL,
   item_name   text        NOT NULL,
@@ -27,16 +32,15 @@ CREATE TABLE IF NOT EXISTS public.pantry_items (
   updated_at  timestamptz DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_pantry_items_user
+CREATE INDEX idx_pantry_items_user
   ON public.pantry_items (user_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_pantry_items_confidence
+CREATE INDEX idx_pantry_items_confidence
   ON public.pantry_items (user_id, confidence);
 
 -- RLS
 ALTER TABLE public.pantry_items ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users manage own pantry" ON public.pantry_items;
 CREATE POLICY "Users manage own pantry"
   ON public.pantry_items
   FOR ALL
@@ -62,8 +66,11 @@ CREATE TABLE IF NOT EXISTS public.fatsecret_nutrition_cache (
 CREATE INDEX IF NOT EXISTS idx_fatsecret_cache_name
   ON public.fatsecret_nutrition_cache (lower(food_name));
 
--- ── 4. TODAY SETUP LOG (optional: track per-day setup completions) ───────────
-CREATE TABLE IF NOT EXISTS public.today_setup_log (
+-- ── 4. TODAY SETUP LOG ───────────────────────────────────────────────────────
+-- Drop and recreate to fix any partial schema from a previous failed run.
+DROP TABLE IF EXISTS public.today_setup_log CASCADE;
+
+CREATE TABLE public.today_setup_log (
   id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id             uuid        REFERENCES auth.users NOT NULL,
   setup_date          date        NOT NULL DEFAULT CURRENT_DATE,
@@ -79,22 +86,13 @@ CREATE TABLE IF NOT EXISTS public.today_setup_log (
   UNIQUE (user_id, setup_date)
 );
 
-CREATE INDEX IF NOT EXISTS idx_today_setup_user_date
+CREATE INDEX idx_today_setup_user_date
   ON public.today_setup_log (user_id, setup_date DESC);
 
 ALTER TABLE public.today_setup_log ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users manage own today setup" ON public.today_setup_log;
 CREATE POLICY "Users manage own today setup"
   ON public.today_setup_log
   FOR ALL
   USING  (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
-
--- ── 5. SEED: Pantry items for demo user (ON CONFLICT DO NOTHING) ─────────────
--- Only seeds if a demo user exists; safe to run on production (no-op if no match)
--- INSERT INTO public.pantry_items (user_id, item_name, quantity, confidence, category, source)
--- SELECT id, 'White rice', '2 cups', 'confirmed', 'Grains', 'seeded'
--- FROM auth.users WHERE email = 'demo@snippd.app'
--- ON CONFLICT DO NOTHING;
--- (Uncomment and adjust for demo seeding if needed)

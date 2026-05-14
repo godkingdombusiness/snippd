@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — SQL migration errors (2026-05-14)
+- `supabase/migrations/20260513_today_decision_and_pantry.sql` — Fixed `ERROR: 42703: column "user_id" does not exist`. Root cause: `pantry_items` and `today_setup_log` tables existed from a previous partial run without the `user_id` column; `CREATE TABLE IF NOT EXISTS` skipped recreation, then `CREATE INDEX ... (user_id)` failed. Fix: replaced `IF NOT EXISTS` guards with `DROP TABLE IF EXISTS CASCADE` before each `CREATE TABLE` so the tables are always recreated cleanly with the correct schema.
+- `supabase/migrations/20260514_subscription_tracking.sql` — Removed `full_name` from `v_expired_trials` view; that column does not exist in the production `profiles` table and would have caused a second column-not-found error.
+
 ### Changed — Stripe webhook full billing_plan wiring (2026-05-14)
 - `supabase/functions/stripe-webhook/index.ts` — Now handles 6 Stripe events. `checkout.session.completed`: sets `billing_plan` (trial/monthly/yearly from metadata), `subscription_status` (trialing/active), `stripe_customer_id`, `stripe_subscription_id`, `trial_ends_at` (now+3d if trial). `customer.subscription.created`: enriches plan from subscription interval + metadata. `customer.subscription.updated`: syncs plan changes. `customer.subscription.deleted`: marks `subscription_status='cancelled'`. `invoice.payment_succeeded`: renews `subscription_period_end`; upgrades `billing_plan` from 'trial' → 'yearly' on first real charge. `invoice.payment_failed`: marks `subscription_status='past_due'`. New helper `findUserByCustomerId()` looks up profile by `stripe_customer_id`. New `resolveBillingPlan()` helper for interval detection.
 
