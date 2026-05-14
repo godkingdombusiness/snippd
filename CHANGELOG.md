@@ -4,6 +4,16 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Full codebase audit + QuickGroceryRunScreen (2026-05-14)
+- **Full audit**: Verified all 100 screens exist and are registered in App.js. Navigation wiring is complete. No screens were overwritten or disconnected.
+- `screens/QuickGroceryRunScreen.js` — New "Quick grocery run for tonight." screen. Shows 4 seeded meal options (chicken stir fry, pasta marinara, ground beef tacos, salmon) requiring ≤5 items from the store. Context pills show remaining budget, household size, time. Each card shows estimated household cost, per-person cost, items needed, time, and goal fit. "Build quick cart" CTA navigates to `ShoppingList` with pre-filled items. "See full week plan" secondary routes to `WeeklyDinnerPlan`. Fully styled to Snippd premium design system (cream, white cards, navy, green CTA). No emojis.
+- `App.js` — Imported and registered `QuickGroceryRun` route in root stack.
+- `screens/TodayOptionsRankedScreen.js` — Fixed `quick_grocery_run` routing: was pointing to `WeeklyDinnerPlan` (wrong — full weekly plan). Now routes to `QuickGroceryRun` and passes `context` params so budget/household context is carried through.
+- `screens/DemoAdminScreen.js` — Added "Quick Grocery Run" entry to Today Decision Flow section.
+
+### Fixed — TodaySetupGateScreen TextInput black box risk (2026-05-14)
+- `screens/TodaySetupGateScreen.js` — Added `backgroundColor: 'transparent'` to TextInput style and `selectionColor={GREEN}` prop. The TextInput was relying solely on the parent card's white background, which could render as black on Android with system dark mode or autofill overlay active.
+
 ### Fixed — ProfileScreen runtime crash: Rendered more hooks than during the previous render (2026-05-14)
 - `screens/ProfileScreen.js` — `useRef(0)` and `useRef(null)` for avatar tap detection were declared AFTER the `if (loading) return (...)` early exit, violating Rules of Hooks (hooks must be called unconditionally in the same order on every render). Fixed by moving both `useRef` declarations to the top of the component, with the other hook calls. Removed the duplicate declarations that remained after the early return. This was causing a hard crash for every user who visited the Profile tab.
 

@@ -182,6 +182,7 @@ import StoreCartHandoffScreen from './screens/StoreCartHandoffScreen';
 import EatOutSmartScreen from './screens/EatOutSmartScreen';
 import UberEatsPickupHandoffScreen from './screens/UberEatsPickupHandoffScreen';
 import UberEatsDeliveryScreen from './screens/UberEatsDeliveryScreen';
+import QuickGroceryRunScreen from './screens/QuickGroceryRunScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -708,6 +709,7 @@ function RootNavigator() {
         <Stack.Screen name="EatOutSmart"           component={EatOutSmartScreen} />
         <Stack.Screen name="UberEatsPickupHandoff" component={UberEatsPickupHandoffScreen} />
         <Stack.Screen name="UberEatsDelivery"      component={UberEatsDeliveryScreen} />
+        <Stack.Screen name="QuickGroceryRun"       component={QuickGroceryRunScreen} />
         <Stack.Screen name="TrialGate"       component={TrialGateScreen} />
         <Stack.Screen name="TestAgent"       component={AppTestAgent} />
         <Stack.Screen name="MFAVerify"       component={MFAVerifyScreen} />

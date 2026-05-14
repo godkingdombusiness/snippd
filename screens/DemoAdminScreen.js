@@ -28,6 +28,7 @@ var DEMO_FLOWS = [
     items: [
       { label: 'Today Setup Gate',        icon: 'sliders',     route: 'TodaySetupGate',         color: GREEN },
       { label: 'Today Options Ranked',    icon: 'target',      route: 'TodayOptionsRanked',     color: GREEN },
+      { label: 'Quick Grocery Run',       icon: 'shopping-bag',route: 'QuickGroceryRun',        color: GREEN },
       { label: 'Today Decision (legacy)', icon: 'clock',       route: 'TodayDecision',          color: GRAY  },
       { label: 'Tonight\'s Best Move',    icon: 'star',        route: 'TodayRecommendation',    color: GREEN },
       { label: 'Eat Out Smart',           icon: 'map-pin',     route: 'EatOutSmart',            color: GREEN },

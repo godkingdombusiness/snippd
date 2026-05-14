@@ -424,6 +424,7 @@ export default function TodaySetupGateScreen(props) {
               onChangeText={setWeeklyBudget}
               placeholder="$0"
               placeholderTextColor={GRAY}
+              selectionColor={GREEN}
               keyboardType="numeric"
               returnKeyType="done"
             />
@@ -575,10 +576,12 @@ var styles = StyleSheet.create({
     paddingVertical:   12,
   },
   input: {
-    fontSize:  16,
-    color:     NAVY,
-    padding:   0,
-    margin:    0,
+    fontSize:         16,
+    color:            NAVY,
+    backgroundColor:  'transparent',
+    placeholderTextColor: GRAY,
+    padding:          0,
+    margin:           0,
   },
   inputHint: {
     marginTop:  6,

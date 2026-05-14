@@ -328,7 +328,7 @@ export default function TodayOptionsRankedScreen(props) {
         navigation.navigate('PantryInventory');
         break;
       case 'quick_grocery_run':
-        navigation.navigate('WeeklyDinnerPlan');
+        navigation.navigate('QuickGroceryRun', { context: context });
         break;
       case 'grocery_pickup':
         navigation.navigate('StorePickupHandoff');
