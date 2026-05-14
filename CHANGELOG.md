@@ -4,6 +4,33 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — Paywall flow: PersonalizationSummary → FirstShopPaywall → PaymentSuccessRedirect (2026-05-14)
+- `screens/PersonalizationSummaryScreen.js` — Post-onboarding summary screen. Shows profile summary cards (budget, household, cooking nights, stores, goals, pantry style, eat-out, stash mode). "Begin My First Shop" CTA calls `paywallGateService.checkFirstShopAccess()`. If subscription not active → routes to `FirstShopPaywall`. If active → routes directly to `TodaySetupGate`.
+- `screens/FirstShopPaywallScreen.js` — Premium paywall. Headline: "Your first smarter shop is ready." Value bullets: 5 Snippd benefits. Plan chooser: 3-day trial ($97/year) or $4.99/month. "Start My Trial" CTA activates mock trial and routes to `PaymentSuccessRedirect`. "Not Now" routes to `MainApp` (basic history preserved). No lockout of saved recipes.
+- `screens/PaymentSuccessRedirectScreen.js` — Auto-redirects ~1.8s after payment. Reads `next_route_after_payment` from profiles via `handlePostPurchaseRedirect()`. Defaults to `TodaySetupGate` if profile incomplete, `TodayOptionsRanked` otherwise. Never routes back to sign-in or paywall.
+
+### Added — Paywall services (2026-05-14)
+- `src/services/paywallGateService.js` — `checkFirstShopAccess(userId, intendedRoute, intendedParams)`, `hasActiveAccess(userId)`, `saveNextRouteAfterPayment()`, `consumeNextRouteAfterPayment()`, `handlePostPurchaseRedirect(userId)`, `activateMockTrial(userId)`. Mock trial sets `subscription_status = 'trialing'` + `trial_ends_at = now+3d`.
+- `src/services/subscriptionService.js` — `getSubscriptionSnapshot(userId)` returns full subscription state, `userHasAccess(userId)`, `formatSubscriptionStatus(status)`.
+
+### Added — SQL migration: paywall flow columns (2026-05-14)
+- `supabase/migrations/20260514_paywall_flow_columns.sql` — Adds to profiles: `first_shop_started` (bool), `paywall_seen` (bool), `personalization_summary_viewed` (bool), `next_route_after_payment` (text/JSON). Used by paywall gate and payment redirect logic.
+
+### Changed — Onboarding completes to PersonalizationSummary (2026-05-14)
+- `screens/OnboardingScreen.js` — `finishOnboarding()` now resets to `PersonalizationSummary` instead of `PlanGenerationLoading`. This inserts the personalization summary + paywall gate between onboarding and the first shop.
+
+### Changed — App.js resolveUserStatus: paywall-aware routing (2026-05-14)
+- `App.js` — `resolveUserStatus()` now checks `onboarding_completed` and `subscription_status`. New users who completed onboarding but have no subscription see `PersonalizationSummary`. `PersonalizationSummary`, `FirstShopPaywall`, `PaymentSuccessRedirect` registered as stack screens with `gestureEnabled: false`.
+
+### Fixed — SignInScreen: input black box + inner component remount (2026-05-14)
+- `screens/SignInScreen.js` — Root cause of the black box: `FormPanel` was defined as `const FormPanel = () =>` inside `SignInScreen` and used as `<FormPanel />`. This caused the entire form tree (including `TextInput` elements) to remount on every parent render, destroying cursor state and causing Android to show a black autofill overlay. Fix: converted to `renderFormPanel()` called directly. Also: removed billing plan chooser from sign-up (paywall now shown after onboarding). Sign-up always sets `billing_plan: 'trial'`. Added `trialNote` banner. `input` fontSize bumped to 16, `minHeight: 52` on inputWrap, explicit `placeholderTextColor: GRAY`.
+
+### Fixed — SmartStartScreen: undefined `action` variable (2026-05-14)
+- `screens/SmartStartScreen.js` — Lines 132 and 147 referenced undefined `action` variable. Changed to `nbaAction` (the correctly-scoped state variable).
+
+### Fixed — DemoAdminScreen: wrong route name for Deep Brief (2026-05-14)
+- `screens/DemoAdminScreen.js` — "Deep Brief" item routed to `'SnippdDeepBrief'` which is not a registered route name. Fixed to `'ConciergeOnboarding'` (the registered name). Added new "Paywall Flow" section with PersonalizationSummary, FirstShopPaywall, PaymentSuccessRedirect demo entries. Fixed "Sign In" route from `'SignIn'` to `'Auth'`.
+
 ### Fixed — SQL migration errors (2026-05-14)
 - `supabase/migrations/20260513_today_decision_and_pantry.sql` — Fixed `ERROR: 42703: column "user_id" does not exist`. Root cause: `pantry_items` and `today_setup_log` tables existed from a previous partial run without the `user_id` column; `CREATE TABLE IF NOT EXISTS` skipped recreation, then `CREATE INDEX ... (user_id)` failed. Fix: replaced `IF NOT EXISTS` guards with `DROP TABLE IF EXISTS CASCADE` before each `CREATE TABLE` so the tables are always recreated cleanly with the correct schema.
 - `supabase/migrations/20260514_subscription_tracking.sql` — Removed `full_name` from `v_expired_trials` view; that column does not exist in the production `profiles` table and would have caused a second column-not-found error.

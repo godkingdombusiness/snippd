@@ -84,12 +84,20 @@ var DEMO_FLOWS = [
     ],
   },
   {
+    section: 'Paywall Flow',
+    items: [
+      { label: 'Personalization Summary', icon: 'star',        route: 'PersonalizationSummary', color: GREEN },
+      { label: 'First Shop Paywall',      icon: 'credit-card', route: 'FirstShopPaywall',       color: GREEN },
+      { label: 'Payment Success',         icon: 'check-circle',route: 'PaymentSuccessRedirect', color: GREEN },
+    ],
+  },
+  {
     section: 'Onboarding & Auth',
     items: [
-      { label: 'Sign In',                 icon: 'log-in',      route: 'SignIn',                 color: GRAY  },
+      { label: 'Sign In',                 icon: 'log-in',      route: 'Auth',                   color: GRAY  },
       { label: 'Onboarding',             icon: 'user-plus',   route: 'Onboarding',             color: GRAY  },
       { label: 'Smart Start',            icon: 'play',        route: 'SmartStart',             color: GRAY  },
-      { label: 'Deep Brief',             icon: 'settings',    route: 'SnippdDeepBrief',        color: GRAY  },
+      { label: 'Deep Brief',             icon: 'settings',    route: 'ConciergeOnboarding',    color: GRAY  },
     ],
   },
   {

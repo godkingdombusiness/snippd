@@ -129,7 +129,7 @@ export default function SmartStartScreen({ navigation, route }) {
       icon: 'plus-circle',
       label: 'Add items I already know I need',
       sublabel: null,
-      onPress: () => navigation.navigate('AddNeeds', { action }),
+      onPress: () => navigation.navigate('AddNeeds', { action: nbaAction }),
     },
     {
       id: 'tonight',
@@ -144,7 +144,7 @@ export default function SmartStartScreen({ navigation, route }) {
       label: 'Check a receipt',
       sublabel: ACTION_SUBLABELS[nbaAction] && highlighted === 'receipt'
         ? ACTION_SUBLABELS[nbaAction] : null,
-      onPress: () => navigation.navigate('ReceiptPrompt', { action }),
+      onPress: () => navigation.navigate('ReceiptPrompt', { action: nbaAction }),
     },
     {
       id: 'browse',

@@ -167,6 +167,10 @@ import RecipeVaultScreen from './screens/RecipeVaultScreen';
 import SavedRecipesScreen from './screens/SavedRecipesScreen';
 import TodayRecommendationScreen from './screens/TodayRecommendationScreen';
 import DemoAdminScreen from './screens/DemoAdminScreen';
+// ── PAYWALL FLOW ─────────────────────────────────────────────────────────────
+import PersonalizationSummaryScreen from './screens/PersonalizationSummaryScreen';
+import FirstShopPaywallScreen from './screens/FirstShopPaywallScreen';
+import PaymentSuccessRedirectScreen from './screens/PaymentSuccessRedirectScreen';
 // ── TODAY DECISION FLOW ──────────────────────────────────────────────────────
 import TodaySetupGateScreen from './screens/TodaySetupGateScreen';
 import TodayOptionsRankedScreen from './screens/TodayOptionsRankedScreen';
@@ -448,21 +452,54 @@ function MainTabs() {
 // dashboard — they are always guided to their next meaningful action.
 async function resolveUserStatus(userId) {
   try {
-    // 1. Check if the Snippd Deep Brief is still needed (one-time prompt)
+    // 1. Check onboarding + personalization summary status from profiles
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarding_complete, onboarding_completed, subscription_status, billing_plan')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const onboardingDone = !!(profile?.onboarding_complete || profile?.onboarding_completed);
+    const subStatus      = profile?.subscription_status || 'none';
+    const hasAccess      = ['active', 'trialing'].includes(subStatus);
+
+    // New user who just finished onboarding → PersonalizationSummary before paywall
+    if (!onboardingDone) {
+      return 'Onboarding';
+    }
+
+    // Onboarding done but no subscription yet → show personalization summary
+    // (they will tap "Begin My First Shop" which then triggers the paywall gate)
+    if (!hasAccess && profile) {
+      // Only redirect to PersonalizationSummary for genuinely new users;
+      // returning unpaid users go straight to MainApp and see the paywall
+      // when they attempt a premium action
+      const { data: plan } = await supabase
+        .from('profiles')
+        .select('first_shop_started')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!plan?.first_shop_started) {
+        return 'PersonalizationSummary';
+      }
+    }
+
+    // 2. Check if the Snippd Deep Brief is still needed (one-time prompt)
     const { data: persona } = await supabase
       .from('user_persona')
       .select('status, briefing_completed')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    const status            = persona?.status;
+    const personaStatus     = persona?.status;
     const briefingCompleted = persona?.briefing_completed ?? false;
 
-    if (status === 'launched' && !briefingCompleted) {
+    if (personaStatus === 'launched' && !briefingCompleted) {
       return 'ConciergeOnboarding';
     }
 
-    // 2. Run the Next-Best-Action router
+    // 3. Run the Next-Best-Action router
     const { route } = await getNextBestAction(userId);
     return route;
   } catch (_) {
@@ -621,8 +658,12 @@ function RootNavigator() {
         initialRouteName={resolvedRoute}
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Auth"                  component={SignInScreen} />
-        <Stack.Screen name="Onboarding"            component={OnboardingScreen} />
+        <Stack.Screen name="Auth"                       component={SignInScreen} />
+        <Stack.Screen name="Onboarding"                 component={OnboardingScreen} />
+        {/* ── Paywall flow ──────────────────────────────────────────────── */}
+        <Stack.Screen name="PersonalizationSummary"     component={PersonalizationSummaryScreen} options={{ gestureEnabled: false }} />
+        <Stack.Screen name="FirstShopPaywall"           component={FirstShopPaywallScreen} options={{ gestureEnabled: false }} />
+        <Stack.Screen name="PaymentSuccessRedirect"     component={PaymentSuccessRedirectScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="PersonalityResult"     component={PersonalityResultScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="SoftPersonalization"   component={SoftPersonalizationScreen} />
         <Stack.Screen name="UnlockBeta"            component={UnlockBetaScreen} />

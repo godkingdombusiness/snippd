@@ -186,7 +186,7 @@ export default function OnboardingScreen({ navigation }) {
       console.warn('[Onboarding] save error', e);
     }
     setSaving(false);
-    navigation.reset({ index: 0, routes: [{ name: 'PlanGenerationLoading' }] });
+    navigation.reset({ index: 0, routes: [{ name: 'PersonalizationSummary' }] });
   }
 
   // ── Step 0: Welcome ──────────────────────────────────────────────────────────
