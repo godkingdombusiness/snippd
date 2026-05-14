@@ -214,6 +214,7 @@ export default function SignInScreen({ navigation }) {
   const [errorMsg,      setErrorMsg]      = useState('');
   const [infoMsg,       setInfoMsg]       = useState('');
   const [focusedField,  setFocusedField]  = useState(null);
+  const [billingPlan,   setBillingPlan]   = useState('trial'); // 'trial' | 'monthly'
 
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
@@ -252,10 +253,11 @@ export default function SignInScreen({ navigation }) {
         if (error) throw error;
         if (data?.user) {
           await supabase.from('profiles').upsert({
-            user_id:       data.user.id,
-            email:         data.user.email,
-            full_name:     data.user.email?.split('@')[0],
-            weekly_budget: 15000,
+            user_id:        data.user.id,
+            email:          data.user.email,
+            full_name:      data.user.email?.split('@')[0],
+            weekly_budget:  15000,
+            billing_plan:   billingPlan,
           }, { onConflict: 'user_id', ignoreDuplicates: true });
           if (data.session) {
             tracker.setAccessToken(data.session.access_token);
@@ -431,6 +433,58 @@ export default function SignInScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
+          {/* Pricing section — signup only */}
+          {tab === 'signup' && (
+            <View style={form.pricingSection}>
+              <Text style={form.pricingHeading}>Choose how to start</Text>
+
+              {/* Trial option */}
+              <TouchableOpacity
+                style={[form.planOption, billingPlan === 'trial' && form.planOptionActive]}
+                onPress={() => setBillingPlan('trial')}
+                activeOpacity={0.8}
+              >
+                <View style={[form.planRadio, billingPlan === 'trial' && form.planRadioActive]}>
+                  {billingPlan === 'trial' && <View style={form.planRadioDot} />}
+                </View>
+                <View style={form.planText}>
+                  <Text style={[form.planTitle, billingPlan === 'trial' && form.planTitleActive]}>
+                    3-day free trial
+                  </Text>
+                  <Text style={form.planSub}>
+                    Then $97/year — founding member rate
+                  </Text>
+                </View>
+                <View style={form.planBadge}>
+                  <Text style={form.planBadgeText}>Best value</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Monthly option */}
+              <TouchableOpacity
+                style={[form.planOption, billingPlan === 'monthly' && form.planOptionActive]}
+                onPress={() => setBillingPlan('monthly')}
+                activeOpacity={0.8}
+              >
+                <View style={[form.planRadio, billingPlan === 'monthly' && form.planRadioActive]}>
+                  {billingPlan === 'monthly' && <View style={form.planRadioDot} />}
+                </View>
+                <View style={form.planText}>
+                  <Text style={[form.planTitle, billingPlan === 'monthly' && form.planTitleActive]}>
+                    $4.99/month
+                  </Text>
+                  <Text style={form.planSub}>No trial — start right away, cancel anytime</Text>
+                </View>
+              </TouchableOpacity>
+
+              <Text style={form.pricingDisclosure}>
+                {billingPlan === 'trial'
+                  ? 'Your 3-day free trial starts today. After 3 days, $97 is charged annually. Cancel before your trial ends to avoid any charges.'
+                  : '$4.99 is charged monthly. Cancel anytime from your account settings.'}
+              </Text>
+            </View>
+          )}
+
           {/* Error / info */}
           {!!errorMsg && <Text style={form.errorTxt}>{errorMsg}</Text>}
           {!!infoMsg  && <Text style={form.infoTxt}>{infoMsg}</Text>}
@@ -446,18 +500,26 @@ export default function SignInScreen({ navigation }) {
               <ActivityIndicator color={WHITE} />
             ) : (
               <Text style={form.submitBtnTxt}>
-                {tab === 'signin' ? 'Sign In' : 'Create an Account'}
+                {tab === 'signin'
+                  ? 'Sign In'
+                  : billingPlan === 'trial'
+                  ? 'Start 3-day Free Trial'
+                  : 'Subscribe at $4.99/mo'}
               </Text>
             )}
           </TouchableOpacity>
 
           {/* Trust copy */}
-          <Text style={form.trustCopy}>Plan smarter. Save more. Stress less.</Text>
+          <Text style={form.trustCopy}>
+            {tab === 'signup'
+              ? 'No surprise charges. Cancel before trial ends to pay nothing.'
+              : 'Plan smarter. Save more. Stress less.'}
+          </Text>
 
           {/* Bottom switch link */}
           <Text style={form.bottomLink}>
             {tab === 'signin'
-              ? <Text>No account yet?<Text style={form.bottomLinkA} onPress={() => switchTab('signup')}> Create an Account</Text></Text>
+              ? <Text>No account yet?<Text style={form.bottomLinkA} onPress={() => switchTab('signup')}> Start your free trial</Text></Text>
               : <Text>Already have an account?<Text style={form.bottomLinkA} onPress={() => switchTab('signin')}> Sign In</Text></Text>
             }
           </Text>
@@ -778,6 +840,67 @@ const form = StyleSheet.create({
   // Bottom link
   bottomLink:  { textAlign: 'center', fontSize: 13, color: GRAY },
   bottomLinkA: { color: GREEN, fontWeight: '700' },
+
+  // Pricing section
+  pricingSection: {
+    marginTop: 4,
+    marginBottom: 16,
+    gap: 10,
+  },
+  pricingHeading: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: GRAY,
+    marginBottom: 4,
+  },
+  planOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: WHITE,
+  },
+  planOptionActive: {
+    borderColor: GREEN,
+    backgroundColor: MINT_BG,
+  },
+  planRadio: {
+    width: 20, height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  planRadioActive: { borderColor: GREEN },
+  planRadioDot: {
+    width: 9, height: 9,
+    borderRadius: 4.5,
+    backgroundColor: GREEN,
+  },
+  planText:  { flex: 1 },
+  planTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 2 },
+  planTitleActive: { color: GREEN },
+  planSub:   { fontSize: 12, color: GRAY, lineHeight: 16 },
+  planBadge: {
+    backgroundColor: 'rgba(12,158,84,0.12)',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  planBadgeText: { fontSize: 10, fontWeight: '700', color: GREEN },
+  pricingDisclosure: {
+    fontSize: 11,
+    color: GRAY,
+    lineHeight: 16,
+    paddingHorizontal: 2,
+  },
 });
 
 // ── Root layout ───────────────────────────────────────────────────────────────

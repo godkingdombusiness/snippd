@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { adjustCookingInstructions } from '../src/services/contextualCookingService';
+import { tracker } from '../src/lib/eventTracker';
 
 var GREEN  = '#0C9E54';
 var NAVY   = '#172250';
@@ -46,6 +47,11 @@ function ContextualCookingScreen(props) {
   var [activeMethod, setActiveMethod] = useState('air_fryer');
   var result = adjustCookingInstructions(meal, activeMethod);
 
+  function handleMethodChange(methodId) {
+    tracker.track('cooking_method_changed', { method: methodId, meal_id: meal.meal_id });
+    setActiveMethod(methodId);
+  }
+
   function handleBack() {
     if (navigation && navigation.canGoBack()) navigation.goBack();
   }
@@ -77,7 +83,7 @@ function ContextualCookingScreen(props) {
               <TouchableOpacity
                 key={m.id}
                 style={[styles.methodChip, isActive && styles.methodChipActive]}
-                onPress={function () { setActiveMethod(m.id); }}
+                onPress={function () { handleMethodChange(m.id); }}
                 activeOpacity={0.75}
               >
                 <Feather name={m.icon} size={16} color={isActive ? WHITE : GRAY} />

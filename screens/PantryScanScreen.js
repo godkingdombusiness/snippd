@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { returnSeededPantryScan } from '../src/services/pantryVisionService';
+import { tracker } from '../src/lib/eventTracker';
 
 var GREEN  = '#0C9E54';
 var NAVY   = '#172250';
@@ -29,9 +30,11 @@ function PantryScanScreen(props) {
   }
 
   function handleScan() {
+    tracker.track('pantry_scan_started', { method: 'camera' });
     setScanning(true);
     setTimeout(function () {
       var items = returnSeededPantryScan();
+      tracker.track('pantry_scan_completed', { item_count: items.length, method: 'seeded' });
       setScanning(false);
       setScanDone(true);
       navigation.navigate('PantryReview', { items: items });
@@ -39,7 +42,9 @@ function PantryScanScreen(props) {
   }
 
   function handleManual() {
+    tracker.track('pantry_scan_started', { method: 'demo_results' });
     var items = returnSeededPantryScan();
+    tracker.track('pantry_scan_completed', { item_count: items.length, method: 'seeded' });
     navigation.navigate('PantryReview', { items: items });
   }
 

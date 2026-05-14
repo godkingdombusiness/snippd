@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import StoreHandoffCard from '../src/components/store/StoreHandoffCard';
+import { tracker } from '../src/lib/eventTracker';
 
 var GREEN  = '#0C9E54';
 var NAVY   = '#172250';
@@ -55,15 +56,21 @@ var UBER_EATS_STORE = {
 function StoreExportScreen(props) {
   var navigation = props.navigation;
 
+  useEffect(function () {
+    tracker.track('store_export_started', { store_count: SEEDED_STORES.length });
+  }, []);
+
   function handleBack() {
     if (navigation && navigation.canGoBack()) navigation.goBack();
   }
 
   function handleViewList(store) {
+    tracker.track('store_export_clicked', { store_id: store.store_id, store_name: store.store_name });
     navigation.navigate('ShoppingList', { storeId: store.store_id, storeName: store.store_name });
   }
 
   function handleUberEats() {
+    tracker.track('uber_eats_handoff_clicked', { source: 'store_export', option_type: 'uber_eats_pickup' });
     navigation.navigate('UberEatsHandoff', { optionType: 'uber_eats_pickup', score: 62 });
   }
 

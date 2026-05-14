@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { tracker } from '../src/lib/eventTracker';
 
 var GREEN  = '#0C9E54';
 var NAVY   = '#172250';
@@ -144,6 +145,10 @@ function RecipeVaultScreen(props) {
   var navigation = props.navigation;
   var [activeFilter, setActiveFilter] = useState('All');
   var FILTERS = ['All', 'Breakfast', 'Lunch', 'Dinner'];
+
+  useEffect(function () {
+    tracker.track('recipe_vault_opened', { recipe_count: SEEDED_RECIPES.length });
+  }, []);
 
   function handleBack() {
     if (navigation && navigation.canGoBack()) navigation.goBack();

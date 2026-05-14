@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { tracker } from '../src/lib/eventTracker';
 
 var GREEN  = '#0C9E54';
 var NAVY   = '#172250';
@@ -54,6 +55,10 @@ export default function UberEatsHandoffScreen(props) {
   var score      = params.score || null;
 
   var meta = OPTION_META[optionType] || OPTION_META.uber_eats_pickup;
+
+  useEffect(function () {
+    tracker.track('uber_eats_handoff_clicked', { option_type: optionType, score: score });
+  }, []);
 
   function handleBack() {
     if (navigation && navigation.canGoBack()) {

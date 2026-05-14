@@ -4,6 +4,18 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — SignInScreen pricing/trial disclosure (2026-05-13)
+- `screens/SignInScreen.js` — Added pricing section to the signup tab. Two billing options: (1) 3-day free trial → $97/year founding member rate auto-billed at trial end; (2) $4.99/month, no trial, cancel anytime. Radio-style plan selector with "Best value" badge on trial option. Submit button changes to "Start 3-day Free Trial" or "Subscribe at $4.99/mo" based on selection. Trust copy under submit: "No surprise charges. Cancel before trial ends to pay nothing." Bottom link updated to "Start your free trial". Billing plan stored in `profiles.billing_plan` on sign-up. Pricing disclosure text updates per selected plan.
+
+### Added — Analytics events for new screens (2026-05-13)
+- `screens/PantryScanScreen.js` — Tracks `pantry_scan_started` (method: camera/demo_results) and `pantry_scan_completed` (item_count, method: seeded).
+- `screens/PantryReviewScreen.js` — Tracks `pantry_items_confirmed` (confirmed_count, total_detected).
+- `screens/ContextualCookingScreen.js` — Tracks `cooking_method_changed` (method, meal_id) on each method selection.
+- `screens/StoreExportScreen.js` — Tracks `store_export_started` on mount (store_count). Tracks `store_export_clicked` (store_id, store_name) per store tap. Tracks `uber_eats_handoff_clicked` (source: store_export).
+- `screens/RecipeVaultScreen.js` — Tracks `recipe_vault_opened` (recipe_count) on mount.
+- `screens/UberEatsHandoffScreen.js` — Tracks `uber_eats_handoff_clicked` (option_type, score) on mount.
+- `src/components/weeklyPlan/MealShiftModal.js` — Tracks `meal_shift_prompted` when modal becomes visible. Tracks `meal_shift_accepted` (choice, meal_name) on confirm. Tracks `meal_shift_declined` (meal_name) when dismissed without selection.
+
 ### Added — Competitor-informed feature set: screens + components + services (2026-05-13)
 - `screens/PantryScanScreen.js` — Pantry photo scan screen. "Scan what you have." headline, viewfinder mock with green corner brackets, 1.4s simulated scan using `pantryVisionService.returnSeededPantryScan()`, routes to PantryReview on completion.
 - `screens/PantryReviewScreen.js` — Pantry confirmation screen. Shows 8 seeded scan results using `PantryItemCard`. Keep/Edit/Remove per item. "Use X items in my plan" CTA routes to WeeklyDinnerPlan. Detected / Confirmed / Unreviewed summary strip.

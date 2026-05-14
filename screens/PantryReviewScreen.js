@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import PantryItemCard from '../src/components/pantry/PantryItemCard';
 import { returnSeededPantryScan } from '../src/services/pantryVisionService';
+import { tracker } from '../src/lib/eventTracker';
 
 var GREEN  = '#0C9E54';
 var NAVY   = '#172250';
@@ -60,9 +61,11 @@ function PantryReviewScreen(props) {
 
   function handleUseItems() {
     var keptItems = items.filter(function (i) { return kept[i.id]; });
-    if (keptItems.length === 0) {
-      keptItems = items;
-    }
+    if (keptItems.length === 0) { keptItems = items; }
+    tracker.track('pantry_items_confirmed', {
+      confirmed_count: keptItems.length,
+      total_detected:  items.length,
+    });
     navigation.navigate('WeeklyDinnerPlan');
   }
 

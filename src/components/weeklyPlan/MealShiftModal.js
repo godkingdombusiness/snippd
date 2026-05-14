@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { tracker } from '../../lib/eventTracker';
 
 var GREEN  = '#0C9E54';
 var NAVY   = '#172250';
@@ -52,10 +53,20 @@ function MealShiftModal(props) {
 
   var [selected, setSelected] = useState(null);
 
+  useEffect(function () {
+    if (visible) { tracker.track('meal_shift_prompted', { meal_name: mealName }); }
+  }, [visible]);
+
   function handleConfirm() {
+    tracker.track('meal_shift_accepted', { choice: selected, meal_name: mealName });
     if (selected === 'shift' && onShift)  { onShift();  return; }
     if (selected === 'skip'  && onSkip)   { onSkip();   return; }
     if (selected === 'keep'  && onKeep)   { onKeep();   return; }
+    if (onDismiss) onDismiss();
+  }
+
+  function handleDismiss() {
+    if (!selected) { tracker.track('meal_shift_declined', { meal_name: mealName }); }
     if (onDismiss) onDismiss();
   }
 
@@ -66,7 +77,7 @@ function MealShiftModal(props) {
       animationType="slide"
       onRequestClose={onDismiss}
     >
-      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onDismiss}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={handleDismiss}>
         <TouchableOpacity style={styles.sheet} activeOpacity={1}>
           <View style={styles.handle} />
 
@@ -136,7 +147,7 @@ function MealShiftModal(props) {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelBtn} onPress={onDismiss} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={handleDismiss} activeOpacity={0.7}>
             <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
         </TouchableOpacity>
