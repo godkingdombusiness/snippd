@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome screen typography polish: weight, tracking, line-height (2026-05-16)
+- `screens/SignInScreen.js` — headline `fontWeight` 700→600 (clean semi-bold, eliminates blocky stroke); `letterSpacing` 0.5→2 (letters breathe, premium feel); `lineHeight` 58→64 (comfortable gap between 'Welcome to' and 'Snippd'); added `alignSelf: 'stretch'` on headline so text container spans full padded width symmetrically (fixes optical off-center); subtitle `paddingHorizontal` 20→12; logo 224×80→252×90.
+- `screens/OnboardingScreen.js` — identical changes mirrored for step 0.
+
 ### Changed — welcome screen seamless gradient + refined typography (2026-05-16)
 - `screens/SignInScreen.js` — replaced two-layer (vertical + horizontal) gradient system (which caused a visible seam at top: 30%) with a single seamless 5-stop LinearGradient as root container: near-black forest at top → smooth dark green through 52% → richer emerald at 76% → fades back; headline weight 800→700, size 48→42pt, letterSpacing -0.5→+0.5, lineHeight 52→58 for breathing room; subtitle paddingHorizontal 36→20 for clean 2-line span; logo scaled to 224×80 (up 18% from 190×68).
 - `screens/OnboardingScreen.js` — same gradient, typography, and logo changes mirrored; removed dead `heroGradientFill` and `heroGlowFill` style keys.

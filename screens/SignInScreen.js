@@ -702,16 +702,17 @@ var welcome = StyleSheet.create({
 
   // Top zone
   topGroup:  { alignItems: 'center', paddingHorizontal: 24 },
-  logoImg:   { width: 224, height: 80, marginBottom: 18 },
+  logoImg:   { width: 252, height: 90, marginBottom: 18 },
   headline: {
-    fontSize: 42, fontWeight: '700', color: WHITE,
-    textAlign: 'center', letterSpacing: 0.5,
-    lineHeight: 58, marginBottom: 12,
+    fontSize: 42, fontWeight: '600', color: WHITE,
+    textAlign: 'center', letterSpacing: 2,
+    lineHeight: 64, marginBottom: 12,
+    alignSelf: 'stretch',
   },
   sub: {
     fontSize: 13, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', fontWeight: 'normal',
-    lineHeight: 20, paddingHorizontal: 20,
+    lineHeight: 20, paddingHorizontal: 12,
   },
 
   // Middle zone: 78% width, marginTop auto sinks bag toward CTAs
