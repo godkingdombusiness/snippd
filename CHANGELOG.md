@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — What Matters Most: 2-column grid cards with vertical stack layout (2026-05-16)
+- `screens/OnboardingScreen.js` — MISSIONS labels shortened ("Save Money", "Plan My Meals", "Eat Healthier", "Manage Health", "Feed My Family", "Keep It Simple"); icons updated to match; MissionCard rewritten from horizontal row to near-square 2-column grid card (Icon → Bold Title → Description, vertical stack); unselected state: white card, `#E5E7EB` border, faint circle checkbox top-right; selected state: GREEN border, GREEN label + sub + icon, solid GREEN circle with white check; mList changed to `flexDirection: row, flexWrap: wrap`; BigBtn replaced with custom Continue button (centered text, absolute-right arrow).
+
 ### Changed — app flow wiring: persona reveal → daily intent filter (2026-05-16)
 - `screens/OnboardingScreen.js` — step 7 CTA button label changed "Build My Plan" → "Find Out My Shopping Persona" to match the reveal-intent language in the App User Flow Blueprint.
 - `screens/PersonaRevealScreen.js` — CTA now routes to `TodayDecision` (`navigation.navigate('TodayDecision')`) instead of `MainApp`; button label updated "Go to My Dashboard" → "See What's For Today" to align with the Daily Intent Filter step.

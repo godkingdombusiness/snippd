@@ -57,12 +57,12 @@ var DEMO_PROFILE = {
 // ── Static data (module scope to avoid re-creation on render) ─────────────────
 
 var MISSIONS = [
-  { id: 'pure_savings',        label: 'Save as much as possible', sub: 'Find deals, coupons, and stack the best savings.',    icon: 'trending-up' },
-  { id: 'meal_planning',       label: 'Plan weekly meals',         sub: 'Plan meals and shop with savings in mind.',           icon: 'calendar' },
-  { id: 'athletic_fuel',       label: 'Fuel my fitness goals',     sub: 'High-protein, performance-focused meal choices.',     icon: 'activity' },
-  { id: 'clinical_guardrails', label: 'Manage health conditions',  sub: 'Dietary needs and health-focused grocery planning.',  icon: 'shield' },
-  { id: 'family_optimization', label: 'Feed my whole family',      sub: 'Stretch your budget to feed every household member.', icon: 'users' },
-  { id: 'convenience',         label: 'Quick and easy meals',      sub: 'Get what I need, fast, with minimal effort.',         icon: 'zap' },
+  { id: 'pure_savings',        label: 'Save Money',     sub: 'Find deals, coupons, and stack savings.',          icon: 'dollar-sign' },
+  { id: 'meal_planning',       label: 'Plan My Meals',  sub: 'Shop smarter with weekly meal planning.',           icon: 'calendar' },
+  { id: 'athletic_fuel',       label: 'Eat Healthier',  sub: 'High-protein & nutrition-focused choices.',         icon: 'heart' },
+  { id: 'clinical_guardrails', label: 'Manage Health',  sub: 'Dietary needs, allergens & health goals.',          icon: 'shield' },
+  { id: 'family_optimization', label: 'Feed My Family', sub: 'Stretch your budget for everyone at home.',         icon: 'users' },
+  { id: 'convenience',         label: 'Keep It Simple', sub: 'Quick picks, minimal effort, less stress.',         icon: 'zap' },
 ];
 
 var BUDGET_PRESETS = ['75', '100', '150', '200', '250', '300', '400'];
@@ -354,17 +354,20 @@ function MissionCard({ label, sub, icon, selected, onPress }) {
       onPress={onPress}
       activeOpacity={0.78}
     >
-      <View style={[s.mIcon, selected && s.mIconOn]}>
-        <Feather name={icon} size={22} color={selected ? WHITE : GREEN} />
+      {/* Top-right circle checkbox */}
+      <View style={s.mCheckWrap}>
+        <View style={[s.mCheck, selected && s.mCheckOn]}>
+          {selected && <Feather name="check" size={10} color={WHITE} />}
+        </View>
       </View>
-      <View style={s.mBody}>
-        <Text style={[s.mLabel, selected && s.mLabelOn]}>{label}</Text>
-        <Text style={[s.mSub, selected && s.mSubOn]} numberOfLines={2}>{sub}</Text>
+      {/* Icon */}
+      <View style={s.mIconWrap}>
+        <Feather name={icon} size={24} color={selected ? GREEN : NAVY} />
       </View>
-      {selected
-        ? <Feather name="check-circle" size={20} color={GREEN} />
-        : <Feather name="chevron-right" size={18} color={GRAY} />
-      }
+      {/* Title */}
+      <Text style={[s.mLabel, selected && s.mLabelOn]}>{label}</Text>
+      {/* Description */}
+      <Text style={[s.mSub, selected && s.mSubOn]}>{sub}</Text>
     </TouchableOpacity>
   );
 }
@@ -569,7 +572,10 @@ export default function OnboardingScreen({ navigation }) {
             );
           })}
         </View>
-        <BigBtn label="Continue" onPress={next} />
+        <TouchableOpacity style={s.mContinueBtn} onPress={next} activeOpacity={0.88}>
+          <Text style={s.mContinueTxt}>Continue</Text>
+          <Feather name="arrow-right" size={18} color={WHITE} style={s.mContinueArrow} />
+        </TouchableOpacity>
       </ScrollView>
     );
   }
@@ -1066,26 +1072,40 @@ var s = StyleSheet.create({
   step1Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 16 },
   step1Headline:  { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 10, textAlign: 'center' },
   step1Sub:       { fontSize: 13, color: '#9CA3AF', lineHeight: 20, fontWeight: '400', marginBottom: 28, textAlign: 'center' },
-  mList:          { gap: 10, marginBottom: 24 },
+  mList:          { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
   mCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: WHITE, borderRadius: 16,
-    borderWidth: 1.5, borderColor: BORDER,
-    paddingVertical: 16, paddingHorizontal: 16,
+    width: '47.5%', backgroundColor: WHITE,
+    borderRadius: 16, borderWidth: 1.5, borderColor: '#E5E7EB',
+    padding: 14, minHeight: 130, position: 'relative',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  mCardOn:   { borderColor: GREEN },
-  mIcon: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: MINT, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  mCardOn:      { borderColor: GREEN },
+  mCheckWrap:   { position: 'absolute', top: 10, right: 10 },
+  mCheck: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 1.5, borderColor: '#D1D5DB',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: WHITE,
   },
-  mIconOn:   { backgroundColor: GREEN },
-  mBody:     { flex: 1 },
-  mLabel:    { fontSize: 15, fontWeight: '700', color: NAVY, marginBottom: 2 },
-  mLabelOn:  { color: NAVY },
-  mSub:      { fontSize: 12, color: GRAY, lineHeight: 17 },
-  mSubOn:    { color: GRAY },
+  mCheckOn:     { backgroundColor: GREEN, borderColor: GREEN },
+  mIconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10,
+  },
+  mLabel:       { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 4 },
+  mLabelOn:     { color: GREEN },
+  mSub:         { fontSize: 11, color: GRAY, lineHeight: 15 },
+  mSubOn:       { color: GREEN },
+  mContinueBtn: {
+    backgroundColor: GREEN, borderRadius: 14,
+    paddingVertical: 16, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
+  mContinueTxt:   { fontSize: 16, fontWeight: '600', color: WHITE },
+  mContinueArrow: { position: 'absolute', right: 20 },
 
   // ── Content layout ──
   scroll:     { paddingHorizontal: 24, paddingBottom: 56, paddingTop: 4 },
