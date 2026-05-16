@@ -365,11 +365,21 @@ export default function SignInScreen({ navigation }) {
   // Called as {renderWelcome()} — NOT as <Welcome />.
   function renderWelcome() {
     return (
-      <LinearGradient
-        colors={['#061209', '#0A2314', '#0E4A22', '#0A2314', '#061209']}
-        locations={[0, 0.18, 0.62, 0.82, 1]}
-        style={welcome.root}
-      >
+      <View style={welcome.root}>
+        {/* Vertical gradient: near-black top/bottom, emerald hotspot at 68% */}
+        <LinearGradient
+          colors={['#030A05', '#030A05', '#0D4524', '#030A05']}
+          locations={[0, 0.3, 0.68, 1]}
+          style={welcome.gradientFill}
+        />
+        {/* Horizontal glow layer: widens the emerald spotlight behind the bag */}
+        <LinearGradient
+          colors={['transparent', 'rgba(10,58,26,0.55)', 'transparent']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={welcome.glowFill}
+        />
+
         <StatusBar barStyle="light-content" />
         <ScrollView
           contentContainerStyle={welcome.scroll}
@@ -383,13 +393,13 @@ export default function SignInScreen({ navigation }) {
               style={welcome.logoImg}
               resizeMode="contain"
             />
-            <Text style={welcome.headline}>Welcome to Snippd</Text>
+            <Text style={welcome.headline}>{'Welcome to\nSnippd'}</Text>
             <Text style={welcome.sub}>
               Smarter grocery planning,{'\n'}less waste, more time for you.
             </Text>
           </View>
 
-          {/* HERO — positioned lower via marginTop auto, 73% width */}
+          {/* HERO — marginTop auto sinks bag toward CTAs, leaving dark space above */}
           <Image
             source={require('../assets/grocery-bag-tall-hero.png')}
             style={welcome.heroImg}
@@ -424,7 +434,7 @@ export default function SignInScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
     );
   }
 
@@ -690,33 +700,38 @@ var hero = StyleSheet.create({
 
 // ── Welcome landing styles ─────────────────────────────────────────────────────
 var welcome = StyleSheet.create({
-  root:  { flex: 1 },
-  // flex-start layout: top group anchors top, hero uses marginTop auto to sink toward CTAs
+  root:  { flex: 1, backgroundColor: '#030A05' },
+  // Vertical spotlight: near-black → emerald hotspot at 68% → near-black
+  gradientFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  // Horizontal glow: widens the emerald ellipse behind the bag center
+  glowFill: { position: 'absolute', left: 0, right: 0, top: '30%', bottom: '12%' },
+
+  // flex-start: top group anchors top, hero sinks via marginTop auto
   scroll: {
     flexGrow: 1,
-    paddingTop: 28,
+    paddingTop: 32,
     paddingBottom: 28,
     justifyContent: 'flex-start',
   },
 
-  // Top zone: logo + headline + subtitle
+  // Top zone
   topGroup:  { alignItems: 'center', paddingHorizontal: 24 },
-  logoImg:   { width: 140, height: 50, marginBottom: 14 },
+  logoImg:   { width: 190, height: 68, marginBottom: 18 },
   headline: {
-    fontSize: 30, fontWeight: '700', color: WHITE,
-    textAlign: 'center', letterSpacing: 0.3,
-    lineHeight: 38, marginBottom: 8,
+    fontSize: 48, fontWeight: '800', color: WHITE,
+    textAlign: 'center', letterSpacing: -0.5,
+    lineHeight: 52, marginBottom: 12,
   },
   sub: {
-    fontSize: 14, color: 'rgba(255,255,255,0.85)',
+    fontSize: 13, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', fontWeight: 'normal',
-    lineHeight: 21,
+    lineHeight: 20, paddingHorizontal: 36,
   },
 
-  // Middle zone: 73% width, marginTop auto pushes bag down toward CTAs
-  heroImg: { width: '73%', height: 380, alignSelf: 'center', marginTop: 'auto', marginBottom: 20 },
+  // Middle zone: 78% width, marginTop auto sinks bag toward CTAs
+  heroImg: { width: '78%', height: 410, alignSelf: 'center', marginTop: 'auto', marginBottom: 16 },
 
-  // Bottom zone: action buttons
+  // Bottom zone
   ctaGroup: { gap: 12, paddingHorizontal: 24 },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
@@ -728,7 +743,7 @@ var welcome = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
     paddingVertical: 16, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'transparent',
   },
   demoBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '600' },
   signInLink:    { alignItems: 'center', paddingVertical: 8 },

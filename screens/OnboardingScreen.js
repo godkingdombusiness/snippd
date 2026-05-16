@@ -476,18 +476,27 @@ export default function OnboardingScreen({ navigation }) {
   // ── Step 0: Welcome ────────────────────────────────────────────────────────
   if (step === 0) {
     return (
-      <LinearGradient
-        colors={['#061209', '#0A2314', '#0E4A22', '#0A2314', '#061209']}
-        locations={[0, 0.18, 0.62, 0.82, 1]}
-        style={s.darkRoot}
-      >
+      <View style={s.darkRoot}>
+        {/* Vertical spotlight */}
+        <LinearGradient
+          colors={['#030A05', '#030A05', '#0D4524', '#030A05']}
+          locations={[0, 0.3, 0.68, 1]}
+          style={s.heroGradientFill}
+        />
+        {/* Horizontal glow layer */}
+        <LinearGradient
+          colors={['transparent', 'rgba(10,58,26,0.55)', 'transparent']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={s.heroGlowFill}
+        />
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
           <StatusBar barStyle="light-content" />
           <ScrollView
             contentContainerStyle={s.heroScroll}
             showsVerticalScrollIndicator={false}
           >
-            {/* Snippd Green Logo — combined cart + wordmark asset */}
+            {/* Snippd Green Logo */}
             <View style={s.heroLogoBlock}>
               <Image
                 source={require('../assets/Snippd-logo-green-large.png')}
@@ -496,13 +505,13 @@ export default function OnboardingScreen({ navigation }) {
               />
             </View>
 
-            {/* Headlines */}
-            <Text style={s.heroTitle}>Welcome to Snippd</Text>
+            {/* Headlines — forced two-line stacked headline */}
+            <Text style={s.heroTitle}>{'Welcome to\nSnippd'}</Text>
             <Text style={s.heroSub}>
               Smarter grocery planning,{'\n'}less waste, more time for you.
             </Text>
 
-            {/* Hero grocery bag — 73% width, marginTop auto pushes it toward CTAs */}
+            {/* Hero grocery bag — 78% width, marginTop auto sinks toward CTAs */}
             <Image
               source={require('../assets/grocery-bag-tall-hero.png')}
               style={s.heroBagImg}
@@ -524,7 +533,7 @@ export default function OnboardingScreen({ navigation }) {
             </View>
           </ScrollView>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
     );
   }
 
@@ -819,27 +828,31 @@ export default function OnboardingScreen({ navigation }) {
 
 var s = StyleSheet.create({
   root:     { flex: 1, backgroundColor: CREAM },
-  darkRoot: { flex: 1 },
+  darkRoot: { flex: 1, backgroundColor: '#030A05' },
 
-  // ── Dark hero (step 0) ──
+  // ── Dark hero (step 0) gradient layers ──
+  heroGradientFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  heroGlowFill:     { position: 'absolute', left: 0, right: 0, top: '30%', bottom: '12%' },
+
+  // ── Dark hero (step 0) content ──
   heroScroll: {
     flexGrow: 1,
-    paddingTop: 28, paddingBottom: 28,
+    paddingTop: 32, paddingBottom: 28,
     justifyContent: 'flex-start',
   },
-  heroLogoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 14 },
-  heroLogoImg:   { width: 140, height: 50 },
+  heroLogoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 18 },
+  heroLogoImg:   { width: 190, height: 68 },
   heroTitle: {
-    fontSize: 30, fontWeight: '700', color: WHITE,
-    textAlign: 'center', letterSpacing: 0.3, lineHeight: 38, marginBottom: 8,
+    fontSize: 48, fontWeight: '800', color: WHITE,
+    textAlign: 'center', letterSpacing: -0.5, lineHeight: 52, marginBottom: 12,
     paddingHorizontal: 24,
   },
   heroSub: {
-    fontSize: 14, color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center', lineHeight: 21, fontWeight: '400',
-    paddingHorizontal: 24,
+    fontSize: 13, color: 'rgba(255,255,255,0.80)',
+    textAlign: 'center', lineHeight: 20, fontWeight: '400',
+    paddingHorizontal: 36,
   },
-  heroBagImg: { width: '73%', height: 380, alignSelf: 'center', marginTop: 'auto', marginBottom: 20 },
+  heroBagImg: { width: '78%', height: 410, alignSelf: 'center', marginTop: 'auto', marginBottom: 16 },
   heroBtns: { gap: 12, paddingHorizontal: 24 },
   heroMainBtn: {
     width: '100%', backgroundColor: WHITE, borderRadius: 12,
@@ -849,7 +862,7 @@ var s = StyleSheet.create({
   heroDemoBtn: {
     width: '100%', borderRadius: 12, paddingVertical: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'transparent',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
   },
   heroDemoBtnText: { fontSize: 16, fontWeight: '600', color: WHITE },

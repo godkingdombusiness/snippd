@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome screen spotlight gradient + typographic hero pass (2026-05-16)
+- `screens/SignInScreen.js` — headline forced to two stacked lines ("Welcome to / Snippd"), 48pt/800 weight, lineHeight 52, letterSpacing -0.5; subtitle 13pt, paddingHorizontal 36 for clean 2-line wrap; logo scaled to 190×68; hero bag 78% width / 410px height; gradient restructured as layered absolute LinearGradients (vertical spotlight + horizontal glow ellipse) inside a View root; demo button `backgroundColor: transparent`.
+- `screens/OnboardingScreen.js` — identical changes mirrored for step 0; added `heroGradientFill` and `heroGlowFill` style keys.
+
 ### Changed — welcome screen premium gradient redesign (2026-05-16)
 - `screens/SignInScreen.js` — replaced flat `#0B3B1E` background with a 5-stop `LinearGradient` (dark forest edges → brighter emerald hotspot at 62%); headline refined to 30pt weight-700, letterSpacing 0.3, lineHeight 38; subtitle opacity raised to 85%; hero bag scaled to 73% width, 380px height, `marginTop: 'auto'` to sink it toward CTAs; both CTA buttons `borderRadius: 12`; Get Started text `#1B3A2D` (dark charcoal); Sign in underlined white.
 - `screens/OnboardingScreen.js` — same 5-stop gradient, typography, hero sizing, and button styling mirrored for step 0; added `expo-linear-gradient` import; updated logo to `Snippd-logo-green-large.png` and hero to `grocery-bag-tall-hero.png`.
