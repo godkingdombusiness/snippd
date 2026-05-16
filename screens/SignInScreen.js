@@ -372,29 +372,27 @@ export default function SignInScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Snippd Green Logo — cart icon + wordmark combined */}
-          <View style={welcome.logoBlock}>
+          {/* TOP GROUP — logo + headline + subtitle pushed to top */}
+          <View style={welcome.topGroup}>
             <Image
               source={require('../assets/Snippd-logo-green-large.png')}
               style={welcome.logoImg}
               resizeMode="contain"
             />
+            <Text style={welcome.headline}>Welcome to Snippd</Text>
+            <Text style={welcome.sub}>
+              Smarter grocery planning,{'\n'}less waste, more time for you.
+            </Text>
           </View>
 
-          {/* Headline + subtitle */}
-          <Text style={welcome.headline}>Welcome to Snippd</Text>
-          <Text style={welcome.sub}>
-            Smarter grocery planning,{'\n'}less waste, more time for you.
-          </Text>
-
-          {/* Hero grocery bag — full-bleed, no horizontal padding */}
+          {/* HERO — dominant visual anchor, 90% screen width */}
           <Image
             source={require('../assets/grocery-bag-tall-hero.png')}
             style={welcome.heroImg}
             resizeMode="contain"
           />
 
-          {/* CTAs */}
+          {/* CTAs — pushed to bottom */}
           <View style={welcome.ctaGroup}>
             <TouchableOpacity
               style={welcome.primaryBtn}
@@ -689,34 +687,34 @@ var hero = StyleSheet.create({
 // ── Welcome landing styles ─────────────────────────────────────────────────────
 var welcome = StyleSheet.create({
   root:  { flex: 1, backgroundColor: W_BG },
-  // Styled as a clean vertical distribution layout to premium mobile parameters
+  // 3-zone space-between: top group | hero | cta group
   scroll: {
     flexGrow: 1,
-    paddingTop: 36,
-    paddingBottom: 24,
+    paddingTop: 28,
+    paddingBottom: 28,
     backgroundColor: W_BG,
     justifyContent: 'space-between',
   },
 
-  logoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 16 },
-  logoImg:   { width: 140, height: 50 },
-
+  // Top zone: logo + headline + subtitle
+  topGroup:  { alignItems: 'center', paddingHorizontal: 24 },
+  logoImg:   { width: 140, height: 50, marginBottom: 14 },
   headline: {
     fontSize: 34, fontWeight: 'bold', color: WHITE,
     textAlign: 'center', letterSpacing: -0.5,
-    lineHeight: 42, marginBottom: 10,
-    paddingHorizontal: 32,
+    lineHeight: 42, marginBottom: 8,
   },
   sub: {
     fontSize: 15, color: 'rgba(255,255,255,0.70)',
     textAlign: 'center', fontWeight: 'normal',
-    lineHeight: 22, marginBottom: 20,
-    paddingHorizontal: 32,
+    lineHeight: 22,
   },
 
-  heroImg: { width: '100%', height: 380 },
+  // Middle zone: dominant hero image — 90% width, scales proportionally
+  heroImg: { width: '90%', height: 440, alignSelf: 'center' },
 
-  ctaGroup: { gap: 12, paddingHorizontal: 24, paddingTop: 4 },
+  // Bottom zone: action buttons
+  ctaGroup: { gap: 12, paddingHorizontal: 24 },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: WHITE,
@@ -725,12 +723,12 @@ var welcome = StyleSheet.create({
   primaryBtnTxt: { color: '#1B4332', fontSize: 16, fontWeight: '600' },
   demoBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.30)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
     paddingVertical: 16, borderRadius: 8,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   demoBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '600' },
-  signInLink:    { alignItems: 'center', paddingTop: 8, paddingVertical: 10 },
+  signInLink:    { alignItems: 'center', paddingVertical: 8 },
   signInLinkTxt: { fontSize: 15, color: WHITE, fontWeight: '500', textDecorationLine: 'underline' },
 });
 

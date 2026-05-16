@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome screen 3-zone layout: hero 90% width, space-between (2026-05-16)
+- `screens/SignInScreen.js` — logo+headline+sub grouped into `topGroup` (top zone); hero image widened to 90% screen width, height 440px (dominant anchor); CTA group pushed to bottom; `justifyContent: 'space-between'` distributes 3 zones cleanly; buttons `borderRadius: 8`.
+
 ### Changed — welcome screen blueprint applied (2026-05-16)
 - `assets/Snippd-logo-green-large.png` — new logo asset copied from double-extension source.
 - `assets/grocery-bag-tall-hero.png` — new tall hero bag asset copied from double-extension source.
