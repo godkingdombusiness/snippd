@@ -365,14 +365,18 @@ export default function SignInScreen({ navigation }) {
   // Called as {renderWelcome()} — NOT as <Welcome />.
   function renderWelcome() {
     return (
-      <View style={welcome.root}>
+      <LinearGradient
+        colors={['#061209', '#0A2314', '#0E4A22', '#0A2314', '#061209']}
+        locations={[0, 0.18, 0.62, 0.82, 1]}
+        style={welcome.root}
+      >
         <StatusBar barStyle="light-content" />
         <ScrollView
           contentContainerStyle={welcome.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* TOP GROUP — logo + headline + subtitle pushed to top */}
+          {/* TOP GROUP — logo + headline + subtitle */}
           <View style={welcome.topGroup}>
             <Image
               source={require('../assets/Snippd-logo-green-large.png')}
@@ -385,14 +389,14 @@ export default function SignInScreen({ navigation }) {
             </Text>
           </View>
 
-          {/* HERO — dominant visual anchor, 90% screen width */}
+          {/* HERO — positioned lower via marginTop auto, 73% width */}
           <Image
             source={require('../assets/grocery-bag-tall-hero.png')}
             style={welcome.heroImg}
             resizeMode="contain"
           />
 
-          {/* CTAs — pushed to bottom */}
+          {/* CTAs — bottom anchor */}
           <View style={welcome.ctaGroup}>
             <TouchableOpacity
               style={welcome.primaryBtn}
@@ -420,7 +424,7 @@ export default function SignInScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -686,45 +690,44 @@ var hero = StyleSheet.create({
 
 // ── Welcome landing styles ─────────────────────────────────────────────────────
 var welcome = StyleSheet.create({
-  root:  { flex: 1, backgroundColor: W_BG },
-  // 3-zone space-between: top group | hero | cta group
+  root:  { flex: 1 },
+  // flex-start layout: top group anchors top, hero uses marginTop auto to sink toward CTAs
   scroll: {
     flexGrow: 1,
     paddingTop: 28,
     paddingBottom: 28,
-    backgroundColor: W_BG,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
 
   // Top zone: logo + headline + subtitle
   topGroup:  { alignItems: 'center', paddingHorizontal: 24 },
   logoImg:   { width: 140, height: 50, marginBottom: 14 },
   headline: {
-    fontSize: 34, fontWeight: 'bold', color: WHITE,
-    textAlign: 'center', letterSpacing: -0.5,
-    lineHeight: 42, marginBottom: 8,
+    fontSize: 30, fontWeight: '700', color: WHITE,
+    textAlign: 'center', letterSpacing: 0.3,
+    lineHeight: 38, marginBottom: 8,
   },
   sub: {
-    fontSize: 15, color: 'rgba(255,255,255,0.70)',
+    fontSize: 14, color: 'rgba(255,255,255,0.85)',
     textAlign: 'center', fontWeight: 'normal',
-    lineHeight: 22,
+    lineHeight: 21,
   },
 
-  // Middle zone: dominant hero image — 90% width, scales proportionally
-  heroImg: { width: '90%', height: 440, alignSelf: 'center' },
+  // Middle zone: 73% width, marginTop auto pushes bag down toward CTAs
+  heroImg: { width: '73%', height: 380, alignSelf: 'center', marginTop: 'auto', marginBottom: 20 },
 
   // Bottom zone: action buttons
   ctaGroup: { gap: 12, paddingHorizontal: 24 },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: WHITE,
-    paddingVertical: 16, borderRadius: 8,
+    paddingVertical: 16, borderRadius: 12,
   },
-  primaryBtnTxt: { color: '#1B4332', fontSize: 16, fontWeight: '600' },
+  primaryBtnTxt: { color: '#1B3A2D', fontSize: 16, fontWeight: '600' },
   demoBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
-    paddingVertical: 16, borderRadius: 8,
+    paddingVertical: 16, borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   demoBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '600' },

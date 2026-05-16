@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome screen premium gradient redesign (2026-05-16)
+- `screens/SignInScreen.js` — replaced flat `#0B3B1E` background with a 5-stop `LinearGradient` (dark forest edges → brighter emerald hotspot at 62%); headline refined to 30pt weight-700, letterSpacing 0.3, lineHeight 38; subtitle opacity raised to 85%; hero bag scaled to 73% width, 380px height, `marginTop: 'auto'` to sink it toward CTAs; both CTA buttons `borderRadius: 12`; Get Started text `#1B3A2D` (dark charcoal); Sign in underlined white.
+- `screens/OnboardingScreen.js` — same 5-stop gradient, typography, hero sizing, and button styling mirrored for step 0; added `expo-linear-gradient` import; updated logo to `Snippd-logo-green-large.png` and hero to `grocery-bag-tall-hero.png`.
+
 ### Changed — welcome screen 3-zone layout: hero 90% width, space-between (2026-05-16)
 - `screens/SignInScreen.js` — logo+headline+sub grouped into `topGroup` (top zone); hero image widened to 90% screen width, height 440px (dominant anchor); CTA group pushed to bottom; `justifyContent: 'space-between'` distributes 3 zones cleanly; buttons `borderRadius: 8`.
 

@@ -17,6 +17,7 @@ import {
   StatusBar, PanResponder, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
@@ -475,49 +476,55 @@ export default function OnboardingScreen({ navigation }) {
   // ── Step 0: Welcome ────────────────────────────────────────────────────────
   if (step === 0) {
     return (
-      <SafeAreaView style={s.darkRoot} edges={['top', 'bottom']}>
-        <StatusBar barStyle="light-content" backgroundColor={DARK_GREEN} />
-        <ScrollView
-          contentContainerStyle={s.heroScroll}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Snippd Green Logo — combined cart + wordmark asset */}
-          <View style={s.heroLogoBlock}>
+      <LinearGradient
+        colors={['#061209', '#0A2314', '#0E4A22', '#0A2314', '#061209']}
+        locations={[0, 0.18, 0.62, 0.82, 1]}
+        style={s.darkRoot}
+      >
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+          <StatusBar barStyle="light-content" />
+          <ScrollView
+            contentContainerStyle={s.heroScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Snippd Green Logo — combined cart + wordmark asset */}
+            <View style={s.heroLogoBlock}>
+              <Image
+                source={require('../assets/Snippd-logo-green-large.png')}
+                style={s.heroLogoImg}
+                resizeMode="contain"
+              />
+            </View>
+
+            {/* Headlines */}
+            <Text style={s.heroTitle}>Welcome to Snippd</Text>
+            <Text style={s.heroSub}>
+              Smarter grocery planning,{'\n'}less waste, more time for you.
+            </Text>
+
+            {/* Hero grocery bag — 73% width, marginTop auto pushes it toward CTAs */}
             <Image
-              source={require('../assets/Snippd Green Logo.png')}
-              style={s.heroLogoImg}
+              source={require('../assets/grocery-bag-tall-hero.png')}
+              style={s.heroBagImg}
               resizeMode="contain"
             />
-          </View>
 
-          {/* Headlines */}
-          <Text style={s.heroTitle}>Welcome to Snippd</Text>
-          <Text style={s.heroSub}>
-            Smarter grocery planning,{'\n'}less waste, more time for you.
-          </Text>
-
-          {/* Hero grocery bag — full-bleed */}
-          <Image
-            source={require('../assets/grocery-bag-hero.png')}
-            style={s.heroBagImg}
-            resizeMode="contain"
-          />
-
-          {/* CTAs */}
-          <View style={s.heroBtns}>
-            <TouchableOpacity style={s.heroMainBtn} onPress={next} activeOpacity={0.85}>
-              <Text style={s.heroMainBtnText}>Get Started</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.heroDemoBtn} onPress={tryDemoMode} activeOpacity={0.8}>
-              <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
-              <Text style={s.heroDemoBtnText}>Try Demo Mode</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={function () { navigation.navigate('Auth'); }} activeOpacity={0.7} style={s.heroSignInLink}>
-              <Text style={s.heroSignInTxt}>Sign in</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+            {/* CTAs */}
+            <View style={s.heroBtns}>
+              <TouchableOpacity style={s.heroMainBtn} onPress={next} activeOpacity={0.85}>
+                <Text style={s.heroMainBtnText}>Get Started</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.heroDemoBtn} onPress={tryDemoMode} activeOpacity={0.8}>
+                <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
+                <Text style={s.heroDemoBtnText}>Try Demo Mode</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={function () { navigation.navigate('Auth'); }} activeOpacity={0.7} style={s.heroSignInLink}>
+                <Text style={s.heroSignInTxt}>Sign in</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
@@ -812,43 +819,42 @@ export default function OnboardingScreen({ navigation }) {
 
 var s = StyleSheet.create({
   root:     { flex: 1, backgroundColor: CREAM },
-  darkRoot: { flex: 1, backgroundColor: DARK_GREEN },
+  darkRoot: { flex: 1 },
 
   // ── Dark hero (step 0) ──
-  // No paddingHorizontal on heroScroll — hero image is full-bleed.
   heroScroll: {
     flexGrow: 1,
-    paddingTop: 20, paddingBottom: 40,
-    backgroundColor: DARK_GREEN,
+    paddingTop: 28, paddingBottom: 28,
+    justifyContent: 'flex-start',
   },
   heroLogoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 14 },
-  heroLogoImg:   { width: 150, height: 110 },
+  heroLogoImg:   { width: 140, height: 50 },
   heroTitle: {
-    fontSize: 52, fontWeight: '900', color: WHITE,
-    textAlign: 'center', letterSpacing: -1, lineHeight: 58, marginBottom: 10,
+    fontSize: 30, fontWeight: '700', color: WHITE,
+    textAlign: 'center', letterSpacing: 0.3, lineHeight: 38, marginBottom: 8,
     paddingHorizontal: 24,
   },
   heroSub: {
-    fontSize: 17, color: 'rgba(255,255,255,0.80)',
-    textAlign: 'center', lineHeight: 24, fontWeight: '400', marginBottom: 12,
+    fontSize: 14, color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center', lineHeight: 21, fontWeight: '400',
     paddingHorizontal: 24,
   },
-  heroBagImg: { width: '100%', height: 460 },
-  heroBtns: { gap: 10, paddingHorizontal: 24, paddingTop: 4 },
+  heroBagImg: { width: '73%', height: 380, alignSelf: 'center', marginTop: 'auto', marginBottom: 20 },
+  heroBtns: { gap: 12, paddingHorizontal: 24 },
   heroMainBtn: {
-    width: '100%', backgroundColor: WHITE, borderRadius: 50,
-    paddingVertical: 18, alignItems: 'center',
+    width: '100%', backgroundColor: WHITE, borderRadius: 12,
+    paddingVertical: 16, alignItems: 'center',
   },
-  heroMainBtnText: { fontSize: 17, fontWeight: '700', color: '#1B4332' },
+  heroMainBtnText: { fontSize: 16, fontWeight: '600', color: '#1B3A2D' },
   heroDemoBtn: {
-    width: '100%', borderRadius: 50, paddingVertical: 15,
+    width: '100%', borderRadius: 12, paddingVertical: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.40)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
   },
-  heroDemoBtnText: { fontSize: 15, fontWeight: '600', color: WHITE },
-  heroSignInLink:  { alignItems: 'center', paddingVertical: 10 },
-  heroSignInTxt:   { fontSize: 15, color: WHITE, fontWeight: '600', textDecorationLine: 'underline' },
+  heroDemoBtnText: { fontSize: 16, fontWeight: '600', color: WHITE },
+  heroSignInLink:  { alignItems: 'center', paddingVertical: 8 },
+  heroSignInTxt:   { fontSize: 15, color: WHITE, fontWeight: '500', textDecorationLine: 'underline' },
 
   // ── Root variants ──
   rootWhite: { backgroundColor: WHITE },
