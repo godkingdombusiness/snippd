@@ -372,14 +372,13 @@ export default function SignInScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo + wordmark */}
+          {/* Snippd Green Logo — cart icon + wordmark combined */}
           <View style={welcome.logoBlock}>
             <Image
-              source={require('../assets/Snippd-White-Cart .png')}
+              source={require('../assets/Snippd Green Logo.png')}
               style={welcome.logoImg}
               resizeMode="contain"
             />
-            <Text style={welcome.wordmark}>snippd</Text>
           </View>
 
           {/* Headline + subtitle */}
@@ -388,14 +387,12 @@ export default function SignInScreen({ navigation }) {
             Smarter grocery planning,{'\n'}less waste, more time for you.
           </Text>
 
-          {/* Hero grocery bag */}
-          <View style={welcome.heroWrap}>
-            <Image
-              source={require('../assets/grocery-bag-hero.png')}
-              style={welcome.heroImg}
-              resizeMode="contain"
-            />
-          </View>
+          {/* Hero grocery bag — full-bleed, no horizontal padding */}
+          <Image
+            source={require('../assets/grocery-bag-hero.png')}
+            style={welcome.heroImg}
+            resizeMode="contain"
+          />
 
           {/* CTAs */}
           <View style={welcome.ctaGroup}>
@@ -408,23 +405,11 @@ export default function SignInScreen({ navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={welcome.demoBtn}
-              onPress={handleDemoMode}
-              activeOpacity={0.8}
-            >
-              <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
-              <Text style={welcome.demoBtnTxt}>Try Demo Mode</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               onPress={function () { goForm('signin'); }}
               style={welcome.signInLink}
               activeOpacity={0.7}
             >
-              <Text style={welcome.signInLinkTxt}>
-                Already have an account?{'  '}
-                <Text style={welcome.signInLinkAccent}>Sign in</Text>
-              </Text>
+              <Text style={welcome.signInLinkTxt}>Sign in</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -695,59 +680,46 @@ var hero = StyleSheet.create({
 // ── Welcome landing styles ─────────────────────────────────────────────────────
 var welcome = StyleSheet.create({
   root:  { flex: 1, backgroundColor: W_BG },
+  // No paddingHorizontal on scroll — hero image must be full-bleed.
+  // Each section adds its own horizontal padding inline.
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 40,
     backgroundColor: W_BG,
   },
 
-  // Logo block — cart icon + "snippd" wordmark in brand green
-  logoBlock: { alignItems: 'center', marginBottom: 12 },
-  logoImg:   { width: 80, height: 80, marginBottom: 2 },
-  wordmark:  { fontSize: 22, fontWeight: '800', color: '#3DBA6F', letterSpacing: 0.5 },
+  // Snippd Green Logo — single combined asset (cart + wordmark)
+  logoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 14 },
+  logoImg:   { width: 150, height: 110 },
 
   // Headlines
   headline: {
-    fontSize: 40, fontWeight: '900', color: WHITE,
-    textAlign: 'center', letterSpacing: -0.5,
-    lineHeight: 46, marginBottom: 8,
+    fontSize: 52, fontWeight: '900', color: WHITE,
+    textAlign: 'center', letterSpacing: -1,
+    lineHeight: 58, marginBottom: 10,
+    paddingHorizontal: 24,
   },
   sub: {
-    fontSize: 16, color: 'rgba(255,255,255,0.72)',
+    fontSize: 17, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', fontWeight: '400',
-    lineHeight: 22, marginBottom: 0,
+    lineHeight: 24, marginBottom: 12,
+    paddingHorizontal: 24,
   },
 
-  // Hero bag
-  heroWrap: { alignItems: 'center', marginVertical: 8 },
-  heroImg:  { width: '100%', height: 400 },
+  // Hero bag — full-bleed, no horizontal constraints
+  heroImg: { width: '100%', height: 460 },
 
   // CTAs
-  ctaGroup: { gap: 12 },
+  ctaGroup: { gap: 10, paddingHorizontal: 24, paddingTop: 4 },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: WHITE,
     paddingVertical: 18, borderRadius: 50,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18, shadowRadius: 12, elevation: 6,
   },
-  primaryBtnTxt: { color: '#2E7D32', fontSize: 17, fontWeight: '800', letterSpacing: 0.2 },
-  demoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.40)',
-    paddingVertical: 15, borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-  },
-  demoBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '600' },
-  signInLink:       { alignItems: 'center', paddingVertical: 6 },
-  signInLinkTxt:    { fontSize: 14, color: 'rgba(255,255,255,0.70)' },
-  signInLinkAccent: {
-    color: WHITE, fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
+  primaryBtnTxt: { color: '#1B4332', fontSize: 17, fontWeight: '700' },
+  signInLink:    { alignItems: 'center', paddingVertical: 10 },
+  signInLinkTxt: { fontSize: 15, color: WHITE, fontWeight: '600', textDecorationLine: 'underline' },
 });
 
 // ── Form styles ────────────────────────────────────────────────────────────────

@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome screen redesign to match final mockup (2026-05-16)
+- `screens/SignInScreen.js` — switched logo to `Snippd Green Logo.png` (combined cart + wordmark); removed paddingHorizontal from scroll so hero image is true full-bleed; hero height 460px; removed Demo Mode button from welcome; sign-in link simplified to underlined "Sign in"; headline 52pt bold.
+- `screens/OnboardingScreen.js` — same changes mirrored for OnboardingScreen step 0 welcome; removed heroBagWrap wrapper that caused width collapse; full-bleed hero image.
+
 ### Changed — welcome screen hero image enlarged + brand alignment pass (2026-05-16)
 - `screens/SignInScreen.js` — hero image height 320 → 400; `marginVertical` on hero wrap 16 → 8; `paddingTop` 32 → 20; logo 72 → 80px; `Get Started` button text updated to brand CTA green `#2E7D32`; button shadow deepened.
 - `screens/OnboardingScreen.js` — same sizing and brand alignment changes mirrored for OnboardingScreen step 0 welcome.
