@@ -14,8 +14,13 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   StyleSheet, ActivityIndicator, Platform, KeyboardAvoidingView,
-  StatusBar, PanResponder, Image, Modal,
+  StatusBar, PanResponder, Image, Modal, LayoutAnimation, UIManager,
 } from 'react-native';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
@@ -402,22 +407,28 @@ function BudgetSlider({ value, onChange, onRelease }) {
 function HouseholdCard({ label, sub, icon, count, onDecrement, onIncrement }) {
   var active = count > 0;
   return (
-    <View style={[s.hCard, active && s.hCardOn]}>
+    <TouchableOpacity
+      style={[s.hCard, active && s.hCardOn]}
+      onPress={active ? undefined : onIncrement}
+      activeOpacity={active ? 1 : 0.72}
+    >
       <View style={s.hCardIconWrap}>
         <FontAwesome5 name={icon} size={17} color={GREEN} solid />
       </View>
       <Text style={s.hCardLabel}>{label}</Text>
       <Text style={s.hCardSub}>{sub}</Text>
-      <View style={s.hStepper}>
-        <TouchableOpacity style={s.hStepBtn} onPress={onDecrement} activeOpacity={0.7}>
-          <Text style={s.hStepBtnTxt}>−</Text>
-        </TouchableOpacity>
-        <Text style={[s.hStepCount, active && s.hStepCountOn]}>{count}</Text>
-        <TouchableOpacity style={s.hStepBtn} onPress={onIncrement} activeOpacity={0.7}>
-          <Text style={s.hStepBtnTxt}>+</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      {active && (
+        <View style={s.hStepper}>
+          <TouchableOpacity style={s.hStepBtn} onPress={onDecrement} activeOpacity={0.7}>
+            <Text style={s.hStepBtnTxt}>−</Text>
+          </TouchableOpacity>
+          <Text style={[s.hStepCount, s.hStepCountOn]}>{count}</Text>
+          <TouchableOpacity style={s.hStepBtn} onPress={onIncrement} activeOpacity={0.7}>
+            <Text style={s.hStepBtnTxt}>+</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -491,6 +502,7 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function adjustCount(key, delta) {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setData(function (p) {
       var counts = Object.assign({}, p.householdCounts);
       counts[key] = Math.max(0, (counts[key] || 0) + delta);
@@ -794,36 +806,6 @@ export default function OnboardingScreen({ navigation }) {
               />
             );
           })}
-        </View>
-
-        {/* Takeout Frequency Card */}
-        <View style={s.toCard}>
-          <View style={s.toCardHeader}>
-            <View style={s.toCardIconWrap}>
-              <FontAwesome5 name="utensils" size={13} color={GREEN} solid />
-            </View>
-            <Text style={s.toCardTitle}>How often do you get takeout?</Text>
-          </View>
-          <View style={s.toPillGrid}>
-            {TAKEOUT_OPTS.map(function (opt) {
-              var sel = data.takeoutFrequency === opt.id;
-              return (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={[s.toPill, sel && s.toPillOn]}
-                  onPress={function () { upd('takeoutFrequency', opt.id); }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[s.toPillTxt, sel && s.toPillTxtOn]}>{opt.label}</Text>
-                  {sel && (
-                    <View style={s.toPillCheck}>
-                      <Feather name="check" size={8} color={WHITE} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
 
         {/* Pet Profile Card */}
