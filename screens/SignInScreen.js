@@ -365,21 +365,11 @@ export default function SignInScreen({ navigation }) {
   // Called as {renderWelcome()} — NOT as <Welcome />.
   function renderWelcome() {
     return (
-      <View style={welcome.root}>
-        {/* Vertical gradient: near-black top/bottom, emerald hotspot at 68% */}
-        <LinearGradient
-          colors={['#030A05', '#030A05', '#0D4524', '#030A05']}
-          locations={[0, 0.3, 0.68, 1]}
-          style={welcome.gradientFill}
-        />
-        {/* Horizontal glow layer: widens the emerald spotlight behind the bag */}
-        <LinearGradient
-          colors={['transparent', 'rgba(10,58,26,0.55)', 'transparent']}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={welcome.glowFill}
-        />
-
+      <LinearGradient
+        colors={['#050F08', '#071910', '#0A2E18', '#0D3E1F', '#0A2E18']}
+        locations={[0, 0.22, 0.52, 0.76, 1]}
+        style={welcome.root}
+      >
         <StatusBar barStyle="light-content" />
         <ScrollView
           contentContainerStyle={welcome.scroll}
@@ -434,7 +424,7 @@ export default function SignInScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -700,11 +690,7 @@ var hero = StyleSheet.create({
 
 // ── Welcome landing styles ─────────────────────────────────────────────────────
 var welcome = StyleSheet.create({
-  root:  { flex: 1, backgroundColor: '#030A05' },
-  // Vertical spotlight: near-black → emerald hotspot at 68% → near-black
-  gradientFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
-  // Horizontal glow: widens the emerald ellipse behind the bag center
-  glowFill: { position: 'absolute', left: 0, right: 0, top: '30%', bottom: '12%' },
+  root:  { flex: 1 },
 
   // flex-start: top group anchors top, hero sinks via marginTop auto
   scroll: {
@@ -716,16 +702,16 @@ var welcome = StyleSheet.create({
 
   // Top zone
   topGroup:  { alignItems: 'center', paddingHorizontal: 24 },
-  logoImg:   { width: 190, height: 68, marginBottom: 18 },
+  logoImg:   { width: 224, height: 80, marginBottom: 18 },
   headline: {
-    fontSize: 48, fontWeight: '800', color: WHITE,
-    textAlign: 'center', letterSpacing: -0.5,
-    lineHeight: 52, marginBottom: 12,
+    fontSize: 42, fontWeight: '700', color: WHITE,
+    textAlign: 'center', letterSpacing: 0.5,
+    lineHeight: 58, marginBottom: 12,
   },
   sub: {
     fontSize: 13, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', fontWeight: 'normal',
-    lineHeight: 20, paddingHorizontal: 36,
+    lineHeight: 20, paddingHorizontal: 20,
   },
 
   // Middle zone: 78% width, marginTop auto sinks bag toward CTAs

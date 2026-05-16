@@ -476,20 +476,11 @@ export default function OnboardingScreen({ navigation }) {
   // ── Step 0: Welcome ────────────────────────────────────────────────────────
   if (step === 0) {
     return (
-      <View style={s.darkRoot}>
-        {/* Vertical spotlight */}
-        <LinearGradient
-          colors={['#030A05', '#030A05', '#0D4524', '#030A05']}
-          locations={[0, 0.3, 0.68, 1]}
-          style={s.heroGradientFill}
-        />
-        {/* Horizontal glow layer */}
-        <LinearGradient
-          colors={['transparent', 'rgba(10,58,26,0.55)', 'transparent']}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={s.heroGlowFill}
-        />
+      <LinearGradient
+        colors={['#050F08', '#071910', '#0A2E18', '#0D3E1F', '#0A2E18']}
+        locations={[0, 0.22, 0.52, 0.76, 1]}
+        style={s.darkRoot}
+      >
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
           <StatusBar barStyle="light-content" />
           <ScrollView
@@ -533,7 +524,7 @@ export default function OnboardingScreen({ navigation }) {
             </View>
           </ScrollView>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -828,11 +819,7 @@ export default function OnboardingScreen({ navigation }) {
 
 var s = StyleSheet.create({
   root:     { flex: 1, backgroundColor: CREAM },
-  darkRoot: { flex: 1, backgroundColor: '#030A05' },
-
-  // ── Dark hero (step 0) gradient layers ──
-  heroGradientFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
-  heroGlowFill:     { position: 'absolute', left: 0, right: 0, top: '30%', bottom: '12%' },
+  darkRoot: { flex: 1 },
 
   // ── Dark hero (step 0) content ──
   heroScroll: {
@@ -841,16 +828,16 @@ var s = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   heroLogoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 18 },
-  heroLogoImg:   { width: 190, height: 68 },
+  heroLogoImg:   { width: 224, height: 80 },
   heroTitle: {
-    fontSize: 48, fontWeight: '800', color: WHITE,
-    textAlign: 'center', letterSpacing: -0.5, lineHeight: 52, marginBottom: 12,
+    fontSize: 42, fontWeight: '700', color: WHITE,
+    textAlign: 'center', letterSpacing: 0.5, lineHeight: 58, marginBottom: 12,
     paddingHorizontal: 24,
   },
   heroSub: {
     fontSize: 13, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', lineHeight: 20, fontWeight: '400',
-    paddingHorizontal: 36,
+    paddingHorizontal: 20,
   },
   heroBagImg: { width: '78%', height: 410, alignSelf: 'center', marginTop: 'auto', marginBottom: 16 },
   heroBtns: { gap: 12, paddingHorizontal: 24 },

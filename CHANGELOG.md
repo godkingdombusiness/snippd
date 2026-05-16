@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome screen seamless gradient + refined typography (2026-05-16)
+- `screens/SignInScreen.js` — replaced two-layer (vertical + horizontal) gradient system (which caused a visible seam at top: 30%) with a single seamless 5-stop LinearGradient as root container: near-black forest at top → smooth dark green through 52% → richer emerald at 76% → fades back; headline weight 800→700, size 48→42pt, letterSpacing -0.5→+0.5, lineHeight 52→58 for breathing room; subtitle paddingHorizontal 36→20 for clean 2-line span; logo scaled to 224×80 (up 18% from 190×68).
+- `screens/OnboardingScreen.js` — same gradient, typography, and logo changes mirrored; removed dead `heroGradientFill` and `heroGlowFill` style keys.
+
 ### Changed — welcome screen spotlight gradient + typographic hero pass (2026-05-16)
 - `screens/SignInScreen.js` — headline forced to two stacked lines ("Welcome to / Snippd"), 48pt/800 weight, lineHeight 52, letterSpacing -0.5; subtitle 13pt, paddingHorizontal 36 for clean 2-line wrap; logo scaled to 190×68; hero bag 78% width / 410px height; gradient restructured as layered absolute LinearGradients (vertical spotlight + horizontal glow ellipse) inside a View root; demo button `backgroundColor: transparent`.
 - `screens/OnboardingScreen.js` — identical changes mirrored for step 0; added `heroGradientFill` and `heroGlowFill` style keys.
