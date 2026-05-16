@@ -701,18 +701,18 @@ var welcome = StyleSheet.create({
   },
 
   // Top zone
-  topGroup:  { alignItems: 'center', paddingHorizontal: 24 },
-  logoImg:   { width: 252, height: 90, marginBottom: 18 },
+  topGroup:  { alignItems: 'center', paddingHorizontal: 24, width: '100%' },
+  logoImg:   { width: 290, height: 104, marginBottom: 18 },
   headline: {
-    fontSize: 42, fontWeight: '500', color: WHITE,
-    textAlign: 'center', letterSpacing: 3,
-    lineHeight: 70, marginBottom: 12,
-    alignSelf: 'stretch',
+    fontSize: 38, fontWeight: '300', color: WHITE,
+    textAlign: 'center', letterSpacing: 5,
+    lineHeight: 76, marginBottom: 12,
+    alignSelf: 'center', width: '100%',
   },
   sub: {
     fontSize: 13, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', fontWeight: 'normal',
-    lineHeight: 20, paddingHorizontal: 12,
+    lineHeight: 20,
   },
 
   // Middle zone: 78% width, marginTop auto sinks bag toward CTAs
