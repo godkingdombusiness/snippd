@@ -700,6 +700,8 @@ var welcome = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 28,
     justifyContent: 'flex-start',
+    alignItems: 'center',
+    width: '100%',
   },
 
   // Top zone

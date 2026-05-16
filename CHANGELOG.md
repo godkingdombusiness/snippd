@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome scroll container unified centerline (2026-05-16)
+- `screens/SignInScreen.js` — added `alignItems: 'center'` and `width: '100%'` to `welcome.scroll` so all top-level sections (logo, text, bag wrapper, CTAs) share one axis.
+- `screens/OnboardingScreen.js` — same applied to `heroScroll`.
+
 ### Changed — welcome bag centered via full-width wrapper (2026-05-16)
 - `screens/SignInScreen.js` — wrapped heroImg in `heroWrap` View (width: 100%, alignItems: center) so the bag anchors to the true screen horizontal axis; `marginTop: auto` moved from image to wrapper; removed `alignSelf: center` from image (no longer needed).
 - `screens/OnboardingScreen.js` — same pattern applied via `heroBagWrap`.

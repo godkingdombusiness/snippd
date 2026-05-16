@@ -828,6 +828,8 @@ var s = StyleSheet.create({
     flexGrow: 1,
     paddingTop: 32, paddingBottom: 28,
     justifyContent: 'flex-start',
+    alignItems: 'center',
+    width: '100%',
   },
   heroLogoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 18, width: '100%' },
   heroLogoImg:   { width: 290, height: 104 },
