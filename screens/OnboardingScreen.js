@@ -257,6 +257,11 @@ function Pill({ label, selected, onPress }) {
       activeOpacity={0.75}
     >
       <Text style={[s.pillText, selected && s.pillTextOn]}>{label}</Text>
+      {selected && (
+        <View style={s.pillCheck}>
+          <Feather name="check" size={8} color={WHITE} />
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -828,9 +833,22 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep4() {
+    function toggleFood(id) {
+      var arr = data.foodsAvoided.filter(function (v) { return v !== 'none'; });
+      upd('foodsAvoided', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
+    }
+    function toggleDiet(id) {
+      var arr = data.dietPreferences.filter(function (v) { return v !== 'no_diet'; });
+      upd('dietPreferences', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
+    }
+    var foodsClear = data.foodsAvoided.length === 0 || data.foodsAvoided.includes('none');
+    var dietClear  = data.dietPreferences.length === 0 || data.dietPreferences.includes('no_diet');
+
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.headline}>Food preferences{'\n'}&amp; restrictions</Text>
+        <Text style={[s.headline, { textAlign: 'left', lineHeight: 44 }]}>
+          Food preferences{'\n'}& restrictions
+        </Text>
         <Text style={s.sub}>I'll filter these out of every meal and deal recommendation.</Text>
 
         <Text style={s.fieldLabel}>Foods to avoid</Text>
@@ -841,10 +859,15 @@ export default function OnboardingScreen({ navigation }) {
                 key={f.id}
                 label={f.label}
                 selected={data.foodsAvoided.includes(f.id)}
-                onPress={function () { toggleArr('foodsAvoided', f.id); }}
+                onPress={function () { toggleFood(f.id); }}
               />
             );
           })}
+          <Pill
+            label="None"
+            selected={foodsClear}
+            onPress={function () { upd('foodsAvoided', []); }}
+          />
         </View>
 
         <Text style={[s.fieldLabel, { marginTop: 24 }]}>Diet preferences</Text>
@@ -855,16 +878,36 @@ export default function OnboardingScreen({ navigation }) {
                 key={d.id}
                 label={d.label}
                 selected={data.dietPreferences.includes(d.id)}
-                onPress={function () { toggleArr('dietPreferences', d.id); }}
+                onPress={function () { toggleDiet(d.id); }}
               />
             );
           })}
+          <Pill
+            label="No specific diet"
+            selected={dietClear}
+            onPress={function () { upd('dietPreferences', []); }}
+          />
         </View>
 
-        <Text style={s.disclaimer}>
-          Snippd is a planning tool, not a medical guide. Always verify ingredient labels for severe allergies.
-        </Text>
-        <BigBtn label="Continue" onPress={next} />
+        {/* Info banner — replaces red disclaimer */}
+        <View style={s.f4InfoBanner}>
+          <View style={s.f4InfoIconWrap}>
+            <Feather name="info" size={15} color={GREEN} />
+          </View>
+          <Text style={s.f4InfoTxt}>
+            This ensures you see deals and recipes tailored to your health goals and taste. Snippd is a planning tool, not a medical guide. Always verify ingredient labels for severe allergies.
+          </Text>
+        </View>
+
+        <TouchableOpacity style={s.h3ContinueBtn} onPress={next} activeOpacity={0.88}>
+          <Text style={s.h3ContinueTxt}>Continue</Text>
+          <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+        </TouchableOpacity>
+
+        <View style={s.h3Privacy}>
+          <Feather name="lock" size={12} color={GRAY} />
+          <Text style={s.h3PrivacyTxt}>Your info is private and never shared</Text>
+        </View>
       </ScrollView>
     );
   }
@@ -1240,7 +1283,10 @@ var s = StyleSheet.create({
   sub:        { fontSize: 16, color: GRAY, lineHeight: 24, fontWeight: '300', marginBottom: 28 },
   fieldLabel: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12 },
   hint:       { fontSize: 13, color: GRAY, textAlign: 'center', marginTop: 8, marginBottom: 24, lineHeight: 18 },
-  disclaimer: { fontSize: 13, color: CORAL, lineHeight: 19, marginBottom: 24, marginTop: 8 },
+  disclaimer:     { fontSize: 13, color: CORAL, lineHeight: 19, marginBottom: 24, marginTop: 8 },
+  f4InfoBanner:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: MINT, borderRadius: 14, borderWidth: 1, borderColor: '#A7F3D0', padding: 14, marginBottom: 20, marginTop: 8 },
+  f4InfoIconWrap: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#C8E6C9', alignItems: 'center', justifyContent: 'center' },
+  f4InfoTxt:      { fontSize: 12, color: GRAY, lineHeight: 18, flex: 1 },
 
   // ── Option tile (full-width card row) ──
   cardList: { gap: 10, marginBottom: 28 },
@@ -1293,10 +1339,11 @@ var s = StyleSheet.create({
 
   // ── Pills ──
   pillRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  pill:        { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 24, borderWidth: 1.5, borderColor: BORDER, backgroundColor: WHITE },
-  pillOn:      { backgroundColor: GREEN, borderColor: GREEN },
-  pillText:    { fontSize: 15, fontWeight: '500', color: NAVY },
-  pillTextOn:  { color: WHITE },
+  pill:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, borderWidth: 1.5, borderColor: BORDER, backgroundColor: WHITE },
+  pillOn:      { borderColor: GREEN, backgroundColor: '#F0FBF5' },
+  pillText:    { fontSize: 14, fontWeight: '500', color: NAVY },
+  pillTextOn:  { color: GREEN, fontWeight: '600' },
+  pillCheck:   { width: 18, height: 18, borderRadius: 9, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
 
   // ── Store grid ──
   storeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },

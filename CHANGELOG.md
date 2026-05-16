@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — food preferences step: green-border pills with checkmark, soft-green info banner (2026-05-16)
+- `screens/OnboardingScreen.js` — `pill` style switched from solid-fill to border-only pattern (`flexDirection: row`, `borderColor: BORDER`, white background); `pillOn` now uses green border + `#F0FBF5` mint background instead of solid green; `pillTextOn` changed to green text (not white); `pillCheck` style added (18×18 green circle with white check, `marginLeft: 6`). Added `f4InfoBanner`, `f4InfoIconWrap`, `f4InfoTxt` styles for the soft-green info banner in renderStep4 (mint background, `#A7F3D0` border, green icon circle). `renderStep4` rewritten: left-aligned lower-lineHeight headline, mutual-exclusion clear pills ("None" / "No specific diet") at bottom of each grid, info banner replaces red disclaimer.
+
 ### Changed — budget step Snippd Fact card + pet grid fix (2026-05-16)
 - `screens/OnboardingScreen.js` — Pet selection changed from single horizontal row to 2×2 grid (`flexWrap: 'wrap'` on `petRow`) matching the takeout grid layout. Added `getBudgetFact(size)` helper returning USDA-based dynamic copy for 1 / 2 / 3–4 / 5+ person households. Added `showFact` state; BudgetSlider accepts `onRelease` prop (fires `onPanResponderRelease`) to trigger fact card; TextInput `onBlur` also triggers it. Fact card (`b2FactCard`) renders below the budget card after first interaction: pale yellow (#FEFCE8) background, amber border, 💡 emoji, bold "Snippd Fact" label, dynamic copy. Budget step Continue button updated to pill-shaped (borderRadius 30) with absolute-right arrow.
 
