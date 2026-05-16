@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — onboarding step reorder + new household/customize questions (2026-05-16)
+- `screens/OnboardingScreen.js` — reordered stepRenders: household (was step 3) → step 2, budget (was step 2) → step 3; updated step 2 headline "Tell us about your household", added takeout frequency pill selector; updated step 5 headline "What's your cooking and meal style?"; updated step 7 headline "Customize your Snippd experience", added meal idea frequency pill selector; added `TAKEOUT_OPTS` + `MEAL_FREQ_OPTS` data arrays; added `takeoutFrequency` + `mealIdeaFrequency` to state and `finishOnboarding` upsert; added `h3FreqRow/Pill/Txt` styles.
+
 ### Fixed — bag wrapper isolated: width 100% paddingHorizontal 0, image width 74% no offsets (2026-05-16)
 - `screens/SignInScreen.js` — heroWrap: width 100%, paddingHorizontal 0, alignItems center; heroImg: width 74% (from 78%), height 410, no margin/offset properties.
 - `screens/OnboardingScreen.js` — same applied to heroBagWrap / heroBagImg.

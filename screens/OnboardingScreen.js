@@ -133,6 +133,20 @@ var HOUSEHOLD_TYPES = [
   { id: 'guests',   label: 'Guests /\nRoommates',sub: 'Others in household', icon: 'users' },
 ];
 
+var TAKEOUT_OPTS = [
+  { id: 'rarely',     label: 'Rarely or never'   },
+  { id: '1_2x_week',  label: '1–2 times a week'  },
+  { id: '3_4x_week',  label: '3–4 times a week'  },
+  { id: 'most_days',  label: 'Most days'          },
+];
+
+var MEAL_FREQ_OPTS = [
+  { id: 'daily',      label: 'Daily suggestions'   },
+  { id: 'few_week',   label: 'A few times a week'  },
+  { id: 'weekly',     label: 'Weekly plan only'     },
+  { id: 'on_demand',  label: 'Only when I ask'      },
+];
+
 // ── Atom components (always at module scope) ──────────────────────────────────
 
 function ProgressHeader({ step, onBack }) {
@@ -376,6 +390,8 @@ export default function OnboardingScreen({ navigation }) {
     grocery_pct:         70,
     brand_swap:          'sometimes',
     stash_style:         'smart',
+    takeoutFrequency:    '',
+    mealIdeaFrequency:   '',
   });
 
   function upd(key, value) {
@@ -458,6 +474,8 @@ export default function OnboardingScreen({ navigation }) {
           eat_out_types:        [],
           brand_swap:           data.brand_swap,
           stash_style:          data.stash_style,
+          takeout_frequency:    data.takeoutFrequency,
+          meal_idea_frequency:  data.mealIdeaFrequency,
           onboarding_completed: true,
         }, { onConflict: 'user_id' });
         await supabase.from('user_persona').upsert({
@@ -650,8 +668,8 @@ export default function OnboardingScreen({ navigation }) {
   function renderStep3() {
     return (
       <ScrollView contentContainerStyle={s.h3Scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.h3Headline}>Who are you{'\n'}shopping for?</Text>
-        <Text style={s.h3Sub}>Tell us about your household so we can personalize your plan.</Text>
+        <Text style={s.h3Headline}>Tell us about{'\n'}your household</Text>
+        <Text style={s.h3Sub}>We'll use this to personalize meal sizes, deal suggestions, and your weekly plan.</Text>
 
         {/* 2-col grid */}
         <View style={s.hGrid}>
@@ -665,6 +683,24 @@ export default function OnboardingScreen({ navigation }) {
                 selected={data.householdTypes.includes(ht.id)}
                 onPress={function () { toggleArr('householdTypes', ht.id); }}
               />
+            );
+          })}
+        </View>
+
+        {/* Takeout frequency */}
+        <Text style={s.h3SectionLabel}>How often do you eat out or order in?</Text>
+        <View style={s.h3FreqRow}>
+          {TAKEOUT_OPTS.map(function (opt) {
+            var selected = data.takeoutFrequency === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[s.h3FreqPill, selected && s.h3FreqPillOn]}
+                onPress={function () { upd('takeoutFrequency', opt.id); }}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.h3FreqTxt, selected && s.h3FreqTxtOn]}>{opt.label}</Text>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -739,7 +775,7 @@ export default function OnboardingScreen({ navigation }) {
   function renderStep5() {
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.headline}>How do you{'\n'}cook at home?</Text>
+        <Text style={s.headline}>What's your cooking{'\n'}and meal style?</Text>
         <Text style={s.sub}>Pick all that match your typical week. No wrong answers.</Text>
         <View style={s.cardList}>
           {COOKING_STYLES.map(function (c) {
@@ -784,10 +820,13 @@ export default function OnboardingScreen({ navigation }) {
   function renderStep7() {
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.headline}>Choose how Snippd{'\n'}finds your savings</Text>
+        <Text style={s.headline}>Customize your{'\n'}Snippd experience</Text>
         <Text style={s.sub}>
-          I'll use your stores, budget, and preferences to surface the best weekly deals first.
+          Choose how you want Snippd to find deals and how often you want meal ideas.
         </Text>
+
+        {/* Deal preferences */}
+        <Text style={s.fieldLabel}>How should Snippd find your savings?</Text>
         <View style={s.dealGrid}>
           {DEAL_PREFS.map(function (d) {
             return (
@@ -801,12 +840,31 @@ export default function OnboardingScreen({ navigation }) {
             );
           })}
         </View>
+
+        {/* Meal idea frequency */}
+        <Text style={[s.fieldLabel, { marginTop: 24 }]}>How often do you want meal ideas?</Text>
+        <View style={s.h3FreqRow}>
+          {MEAL_FREQ_OPTS.map(function (opt) {
+            var selected = data.mealIdeaFrequency === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[s.h3FreqPill, selected && s.h3FreqPillOn]}
+                onPress={function () { upd('mealIdeaFrequency', opt.id); }}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.h3FreqTxt, selected && s.h3FreqTxtOn]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <BigBtn label="Build My Plan" onPress={finishOnboarding} loading={saving} />
       </ScrollView>
     );
   }
 
-  var stepRenders = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5, renderStep6, renderStep7];
+  var stepRenders = [null, renderStep1, renderStep3, renderStep2, renderStep4, renderStep5, renderStep6, renderStep7];
 
   return (
     <SafeAreaView style={[s.root, (step === 1 || step === 2 || step === 3) && s.rootWhite]} edges={['top', 'bottom']}>
@@ -997,6 +1055,12 @@ var s = StyleSheet.create({
   h3ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
   h3Privacy:     { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
   h3PrivacyTxt:  { fontSize: 11, color: GRAY },
+  h3SectionLabel: { fontSize: 14, fontWeight: '700', color: NAVY, marginTop: 28, marginBottom: 12 },
+  h3FreqRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  h3FreqPill: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 24, borderWidth: 1.5, borderColor: BORDER, backgroundColor: WHITE },
+  h3FreqPillOn: { borderColor: GREEN, backgroundColor: '#F0FBF5' },
+  h3FreqTxt:  { fontSize: 13, fontWeight: '500', color: NAVY },
+  h3FreqTxtOn: { color: GREEN, fontWeight: '700' },
 
   // ── Step 1 specific layout (white bg, card rows) ──
   step1Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 16 },
