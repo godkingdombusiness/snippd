@@ -14,7 +14,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   StyleSheet, ActivityIndicator, Platform, KeyboardAvoidingView,
-  StatusBar, PanResponder,
+  StatusBar, PanResponder, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -477,20 +477,42 @@ export default function OnboardingScreen({ navigation }) {
     return (
       <SafeAreaView style={s.darkRoot} edges={['top', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={DARK_GREEN} />
-        <View style={s.heroBody}>
-          <View style={s.heroLogoWrap}>
-            <Feather name="shopping-bag" size={44} color={DARK_GREEN} />
+        <ScrollView
+          contentContainerStyle={s.heroScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Logo + wordmark */}
+          <View style={s.heroLogoBlock}>
+            <Image
+              source={require('../assets/Snippd-White-Cart .png')}
+              style={s.heroLogoImg}
+              resizeMode="contain"
+            />
+            <Text style={s.heroWordmark}>snippd</Text>
           </View>
+
+          {/* Headlines */}
           <Text style={s.heroTitle}>Welcome to Snippd</Text>
           <Text style={s.heroSub}>
-            Your personal grocery concierge.{'\n'}Smarter meals. Real savings — built around your life.
+            Smarter grocery planning,{'\n'}less waste, more time for you.
           </Text>
+
+          {/* Grocery bag hero image */}
+          <View style={s.heroBagWrap}>
+            <Image
+              source={require('../assets/grocery-bag-hero.jpg')}
+              style={s.heroBagImg}
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* CTAs */}
           <View style={s.heroBtns}>
             <TouchableOpacity style={s.heroMainBtn} onPress={next} activeOpacity={0.85}>
               <Text style={s.heroMainBtnText}>Get Started</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.heroDemoBtn} onPress={tryDemoMode} activeOpacity={0.8}>
-              <Feather name="play" size={16} color={WHITE} style={{ marginRight: 8 }} />
+              <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
               <Text style={s.heroDemoBtnText}>Try Demo Mode</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={function () { navigation.navigate('Auth'); }} activeOpacity={0.7}>
@@ -500,7 +522,7 @@ export default function OnboardingScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -799,42 +821,41 @@ var s = StyleSheet.create({
   darkRoot: { flex: 1, backgroundColor: DARK_GREEN },
 
   // ── Dark hero (step 0) ──
-  heroBody: {
-    flex: 1, paddingHorizontal: 28,
-    justifyContent: 'center', alignItems: 'center', paddingBottom: 32,
+  heroScroll: {
+    flexGrow: 1, paddingHorizontal: 24,
+    paddingTop: 32, paddingBottom: 40,
+    backgroundColor: DARK_GREEN,
   },
-  heroLogoWrap: {
-    width: 100, height: 100, borderRadius: 28,
-    backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 32,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15, shadowRadius: 16, elevation: 8,
-  },
+  heroLogoBlock: { alignItems: 'center', marginBottom: 20 },
+  heroLogoImg:   { width: 72, height: 72 },
+  heroWordmark:  { fontSize: 20, fontWeight: '800', color: '#3DBA6F', letterSpacing: 0.5 },
   heroTitle: {
-    fontSize: 36, fontWeight: '800', color: WHITE,
-    textAlign: 'center', letterSpacing: -0.8, lineHeight: 42, marginBottom: 12,
+    fontSize: 40, fontWeight: '900', color: WHITE,
+    textAlign: 'center', letterSpacing: -0.5, lineHeight: 46, marginBottom: 12,
   },
   heroSub: {
     fontSize: 16, color: 'rgba(255,255,255,0.72)',
-    textAlign: 'center', lineHeight: 24, marginBottom: 40, fontWeight: '300',
+    textAlign: 'center', lineHeight: 22, fontWeight: '400', marginBottom: 0,
   },
-  heroBtns: { width: '100%', gap: 12, alignItems: 'center' },
+  heroBagWrap: { alignItems: 'center', marginTop: 24, marginBottom: 28 },
+  heroBagImg:  { width: '85%', height: 280 },
+  heroBtns: { width: '100%', gap: 12 },
   heroMainBtn: {
-    width: '100%', backgroundColor: WHITE, borderRadius: 14,
-    paddingVertical: 17, alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
+    width: '100%', backgroundColor: WHITE, borderRadius: 50,
+    paddingVertical: 18, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
   },
-  heroMainBtnText: { fontSize: 16, fontWeight: '700', color: DARK_GREEN },
+  heroMainBtnText: { fontSize: 17, fontWeight: '800', color: DARK_GREEN },
   heroDemoBtn: {
-    width: '100%', borderRadius: 14, paddingVertical: 15,
+    width: '100%', borderRadius: 50, paddingVertical: 15,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
   },
   heroDemoBtnText: { fontSize: 15, fontWeight: '600', color: WHITE },
-  signInRow:  { fontSize: 14, color: 'rgba(255,255,255,0.62)', textAlign: 'center', marginTop: 4 },
-  signInBold: { color: WHITE, fontWeight: '700' },
+  signInRow:  { fontSize: 14, color: 'rgba(255,255,255,0.70)', textAlign: 'center', marginTop: 4 },
+  signInBold: { color: WHITE, fontWeight: '700', textDecorationLine: 'underline' },
 
   // ── Root variants ──
   rootWhite: { backgroundColor: WHITE },

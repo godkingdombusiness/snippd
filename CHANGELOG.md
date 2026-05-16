@@ -4,6 +4,17 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — OnboardingScreen Step 0 welcome redesigned to match mockup (2026-05-16)
+- `screens/OnboardingScreen.js` — Step 0 (dark-green welcome shown after signup) was showing old copy and a plain icon instead of the hero image.
+  - Added `Image` import.
+  - Replaced `Feather shopping-bag` icon with `Snippd-White-Cart .png` logo + `snippd` wordmark in brand green.
+  - Headline: "Welcome to Snippd". Subtitle updated to "Smarter grocery planning, less waste, more time for you."
+  - Added `grocery-bag-hero.jpg` as the hero image (same asset as SignInScreen welcome).
+  - "Get Started": white pill button, dark green text, `borderRadius: 50`.
+  - "Try Demo Mode": outline pill, matching SignInScreen style.
+  - "Sign in": white underlined text link.
+  - Wrapped in `ScrollView` for overflow safety on smaller screens.
+
 ### Added — grocery-bag-hero.png.jpg asset + wired into welcome screen (2026-05-16)
 - `assets/grocery-bag-hero.png.jpg` — Snippd-branded green tote bag hero image.
 - `screens/SignInScreen.js` — `heroWrap` image source updated from placeholder to `grocery-bag-hero.png.jpg`.
