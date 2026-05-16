@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — SignInScreen asset paths and button styles corrected (2026-05-16)
+- `screens/SignInScreen.js` — fixed broken asset references introduced by linter (`Snippd-logo-green-large.png` → `Snippd Green Logo.png`, `grocery-bag-tall-hero.png` → `grocery-bag-hero.png`); restored pill buttons (`borderRadius: 50`); restored logo height (110px); headline size back to 52pt bold.
+
 ### Changed — restore Try Demo Mode button to welcome screens (2026-05-16)
 - `screens/SignInScreen.js` — Demo Mode outline pill button restored between Get Started and Sign in on the welcome screen.
 - `screens/OnboardingScreen.js` — Demo Mode button restored in step 0 welcome CTA group.

@@ -2,20 +2,20 @@
  * SignInScreen — Welcome landing + sign-in / sign-up.
  *
  * mode 'welcome' (default) — Brand landing screen.
- *                            Buttons: Get Started → signup form
- *                                     Try Demo Mode → PersonaReveal (no auth)
- *                                     Already have account? Sign in → signin form
+ * Buttons: Get Started → signup form
+ * Try Demo Mode → PersonaReveal (no auth)
+ * Already have account? Sign in → signin form
  * mode 'form'              — Original email / Google / Apple form with
- *                            Sign In | Create Account tab toggle.
- *                            Create Account collects name + email + password,
- *                            creates the Supabase account, upserts full_name,
- *                            then navigates.reset → Onboarding.
+ * Sign In | Create Account tab toggle.
+ * Create Account collects name + email + password,
+ * creates the Supabase account, upserts full_name,
+ * then navigates.reset → Onboarding.
  *
  * Tablet (width > 768): left green panel + right form panel.
  * Phone: welcome landing → form on demand.
  *
  * Auth: Google / Apple → supabase.auth.signInWithOAuth
- *       Email  → supabase.auth.signInWithPassword / signUp
+ * Email  → supabase.auth.signInWithPassword / signUp
  *
  * Billing plan is NOT chosen here.
  * The paywall appears after onboarding + personality, before first shop.
@@ -69,16 +69,16 @@ var STATS = [
 
 // ── Demo profile — seeds PersonaReveal without any Supabase writes ─────────────
 var DEMO_PROFILE = {
-  isDemoMode:                       true,
-  missions:                         ['pure_savings', 'meal_planning', 'clinical_guardrails'],
-  weeklyBudget:                     250,
-  weekly_budget_cents:              25000,
-  household:                        { adults: 2, children: 2 },
-  cookingStyle:                     ['meal_prep', 'from_scratch'],
-  foodsAvoided:                     ['high_sugar', 'high_sodium'],
-  dietPreferences:                  ['budget_friendly', 'family_friendly'],
-  preferred_stores:                 ['publix', 'aldi', 'walmart'],
-  dealPreferences:                  ['weekly_ads', 'digital_coupons', 'bogos', 'loyalty_offers'],
+  isDemoMode:                        true,
+  missions:                          ['pure_savings', 'meal_planning', 'clinical_guardrails'],
+  weeklyBudget:                      250,
+  weekly_budget_cents:               25000,
+  household:                         { adults: 2, children: 2 },
+  cookingStyle:                      ['meal_prep', 'from_scratch'],
+  foodsAvoided:                      ['high_sugar', 'high_sodium'],
+  dietPreferences:                   ['budget_friendly', 'family_friendly'],
+  preferred_stores:                  ['publix', 'aldi', 'walmart'],
+  dealPreferences:                   ['weekly_ads', 'digital_coupons', 'bogos', 'loyalty_offers'],
   projected_monthly_recovery_cents: 7400,
 };
 
@@ -689,20 +689,18 @@ var hero = StyleSheet.create({
 // ── Welcome landing styles ─────────────────────────────────────────────────────
 var welcome = StyleSheet.create({
   root:  { flex: 1, backgroundColor: W_BG },
-  // No paddingHorizontal on scroll — hero image must be full-bleed.
-  // Each section adds its own horizontal padding inline.
+  // Styled as a clean vertical distribution layout to premium mobile parameters
   scroll: {
     flexGrow: 1,
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingTop: 36,
+    paddingBottom: 24,
     backgroundColor: W_BG,
+    justifyContent: 'space-between',
   },
 
-  // Snippd Green Logo — single combined asset (cart + wordmark)
   logoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 14 },
   logoImg:   { width: 150, height: 110 },
 
-  // Headlines
   headline: {
     fontSize: 52, fontWeight: '900', color: WHITE,
     textAlign: 'center', letterSpacing: -1,
@@ -716,10 +714,8 @@ var welcome = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  // Hero bag — full-bleed, no horizontal constraints
-  heroImg: { width: '100%', height: 460 },
+  heroImg: { width: '100%', height: 380 },
 
-  // CTAs
   ctaGroup: { gap: 10, paddingHorizontal: 24, paddingTop: 4 },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
@@ -771,81 +767,4 @@ var form = StyleSheet.create({
   tabBtnTxt:       { fontSize: 12, fontWeight: '500', color: GRAY },
   tabBtnTxtActive: { color: GREEN, fontWeight: '700' },
 
-  socialGroup: { gap: 10, marginBottom: 24 },
-  socialBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: 20,
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 14,
-    backgroundColor: GLASS, gap: 14,
-  },
-  socialIcon:  { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
-  socialLabel: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '500', color: NAVY },
-
-  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: BORDER },
-  dividerTxt:  { fontSize: 10, fontWeight: '600', color: GRAY, letterSpacing: 1, textTransform: 'uppercase' },
-
-  fieldGroup: { gap: 12, marginBottom: 8 },
-  fieldWrap:  {},
-  fieldLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: GRAY, marginBottom: 6 },
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
-    backgroundColor: WHITE,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    minHeight: 52,
-  },
-  inputWrapFocused: {
-    borderColor: GREEN,
-    ...Platform.select({
-      web: { boxShadow: '0px 0px 0px 3px rgba(12,158,84,0.15)' },
-      default: { shadowColor: GREEN, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 2 },
-    }),
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: NAVY,
-    backgroundColor: WHITE,
-    underlineColorAndroid: 'transparent',
-    paddingVertical: 0,
-    ...Platform.select({ web: { outline: 'none' } }),
-  },
-  eyeBtn: { padding: 4 },
-
-  forgotWrap: { alignItems: 'flex-end', marginBottom: 16 },
-  forgotTxt:  { fontSize: 12, color: GREEN, fontWeight: '500', opacity: 0.8 },
-
-  trialNote: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: MINT_BG, borderRadius: 10, padding: 12, marginBottom: 16,
-  },
-  trialNoteText: { flex: 1, fontSize: 13, color: NAVY, lineHeight: 18 },
-
-  errorTxt: { fontSize: 13, color: ERROR_RED, marginBottom: 12, textAlign: 'center', fontWeight: '500' },
-  infoTxt:  { fontSize: 13, color: GREEN,     marginBottom: 12, textAlign: 'center', fontWeight: '500' },
-
-  submitBtn: {
-    width: '100%', paddingVertical: 16, borderRadius: 14,
-    backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28, shadowRadius: 10, elevation: 4,
-  },
-  submitBtnDisabled: { opacity: 0.65 },
-  submitBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
-
-  trustCopy: { textAlign: 'center', fontSize: 11, color: GRAY, marginBottom: 18, letterSpacing: 0.3 },
-
-  bottomLink:  { textAlign: 'center', fontSize: 13, color: GRAY },
-  bottomLinkA: { color: GREEN, fontWeight: '700' },
-});
-
-// ── Root layout ────────────────────────────────────────────────────────────────
-var root = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: CREAM },
-  twoPanelRow: { flex: 1, flexDirection: 'row' },
-  leftCol:     { flex: 1 },
-  rightCol:    { flex: 1, backgroundColor: CREAM },
-});
+  socialGroup: { gap: 1
