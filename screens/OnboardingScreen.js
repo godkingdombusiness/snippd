@@ -484,7 +484,6 @@ export default function OnboardingScreen({ navigation }) {
           weekly_budget:        budget,
           grocery_pct:          data.grocery_pct,
           household_size:       Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0) || 2,
-          pets:                 data.pets,
           food_goals:           allGoals,
           preferred_stores:     data.preferred_stores,
           avoids:               data.foodsAvoided,
@@ -559,7 +558,7 @@ export default function OnboardingScreen({ navigation }) {
                 <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
                 <Text style={s.heroDemoBtnText}>Try Demo Mode</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={function () { navigation.navigate('Auth'); }} activeOpacity={0.7} style={s.heroSignInLink}>
+              <TouchableOpacity onPress={function () { navigation.navigate('Auth', { openForm: 'signin' }); }} activeOpacity={0.7} style={s.heroSignInLink}>
                 <Text style={s.heroSignInTxt}>Sign in</Text>
               </TouchableOpacity>
             </View>

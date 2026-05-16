@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — onboarding completion + sign-in routing (2026-05-16)
+- `screens/OnboardingScreen.js` — Removed `pets: data.pets` from Supabase `profiles` upsert; the `pets` column does not exist and caused the entire upsert to fail silently, preventing `onboarding_completed` from being saved and trapping users in the onboarding loop. Step 0 "Sign in" link now passes `{ openForm: 'signin' }` param so SignInScreen opens the form directly instead of the welcome landing.
+- `screens/SignInScreen.js` — Accepts `route.params.openForm` param; initialises `mode` to `'form'` and `tab` to the provided value when the param is present, skipping the welcome landing when navigated from inside the app.
+
 ### Changed — Household step full redesign: steppers, takeout card, pet card (2026-05-16)
 - `screens/OnboardingScreen.js` — Added `FontAwesome5` import for premium icons (graduation-cap, running, child, walking, paw, utensils); HOUSEHOLD_TYPES updated to 6 categories (Adults 23–64, College-aged 18–22, Teens 13–17, Children 2–12, Seniors 65+, Guests/Roommates) with FA5 icons; TAKEOUT_OPTS labels updated (Rarely / 1–2x/week / 3–4x/week / 5+ times/week); added PET_OPTS (Dog/Cat/Both/None); HouseholdCard rewritten from checkbox to stepper (Icon → Title → Sub → (− count +)); state `householdTypes` → `householdCounts` object + `pets` array; added `adjustCount` + `togglePet` functions; renderStep3 rebuilt with stepper grid, Takeout Frequency card, Pet Profile card, pill buttons with green ✓ checkmark, pill-shaped Continue CTA, info banner; styles: hStepper/hStepBtn/hStepCount, toCard/toCardHeader/toPill/toPillCheck, h3ContinueBtn pill-shaped (borderRadius 30).
 - `finishOnboarding`: household_size now summed from householdCounts; pets array saved to profiles.

@@ -228,13 +228,16 @@ function MobileHero() {
 }
 
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
-export default function SignInScreen({ navigation }) {
+export default function SignInScreen({ navigation, route }) {
   var dims     = useWindowDimensions();
   var isTablet = dims.width > 768;
 
+  // If navigated with { openForm: 'signin' } or { openForm: 'signup' }, skip welcome landing
+  var openForm = route?.params?.openForm || null;
+
   // 'welcome' lands first; 'form' shows the sign-in / create-account form
-  var [mode,         setMode]         = useState('welcome');
-  var [tab,          setTab]          = useState('signin');
+  var [mode,         setMode]         = useState(openForm ? 'form' : 'welcome');
+  var [tab,          setTab]          = useState(openForm || 'signin');
   var [name,         setName]         = useState('');
   var [email,        setEmail]        = useState('');
   var [password,     setPassword]     = useState('');
