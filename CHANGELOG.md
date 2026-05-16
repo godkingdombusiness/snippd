@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome screen hero image enlarged + brand alignment pass (2026-05-16)
+- `screens/SignInScreen.js` — hero image height 320 → 400; `marginVertical` on hero wrap 16 → 8; `paddingTop` 32 → 20; logo 72 → 80px; `Get Started` button text updated to brand CTA green `#2E7D32`; button shadow deepened.
+- `screens/OnboardingScreen.js` — same sizing and brand alignment changes mirrored for OnboardingScreen step 0 welcome.
+
 ### Fixed — grocery bag hero replaced with truly transparent PNG (2026-05-16)
 - `assets/grocery-bag-hero.png` — re-copied from latest `grocery-bag-hero.png.png` drop; this version has a genuine transparent background.
 

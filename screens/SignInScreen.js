@@ -698,21 +698,21 @@ var welcome = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 20,
     paddingBottom: 40,
     backgroundColor: W_BG,
   },
 
   // Logo block — cart icon + "snippd" wordmark in brand green
-  logoBlock: { alignItems: 'center', marginBottom: 20 },
-  logoImg:   { width: 72, height: 72, marginBottom: 0 },
-  wordmark:  { fontSize: 20, fontWeight: '800', color: '#3DBA6F', letterSpacing: 0.5 },
+  logoBlock: { alignItems: 'center', marginBottom: 12 },
+  logoImg:   { width: 80, height: 80, marginBottom: 2 },
+  wordmark:  { fontSize: 22, fontWeight: '800', color: '#3DBA6F', letterSpacing: 0.5 },
 
   // Headlines
   headline: {
     fontSize: 40, fontWeight: '900', color: WHITE,
     textAlign: 'center', letterSpacing: -0.5,
-    lineHeight: 46, marginBottom: 12,
+    lineHeight: 46, marginBottom: 8,
   },
   sub: {
     fontSize: 16, color: 'rgba(255,255,255,0.72)',
@@ -721,8 +721,8 @@ var welcome = StyleSheet.create({
   },
 
   // Hero bag
-  heroWrap: { alignItems: 'center', marginVertical: 16 },
-  heroImg:  { width: '100%', height: 320 },
+  heroWrap: { alignItems: 'center', marginVertical: 8 },
+  heroImg:  { width: '100%', height: 400 },
 
   // CTAs
   ctaGroup: { gap: 12 },
@@ -731,15 +731,15 @@ var welcome = StyleSheet.create({
     backgroundColor: WHITE,
     paddingVertical: 18, borderRadius: 50,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
+    shadowOpacity: 0.18, shadowRadius: 12, elevation: 6,
   },
-  primaryBtnTxt: { color: W_BG, fontSize: 17, fontWeight: '800', letterSpacing: 0.2 },
+  primaryBtnTxt: { color: '#2E7D32', fontSize: 17, fontWeight: '800', letterSpacing: 0.2 },
   demoBtn: {
     flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.40)',
     paddingVertical: 15, borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   demoBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '600' },
   signInLink:       { alignItems: 'center', paddingVertical: 6 },
