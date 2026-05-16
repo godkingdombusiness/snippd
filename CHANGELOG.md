@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — food preferences step: typography alignment pass (2026-05-16)
+- `screens/OnboardingScreen.js` — `f4Headline` bumped to 40px/800 weight matching other step headlines (was 28/700); `f4Sub` set to 15px/400 weight light gray matching `sub` style; `f4CardTitle` changed from small-caps gray label to 14px/700 navy matching `fieldLabel`; `pillText` adjusted to `#374151` (gray-700) regular weight for neutral charcoal unselected state.
+
 ### Changed — food preferences step: two-card layout, strict 2-col grid, updated pill states (2026-05-16)
 - `screens/OnboardingScreen.js` — renderStep4 fully rebuilt: headline reduced to 28px left-aligned, subtitle updated to "Choose anything that fits your household so Snippd can recommend better meals and deals."; two white shadow cards ("Preferences" and "Allergies & restrictions") replace bare section headers; strict 2-column symmetric grid (`f4Grid`/`f4GridCell`/`f4GridPill`) replaces free-wrap pill row so every pill spans exactly 50% width; pill unselected state: thin 1px `#E5E7EB` border, white bg, charcoal `#4B5563` text, borderRadius 10; pill selected state: green border, `#F0FBF5` mint bg, green text, green checkmark circle; "No preference" clear pill added to Preferences card; "None" clear pill added to Allergies card; info banner removed; Continue button full-width with borderRadius 14 (`f4ContinueBtn`). DIET_PREFS updated to: Low carb, High protein, Vegetarian, Vegan, Budget-friendly, Kid-friendly. FOODS_AVOIDED labels updated to allergy-style naming (Gluten-free, Dairy-free, Nut allergy, Peanut allergy, Shellfish allergy, etc.). `Pill` component gains optional `style` prop for grid stretching.
 
