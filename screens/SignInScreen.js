@@ -388,15 +388,6 @@ export default function SignInScreen({ navigation }) {
             Smarter grocery planning,{'\n'}less waste, more time for you.
           </Text>
 
-          {/* Hero grocery bag image */}
-          <View style={welcome.heroWrap}>
-            <Image
-              source={require('../assets/grocery-bag-hero.jpg')}
-              style={welcome.heroImg}
-              resizeMode="contain"
-            />
-          </View>
-
           {/* CTAs */}
           <View style={welcome.ctaGroup}>
             <TouchableOpacity
@@ -717,19 +708,7 @@ var welcome = StyleSheet.create({
   sub: {
     fontSize: 16, color: 'rgba(255,255,255,0.72)',
     textAlign: 'center', fontWeight: '400',
-    lineHeight: 22, marginBottom: 0,
-  },
-
-  // Hero grocery bag image
-  heroWrap: {
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 28,
-    flex: 1,
-  },
-  heroImg: {
-    width: '85%',
-    height: 300,
+    lineHeight: 22, marginBottom: 40,
   },
 
   // CTAs
