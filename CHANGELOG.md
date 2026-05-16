@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — welcome buttons collapsed + bag off-center from alignItems:center parent (2026-05-16)
+- `screens/SignInScreen.js` — replaced `width: '100%'` with `alignSelf: 'stretch'` on `topGroup`, `heroWrap`, `headline`, `sub`; added `alignSelf: 'stretch'` to `ctaGroup` to restore full-width button layout. `alignSelf: 'stretch'` overrides the parent `alignItems: 'center'` and fills the true container width, while `width: '100%'` inside an `alignItems: 'center'` parent resolves relative to the collapsed content width.
+- `screens/OnboardingScreen.js` — same fixes applied to `heroLogoBlock`, `heroTitle`, `heroSub`, `heroBagWrap`, `heroBtns`.
+
 ### Changed — welcome scroll container unified centerline (2026-05-16)
 - `screens/SignInScreen.js` — added `alignItems: 'center'` and `width: '100%'` to `welcome.scroll` so all top-level sections (logo, text, bag wrapper, CTAs) share one axis.
 - `screens/OnboardingScreen.js` — same applied to `heroScroll`.

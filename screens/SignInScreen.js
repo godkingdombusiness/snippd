@@ -704,27 +704,27 @@ var welcome = StyleSheet.create({
     width: '100%',
   },
 
-  // Top zone
-  topGroup:  { alignItems: 'center', paddingHorizontal: 24, width: '100%' },
+  // Top zone — alignSelf stretch overrides parent alignItems:center, fills full width
+  topGroup:  { alignItems: 'center', paddingHorizontal: 24, alignSelf: 'stretch' },
   logoImg:   { width: 290, height: 104, marginBottom: 18 },
   headline: {
     fontSize: 38, fontWeight: '700', color: WHITE,
     textAlign: 'center', letterSpacing: -0.5,
     lineHeight: 46, marginBottom: 12,
-    alignSelf: 'center', width: '100%',
+    alignSelf: 'stretch',
   },
   sub: {
     fontSize: 15, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', fontWeight: '400',
-    lineHeight: 23, paddingHorizontal: 8,
+    lineHeight: 23, paddingHorizontal: 8, alignSelf: 'stretch',
   },
 
-  // Middle zone: full-width wrapper centers bag on true screen axis; marginTop auto sinks it toward CTAs
-  heroWrap: { width: '100%', alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
+  // Middle zone — alignSelf stretch fills true screen width so alignItems:center inside works correctly
+  heroWrap: { alignSelf: 'stretch', alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
   heroImg:  { width: '78%', height: 410 },
 
-  // Bottom zone
-  ctaGroup: { gap: 12, paddingHorizontal: 24 },
+  // Bottom zone — alignSelf stretch restores full-width button layout
+  ctaGroup: { gap: 12, paddingHorizontal: 24, alignSelf: 'stretch' },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: WHITE,
