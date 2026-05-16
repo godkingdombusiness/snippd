@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — grocery bag hero replaced with truly transparent PNG (2026-05-16)
+- `assets/grocery-bag-hero.png` — re-copied from latest `grocery-bag-hero.png.png` drop; this version has a genuine transparent background.
+
 ### Fixed — grocery bag hero asset updated to transparent PNG (2026-05-16)
 - `assets/grocery-bag-hero.png` — replaced with transparent-background bag illustration; copied from `grocery-bag-hero.png.jpg` to clean `.png` extension so Metro bundler resolves it correctly.
 - `screens/SignInScreen.js` + `screens/OnboardingScreen.js` — require() path updated to `grocery-bag-hero.png`.
