@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
 var GREEN      = '#0C9E54';
@@ -125,19 +125,26 @@ var DEAL_PREFS = [
 ];
 
 var HOUSEHOLD_TYPES = [
-  { id: 'adults',   label: 'Adults',             sub: 'Ages 18+',            icon: 'user' },
-  { id: 'children', label: 'Children',           sub: 'Ages 2–17',           icon: 'users' },
-  { id: 'teens',    label: 'Teens',              sub: 'Ages 13–17',          icon: 'user' },
-  { id: 'seniors',  label: 'Seniors',            sub: 'Ages 65+',            icon: 'user-check' },
-  { id: 'pets',     label: 'Pets',               sub: 'Dogs or cats',        icon: 'heart' },
-  { id: 'guests',   label: 'Guests /\nRoommates',sub: 'Others in household', icon: 'users' },
+  { id: 'adults',   label: 'Adults',           sub: 'Ages 23–64',          icon: 'user' },
+  { id: 'college',  label: 'College-aged',      sub: 'Ages 18–22',          icon: 'graduation-cap' },
+  { id: 'teens',    label: 'Teens',             sub: 'Ages 13–17',          icon: 'running' },
+  { id: 'children', label: 'Children',          sub: 'Ages 2–12',           icon: 'child' },
+  { id: 'seniors',  label: 'Seniors',           sub: 'Ages 65+',            icon: 'walking' },
+  { id: 'guests',   label: 'Guests / Roommates',sub: 'Others in household', icon: 'users' },
 ];
 
 var TAKEOUT_OPTS = [
-  { id: 'rarely',     label: 'Rarely or never'   },
-  { id: '1_2x_week',  label: '1–2 times a week'  },
-  { id: '3_4x_week',  label: '3–4 times a week'  },
-  { id: 'most_days',  label: 'Most days'          },
+  { id: 'rarely',     label: 'Rarely' },
+  { id: '1_2x_week',  label: '1–2x / week' },
+  { id: '3_4x_week',  label: '3–4x / week' },
+  { id: '5plus_week', label: '5+ times / week' },
+];
+
+var PET_OPTS = [
+  { id: 'dog',  label: 'Dog' },
+  { id: 'cat',  label: 'Cat' },
+  { id: 'both', label: 'Both' },
+  { id: 'none', label: 'None' },
 ];
 
 var MEAL_FREQ_OPTS = [
@@ -330,20 +337,25 @@ function BudgetSlider({ value, onChange }) {
   );
 }
 
-function HouseholdCard({ label, sub, icon, selected, onPress }) {
+function HouseholdCard({ label, sub, icon, count, onDecrement, onIncrement }) {
+  var active = count > 0;
   return (
-    <TouchableOpacity style={[s.hCard, selected && s.hCardOn]} onPress={onPress} activeOpacity={0.78}>
-      <View style={s.hCardCheckWrap}>
-        <View style={[s.hCardCheck, selected && s.hCardCheckOn]}>
-          {selected && <Feather name="check" size={10} color={WHITE} />}
-        </View>
+    <View style={[s.hCard, active && s.hCardOn]}>
+      <View style={s.hCardIconWrap}>
+        <FontAwesome5 name={icon} size={17} color={GREEN} solid />
       </View>
-      <View style={[s.hCardIconWrap, selected && s.hCardIconWrapOn]}>
-        <Feather name={icon} size={22} color={selected ? WHITE : GREEN} />
-      </View>
-      <Text style={[s.hCardLabel, selected && s.hCardLabelOn]}>{label}</Text>
+      <Text style={s.hCardLabel}>{label}</Text>
       <Text style={s.hCardSub}>{sub}</Text>
-    </TouchableOpacity>
+      <View style={s.hStepper}>
+        <TouchableOpacity style={s.hStepBtn} onPress={onDecrement} activeOpacity={0.7}>
+          <Text style={s.hStepBtnTxt}>−</Text>
+        </TouchableOpacity>
+        <Text style={[s.hStepCount, active && s.hStepCountOn]}>{count}</Text>
+        <TouchableOpacity style={s.hStepBtn} onPress={onIncrement} activeOpacity={0.7}>
+          <Text style={s.hStepBtnTxt}>+</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -383,8 +395,8 @@ export default function OnboardingScreen({ navigation }) {
     missions:            [],
     weeklyBudget:        '',
     weekly_budget_cents: 0,
-    householdTypes:      ['adults'],   // default: Adults pre-selected
-    household:           { adults: 2, children: 0 },
+    householdCounts:     { adults: 0, college: 0, teens: 0, children: 0, seniors: 0, guests: 0 },
+    pets:                [],
     cookingStyle:        [],
     foodsAvoided:        [],
     dietPreferences:     [],
@@ -412,10 +424,20 @@ export default function OnboardingScreen({ navigation }) {
     });
   }
 
-  function updHousehold(key, value) {
+  function adjustCount(key, delta) {
     setData(function (p) {
+      var counts = Object.assign({}, p.householdCounts);
+      counts[key] = Math.max(0, (counts[key] || 0) + delta);
+      return Object.assign({}, p, { householdCounts: counts });
+    });
+  }
+
+  function togglePet(id) {
+    setData(function (p) {
+      if (id === 'none') return Object.assign({}, p, { pets: ['none'] });
+      var arr = p.pets.filter(function (v) { return v !== 'none'; });
       return Object.assign({}, p, {
-        household: Object.assign({}, p.household, { [key]: value }),
+        pets: arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]),
       });
     });
   }
@@ -424,8 +446,8 @@ export default function OnboardingScreen({ navigation }) {
   function back() { setStep(function (n) { return Math.max(n - 1, 0); }); }
 
   function buildPersonaParams(d, extra) {
-    var adults   = d.household.adults || 2;
-    var children = d.household.children || 0;
+    var adults   = (d.householdCounts && d.householdCounts.adults) || 2;
+    var children = (d.householdCounts && d.householdCounts.children) || 0;
     return Object.assign({
       isDemoMode:     false,
       missions:       d.missions,
@@ -461,12 +483,8 @@ export default function OnboardingScreen({ navigation }) {
           user_id:              user.id,
           weekly_budget:        budget,
           grocery_pct:          data.grocery_pct,
-          household_size:       (data.householdTypes.includes('adults')   ? 2 : 0)
-                              + (data.householdTypes.includes('seniors')  ? 1 : 0)
-                              + (data.householdTypes.includes('guests')   ? 1 : 0)
-                              + (data.householdTypes.includes('children') ? 1 : 0)
-                              + (data.householdTypes.includes('teens')    ? 1 : 0)
-                              || 2,
+          household_size:       Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0) || 2,
+          pets:                 data.pets,
           food_goals:           allGoals,
           preferred_stores:     data.preferred_stores,
           avoids:               data.foodsAvoided,
@@ -677,54 +695,97 @@ export default function OnboardingScreen({ navigation }) {
         <Text style={s.h3Headline}>Tell us about{'\n'}your household</Text>
         <Text style={s.h3Sub}>We'll use this to personalize meal sizes, deal suggestions, and your weekly plan.</Text>
 
-        {/* 2-col grid */}
+        {/* 2-col stepper grid */}
         <View style={s.hGrid}>
           {HOUSEHOLD_TYPES.map(function (ht) {
+            var count = data.householdCounts[ht.id] || 0;
             return (
               <HouseholdCard
                 key={ht.id}
                 label={ht.label}
                 sub={ht.sub}
                 icon={ht.icon}
-                selected={data.householdTypes.includes(ht.id)}
-                onPress={function () { toggleArr('householdTypes', ht.id); }}
+                count={count}
+                onDecrement={function () { adjustCount(ht.id, -1); }}
+                onIncrement={function () { adjustCount(ht.id, 1); }}
               />
             );
           })}
         </View>
 
-        {/* Takeout frequency */}
-        <Text style={s.h3SectionLabel}>How often do you eat out or order in?</Text>
-        <View style={s.h3FreqRow}>
-          {TAKEOUT_OPTS.map(function (opt) {
-            var selected = data.takeoutFrequency === opt.id;
-            return (
-              <TouchableOpacity
-                key={opt.id}
-                style={[s.h3FreqPill, selected && s.h3FreqPillOn]}
-                onPress={function () { upd('takeoutFrequency', opt.id); }}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.h3FreqTxt, selected && s.h3FreqTxtOn]}>{opt.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
+        {/* Takeout Frequency Card */}
+        <View style={s.toCard}>
+          <View style={s.toCardHeader}>
+            <View style={s.toCardIconWrap}>
+              <FontAwesome5 name="utensils" size={13} color={GREEN} solid />
+            </View>
+            <Text style={s.toCardTitle}>How often do you get takeout?</Text>
+          </View>
+          <View style={s.toPillGrid}>
+            {TAKEOUT_OPTS.map(function (opt) {
+              var sel = data.takeoutFrequency === opt.id;
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={[s.toPill, sel && s.toPillOn]}
+                  onPress={function () { upd('takeoutFrequency', opt.id); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.toPillTxt, sel && s.toPillTxtOn]}>{opt.label}</Text>
+                  {sel && (
+                    <View style={s.toPillCheck}>
+                      <Feather name="check" size={8} color={WHITE} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
-        {/* Why we ask */}
+        {/* Pet Profile Card */}
+        <View style={s.toCard}>
+          <View style={s.toCardHeader}>
+            <View style={s.toCardIconWrap}>
+              <FontAwesome5 name="paw" size={13} color={GREEN} solid />
+            </View>
+            <Text style={s.toCardTitle}>What kind of pets do you have?</Text>
+          </View>
+          <View style={s.petRow}>
+            {PET_OPTS.map(function (opt) {
+              var sel = data.pets.includes(opt.id);
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={[s.toPill, sel && s.toPillOn]}
+                  onPress={function () { togglePet(opt.id); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.toPillTxt, sel && s.toPillTxtOn]}>{opt.label}</Text>
+                  {sel && (
+                    <View style={s.toPillCheck}>
+                      <Feather name="check" size={8} color={WHITE} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Info Banner */}
         <View style={s.h3WhyCard}>
-          <View style={s.h3WhyIconWrap}>
-            <Feather name="info" size={18} color={GREEN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.h3WhyTitle}>Why we ask</Text>
-            <Text style={s.h3WhySub}>This helps us suggest the right meal ideas, serving sizes, and savings for your household.</Text>
-          </View>
+          <Feather name="info" size={18} color={GREEN} />
+          <Text style={s.h3WhySub}>
+            <Text style={s.h3WhyTitle}>Why we ask: </Text>
+            This helps us suggest the right meal ideas, serving sizes, and savings for your household.
+          </Text>
         </View>
 
-        {/* Continue */}
+        {/* Continue CTA */}
         <TouchableOpacity style={s.h3ContinueBtn} onPress={next} activeOpacity={0.88}>
           <Text style={s.h3ContinueTxt}>Continue</Text>
+          <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
         </TouchableOpacity>
 
         {/* Privacy */}
@@ -1020,41 +1081,68 @@ var s = StyleSheet.create({
   hCard: {
     width: '47.5%', backgroundColor: WHITE,
     borderRadius: 16, borderWidth: 1.5, borderColor: BORDER,
-    padding: 14, minHeight: 110, position: 'relative',
+    padding: 14, minHeight: 155,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  hCardOn:         { borderColor: GREEN },
-  hCardCheckWrap:  { position: 'absolute', top: 10, right: 10 },
-  hCardCheck: {
-    width: 20, height: 20, borderRadius: 10,
-    borderWidth: 1.5, borderColor: BORDER,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: WHITE,
-  },
-  hCardCheckOn:    { backgroundColor: GREEN, borderColor: GREEN },
+  hCardOn:      { borderColor: GREEN },
   hCardIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 8, alignSelf: 'flex-start',
   },
-  hCardIconWrapOn: { backgroundColor: GREEN },
-  hCardLabel:      { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 2 },
-  hCardLabelOn:    { color: NAVY },
-  hCardSub:        { fontSize: 11, color: GRAY, lineHeight: 15 },
+  hCardLabel:   { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 2 },
+  hCardSub:     { fontSize: 11, color: GRAY, lineHeight: 15, flex: 1 },
+  hStepper: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 10, backgroundColor: '#F3F4F6', borderRadius: 10, padding: 4,
+  },
+  hStepBtn: {
+    width: 32, height: 32, borderRadius: 8, backgroundColor: WHITE,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 2, elevation: 1,
+  },
+  hStepBtnTxt:   { fontSize: 18, fontWeight: '600', color: NAVY, lineHeight: 22 },
+  hStepCount:    { fontSize: 16, fontWeight: '700', color: '#9CA3AF', minWidth: 28, textAlign: 'center' },
+  hStepCountOn:  { color: GREEN },
+  toCard: {
+    backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER,
+    padding: 16, marginBottom: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+  },
+  toCardHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  toCardIconWrap: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
+  },
+  toCardTitle:   { fontSize: 15, fontWeight: '700', color: NAVY, flex: 1 },
+  toPillGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  petRow:        { flexDirection: 'row', gap: 8 },
+  toPill: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flex: 1, paddingVertical: 11, paddingHorizontal: 12,
+    borderRadius: 24, borderWidth: 1.5, borderColor: BORDER,
+    backgroundColor: WHITE, minWidth: '44%',
+  },
+  toPillOn:      { borderColor: GREEN, backgroundColor: '#F0FBF5' },
+  toPillTxt:     { fontSize: 13, fontWeight: '500', color: NAVY },
+  toPillTxtOn:   { color: GREEN, fontWeight: '600' },
+  toPillCheck: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', marginLeft: 4,
+  },
   h3WhyCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
     backgroundColor: MINT, borderRadius: 14, padding: 14, marginBottom: 20,
   },
-  h3WhyIconWrap: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  h3WhyTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 3 },
-  h3WhySub:   { fontSize: 12, color: GRAY, lineHeight: 18 },
+  h3WhyTitle: { fontSize: 13, fontWeight: '700', color: NAVY },
+  h3WhySub:   { fontSize: 13, color: GRAY, lineHeight: 19, flex: 1 },
   h3ContinueBtn: {
-    backgroundColor: GREEN, borderRadius: 16,
+    backgroundColor: GREEN, borderRadius: 30,
     paddingVertical: 18, alignItems: 'center', marginBottom: 14,
+    flexDirection: 'row', justifyContent: 'center', position: 'relative',
     shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
   },
