@@ -375,7 +375,7 @@ export default function SignInScreen({ navigation }) {
           {/* Snippd Green Logo — cart icon + wordmark combined */}
           <View style={welcome.logoBlock}>
             <Image
-              source={require('../assets/Snippd Green Logo.png')}
+              source={require('../assets/Snippd-logo-green-large.png')}
               style={welcome.logoImg}
               resizeMode="contain"
             />
@@ -389,7 +389,7 @@ export default function SignInScreen({ navigation }) {
 
           {/* Hero grocery bag — full-bleed, no horizontal padding */}
           <Image
-            source={require('../assets/grocery-bag-hero.png')}
+            source={require('../assets/grocery-bag-tall-hero.png')}
             style={welcome.heroImg}
             resizeMode="contain"
           />
@@ -698,40 +698,40 @@ var welcome = StyleSheet.create({
     justifyContent: 'space-between',
   },
 
-  logoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 14 },
-  logoImg:   { width: 150, height: 110 },
+  logoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 16 },
+  logoImg:   { width: 140, height: 50 },
 
   headline: {
-    fontSize: 52, fontWeight: '900', color: WHITE,
-    textAlign: 'center', letterSpacing: -1,
-    lineHeight: 58, marginBottom: 10,
-    paddingHorizontal: 24,
+    fontSize: 34, fontWeight: 'bold', color: WHITE,
+    textAlign: 'center', letterSpacing: -0.5,
+    lineHeight: 42, marginBottom: 10,
+    paddingHorizontal: 32,
   },
   sub: {
-    fontSize: 17, color: 'rgba(255,255,255,0.80)',
-    textAlign: 'center', fontWeight: '400',
-    lineHeight: 24, marginBottom: 12,
-    paddingHorizontal: 24,
+    fontSize: 15, color: 'rgba(255,255,255,0.70)',
+    textAlign: 'center', fontWeight: 'normal',
+    lineHeight: 22, marginBottom: 20,
+    paddingHorizontal: 32,
   },
 
   heroImg: { width: '100%', height: 380 },
 
-  ctaGroup: { gap: 10, paddingHorizontal: 24, paddingTop: 4 },
+  ctaGroup: { gap: 12, paddingHorizontal: 24, paddingTop: 4 },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: WHITE,
-    paddingVertical: 18, borderRadius: 50,
+    paddingVertical: 16, borderRadius: 8,
   },
-  primaryBtnTxt: { color: '#1B4332', fontSize: 17, fontWeight: '700' },
+  primaryBtnTxt: { color: '#1B4332', fontSize: 16, fontWeight: '600' },
   demoBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.40)',
-    paddingVertical: 15, borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.30)',
+    paddingVertical: 16, borderRadius: 8,
+    backgroundColor: 'transparent',
   },
-  demoBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '600' },
-  signInLink:    { alignItems: 'center', paddingVertical: 10 },
-  signInLinkTxt: { fontSize: 15, color: WHITE, fontWeight: '600', textDecorationLine: 'underline' },
+  demoBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '600' },
+  signInLink:    { alignItems: 'center', paddingTop: 8, paddingVertical: 10 },
+  signInLinkTxt: { fontSize: 15, color: WHITE, fontWeight: '500', textDecorationLine: 'underline' },
 });
 
 // ── Form styles ────────────────────────────────────────────────────────────────

@@ -4,6 +4,11 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome screen blueprint applied (2026-05-16)
+- `assets/Snippd-logo-green-large.png` — new logo asset copied from double-extension source.
+- `assets/grocery-bag-tall-hero.png` — new tall hero bag asset copied from double-extension source.
+- `screens/SignInScreen.js` — welcome screen updated to match blueprint: logo `Snippd-logo-green-large.png` (140×50), hero `grocery-bag-tall-hero.png` (h:380), buttons `borderRadius:8`, headline 34pt bold, subtitle 15pt.
+
 ### Fixed — SignInScreen syntax error: restore truncated form stylesheet (2026-05-16)
 - `screens/SignInScreen.js` — file was truncated mid-line at `socialGroup: { gap: 1`; restored complete `form` StyleSheet (socialGroup, socialBtn, inputs, submit button, trust copy) and `root` StyleSheet. Brace balance verified OK.
 
