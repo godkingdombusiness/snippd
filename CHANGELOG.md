@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — budget step Snippd Fact card + pet grid fix (2026-05-16)
+- `screens/OnboardingScreen.js` — Pet selection changed from single horizontal row to 2×2 grid (`flexWrap: 'wrap'` on `petRow`) matching the takeout grid layout. Added `getBudgetFact(size)` helper returning USDA-based dynamic copy for 1 / 2 / 3–4 / 5+ person households. Added `showFact` state; BudgetSlider accepts `onRelease` prop (fires `onPanResponderRelease`) to trigger fact card; TextInput `onBlur` also triggers it. Fact card (`b2FactCard`) renders below the budget card after first interaction: pale yellow (#FEFCE8) background, amber border, 💡 emoji, bold "Snippd Fact" label, dynamic copy. Budget step Continue button updated to pill-shaped (borderRadius 30) with absolute-right arrow.
+
 ### Fixed — onboarding completion + sign-in routing (2026-05-16)
 - `screens/OnboardingScreen.js` — Removed `pets: data.pets` from Supabase `profiles` upsert; the `pets` column does not exist and caused the entire upsert to fail silently, preventing `onboarding_completed` from being saved and trapping users in the onboarding loop. Step 0 "Sign in" link now passes `{ openForm: 'signin' }` param so SignInScreen opens the form directly instead of the welcome landing.
 - `screens/SignInScreen.js` — Accepts `route.params.openForm` param; initialises `mode` to `'form'` and `tab` to the provided value when the param is present, skipping the welcome landing when navigated from inside the app.

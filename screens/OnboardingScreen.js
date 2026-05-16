@@ -286,12 +286,21 @@ var SLIDER_MIN  = 75;
 var SLIDER_MAX  = 500;
 var SLIDER_STEP = 25;
 
-function BudgetSlider({ value, onChange }) {
+function getBudgetFact(size) {
+  if (size >= 5) return 'Feeding a large house averages $350+ every week. We’ll hunt down steep bulk-buy grocery deals to keep your family completely covered.';
+  if (size >= 3) return 'A mid-size family typically averages $230–$330 a week. Keeping things optimized is key—we’ll prioritize family-pack bundle discounts first.';
+  if (size === 2) return 'Most couples average between $130–$180 a week. We’ll focus heavily on matching bulk deals and cross-recipe savings at your favorite stores to hit your goal.';
+  return 'For a single adult, average weekly grocery spending sits around $60–$95. Your target is locked in! Let’s track down store coupons to stretch that budget further.';
+}
+
+function BudgetSlider({ value, onChange, onRelease }) {
   var trackViewRef = useRef(null);
   var trackW       = useRef(0);
   var trackLeft    = useRef(0);
   var onChangeRef  = useRef(onChange);
-  onChangeRef.current = onChange;
+  var onReleaseRef = useRef(onRelease);
+  onChangeRef.current  = onChange;
+  onReleaseRef.current = onRelease;
 
   var panResponder = useRef(
     PanResponder.create({
@@ -310,6 +319,9 @@ function BudgetSlider({ value, onChange }) {
         var raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
         var snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
         onChangeRef.current(Math.max(SLIDER_MIN, Math.min(SLIDER_MAX, snapped)));
+      },
+      onPanResponderRelease: function () {
+        if (onReleaseRef.current) onReleaseRef.current();
       },
     })
   ).current;
@@ -390,6 +402,7 @@ export default function OnboardingScreen({ navigation }) {
   var [step, setStep]          = useState(0);
   var [saving, setSaving]      = useState(false);
   var [budgetWarn, setBWarn]   = useState('');
+  var [showFact, setShowFact]  = useState(false);
 
   var [data, setData] = useState({
     missions:            [],
@@ -600,10 +613,16 @@ export default function OnboardingScreen({ navigation }) {
   function renderStep2() {
     var sliderVal = parseInt(data.weeklyBudget, 10) || SLIDER_MIN;
 
+    var householdSize = Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0);
+
     function handleSlider(v) {
       upd('weeklyBudget', String(v));
       upd('weekly_budget_cents', v * 100);
       setBWarn('');
+    }
+
+    function handleSliderRelease() {
+      setShowFact(true);
     }
 
     function handleText(text) {
@@ -644,7 +663,7 @@ export default function OnboardingScreen({ navigation }) {
 
             {/* Slider */}
             <View style={s.b2SliderWrap}>
-              <BudgetSlider value={sliderVal} onChange={handleSlider} />
+              <BudgetSlider value={sliderVal} onChange={handleSlider} onRelease={handleSliderRelease} />
               <View style={s.b2SliderLabels}>
                 <Text style={s.b2SliderLabel}>${SLIDER_MIN}</Text>
                 <Text style={s.b2SliderLabel}>${SLIDER_MAX}+</Text>
@@ -663,6 +682,7 @@ export default function OnboardingScreen({ navigation }) {
                 keyboardType="number-pad"
                 value={data.weeklyBudget}
                 onChangeText={handleText}
+                onBlur={function () { if (data.weeklyBudget) setShowFact(true); }}
                 placeholder="225"
                 placeholderTextColor={BORDER}
                 maxLength={4}
@@ -673,10 +693,21 @@ export default function OnboardingScreen({ navigation }) {
             <Text style={s.b2Hint}>You can drag the slider or type your amount.</Text>
           </View>
 
+          {/* Snippd Fact card — appears after slider release or input blur */}
+          {showFact && (
+            <View style={s.b2FactCard}>
+              <Text style={s.b2FactBulb}>💡</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.b2FactLabel}>Snippd Fact</Text>
+                <Text style={s.b2FactTxt}>{getBudgetFact(householdSize)}</Text>
+              </View>
+            </View>
+          )}
+
           {/* Continue */}
           <TouchableOpacity style={s.b2ContinueBtn} onPress={next} activeOpacity={0.88}>
             <Text style={s.b2ContinueTxt}>Continue</Text>
-            <Feather name="arrow-right" size={18} color={WHITE} />
+            <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
           </TouchableOpacity>
 
           {/* I'm not sure yet */}
@@ -1044,10 +1075,19 @@ var s = StyleSheet.create({
     ...Platform.select({ web: { outline: 'none' } }),
   },
   b2Hint:    { fontSize: 12, color: GRAY, alignSelf: 'flex-start' },
+  b2FactCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#FEFCE8', borderRadius: 14,
+    borderWidth: 1, borderColor: '#FDE68A',
+    padding: 14, marginBottom: 20,
+  },
+  b2FactBulb:  { fontSize: 20, lineHeight: 24 },
+  b2FactLabel: { fontSize: 12, fontWeight: '700', color: '#92400E', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  b2FactTxt:   { fontSize: 13, color: '#78350F', lineHeight: 19 },
   b2ContinueBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: GREEN, borderRadius: 16,
-    paddingVertical: 18, marginBottom: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: GREEN, borderRadius: 30,
+    paddingVertical: 18, marginBottom: 16, position: 'relative',
     shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
   },
@@ -1118,7 +1158,7 @@ var s = StyleSheet.create({
   },
   toCardTitle:   { fontSize: 15, fontWeight: '700', color: NAVY, flex: 1 },
   toPillGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  petRow:        { flexDirection: 'row', gap: 8 },
+  petRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   toPill: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     flex: 1, paddingVertical: 11, paddingHorizontal: 12,
