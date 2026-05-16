@@ -382,29 +382,19 @@ export default function SignInScreen({ navigation }) {
             <Text style={welcome.wordmark}>snippd</Text>
           </View>
 
-          {/* "Welcome" headline — logo already has brand name */}
-          <Text style={welcome.headline}>Welcome</Text>
-          <Text style={welcome.sub}>Save More . Stress Less. Live Better.</Text>
+          {/* Headline + subtitle */}
+          <Text style={welcome.headline}>Welcome to Snippd</Text>
+          <Text style={welcome.sub}>
+            Smarter grocery planning,{'\n'}less waste, more time for you.
+          </Text>
 
-          {/* Feature rows — rounded-square icon style matching mockup */}
-          <View style={welcome.featureList}>
-            {[
-              { icon: 'tag',      title: 'Save more',    body: 'Find relevant deals and coupons.' },
-              { icon: 'calendar', title: 'Stress less',  body: 'Plan meals and shopping with less guesswork.' },
-              { icon: 'heart',    title: 'Live better',  body: 'Stay on budget while feeding your household.' },
-            ].map(function (f) {
-              return (
-                <View key={f.title} style={welcome.featureRow}>
-                  <View style={welcome.featureIconWrap}>
-                    <Feather name={f.icon} size={18} color={WHITE} />
-                  </View>
-                  <View style={welcome.featureText}>
-                    <Text style={welcome.featureTitle}>{f.title}</Text>
-                    <Text style={welcome.featureBody}>{f.body}</Text>
-                  </View>
-                </View>
-              );
-            })}
+          {/* Hero grocery bag image — swap asset path when bag image is added to assets/ */}
+          <View style={welcome.heroWrap}>
+            <Image
+              source={require('../assets/Snippd Green Logo.png')}
+              style={welcome.heroImg}
+              resizeMode="contain"
+            />
           </View>
 
           {/* CTAs */}
@@ -707,63 +697,65 @@ var welcome = StyleSheet.create({
   root:  { flex: 1, backgroundColor: W_BG },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 28,
-    paddingTop: 28,
-    paddingBottom: 32,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
     backgroundColor: W_BG,
   },
 
-  // Logo block
-  logoBlock: { alignItems: 'center', marginBottom: 14 },
-  logoImg:   { width: 64, height: 64, marginBottom: 6 },
-  wordmark:  { fontSize: 22, fontWeight: '800', color: WHITE, letterSpacing: 1 },
+  // Logo block — cart icon + "snippd" wordmark in brand green
+  logoBlock: { alignItems: 'center', marginBottom: 20 },
+  logoImg:   { width: 72, height: 72, marginBottom: 0 },
+  wordmark:  { fontSize: 20, fontWeight: '800', color: '#3DBA6F', letterSpacing: 0.5 },
 
   // Headlines
   headline: {
-    fontSize: 52, fontWeight: '900', color: WHITE,
-    textAlign: 'center', letterSpacing: -1,
-    lineHeight: 56, marginBottom: 10,
+    fontSize: 40, fontWeight: '900', color: WHITE,
+    textAlign: 'center', letterSpacing: -0.5,
+    lineHeight: 46, marginBottom: 12,
   },
   sub: {
-    fontSize: 17, color: 'rgba(255,255,255,0.80)',
-    textAlign: 'center', fontWeight: '500',
-    letterSpacing: 0.2, marginBottom: 0,
+    fontSize: 16, color: 'rgba(255,255,255,0.72)',
+    textAlign: 'center', fontWeight: '400',
+    lineHeight: 22, marginBottom: 0,
   },
 
-  // Feature rows — rounded square icons (not circles)
-  featureList: { gap: 12, marginBottom: 24, marginTop: 28 },
-  featureRow:  { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  featureIconWrap: {
-    width: 42, height: 42, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
+  // Hero grocery bag image
+  heroWrap: {
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 28,
+    flex: 1,
   },
-  featureText:  { flex: 1 },
-  featureTitle: { fontSize: 15, fontWeight: '700', color: WHITE, marginBottom: 1 },
-  featureBody:  { fontSize: 13, color: 'rgba(255,255,255,0.62)', lineHeight: 18 },
+  heroImg: {
+    width: '85%',
+    height: 300,
+  },
 
   // CTAs
   ctaGroup: { gap: 12 },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#22C55E',
-    paddingVertical: 18, borderRadius: 14,
-    shadowColor: '#22C55E', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 6,
+    backgroundColor: WHITE,
+    paddingVertical: 18, borderRadius: 50,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
   },
-  primaryBtnTxt: { color: WHITE, fontSize: 17, fontWeight: '700', letterSpacing: 0.3 },
+  primaryBtnTxt: { color: W_BG, fontSize: 17, fontWeight: '800', letterSpacing: 0.2 },
   demoBtn: {
     flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
-    paddingVertical: 15, borderRadius: 14,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
+    paddingVertical: 15, borderRadius: 50,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   demoBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '600' },
-  signInLink:       { alignItems: 'center', paddingVertical: 8 },
-  signInLinkTxt:    { fontSize: 14, color: 'rgba(255,255,255,0.75)' },
-  signInLinkAccent: { color: '#22C55E', fontWeight: '700' },
+  signInLink:       { alignItems: 'center', paddingVertical: 6 },
+  signInLinkTxt:    { fontSize: 14, color: 'rgba(255,255,255,0.70)' },
+  signInLinkAccent: {
+    color: WHITE, fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
 });
 
 // ── Form styles ────────────────────────────────────────────────────────────────

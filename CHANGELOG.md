@@ -4,6 +4,17 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — SignInScreen welcome screen redesigned to match mockup (2026-05-16)
+- `screens/SignInScreen.js` — `renderWelcome()` and welcome styles updated:
+  - Headline changed to "Welcome to Snippd" (40px, bold white).
+  - Subtitle changed to "Smarter grocery planning, less waste, more time for you." (16px, 72% white).
+  - Removed feature icon rows (tag / calendar / heart).
+  - Added hero image slot (`heroWrap` / `heroImg`) — currently rendering `Snippd Green Logo.png` as placeholder; swap in the green grocery bag asset when added to `assets/`.
+  - "Get Started" button: WHITE background, dark green (`W_BG`) text, pill shape (`borderRadius: 50`).
+  - "Try Demo Mode": outline pill, white border, white text — kept per design spec.
+  - "Sign in" link: white underlined text (no color accent).
+  - Logo wordmark color updated to brand green `#3DBA6F`.
+
 ### Fixed — HomeScreen crash: timeLabel ReferenceError (2026-05-14)
 - `screens/HomeScreen.js` — Added `var timeLabel = context ? (context.cookingTimeMin + ' min') : '--';` to the component's derived-values block. `timeLabel` was only defined inside `MiniOptionCard` but was referenced directly in the context stats `StatCard` JSX, causing a `ReferenceError` crash on every render.
 
