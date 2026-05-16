@@ -497,6 +497,15 @@ export default function OnboardingScreen({ navigation }) {
             Smarter grocery planning,{'\n'}less waste, more time for you.
           </Text>
 
+          {/* Hero grocery bag */}
+          <View style={s.heroBagWrap}>
+            <Image
+              source={require('../assets/grocery-bag-hero.jpg')}
+              style={s.heroBagImg}
+              resizeMode="contain"
+            />
+          </View>
+
           {/* CTAs */}
           <View style={s.heroBtns}>
             <TouchableOpacity style={s.heroMainBtn} onPress={next} activeOpacity={0.85}>
@@ -826,8 +835,10 @@ var s = StyleSheet.create({
   },
   heroSub: {
     fontSize: 16, color: 'rgba(255,255,255,0.72)',
-    textAlign: 'center', lineHeight: 22, fontWeight: '400', marginBottom: 40,
+    textAlign: 'center', lineHeight: 22, fontWeight: '400', marginBottom: 0,
   },
+  heroBagWrap: { alignItems: 'center', marginVertical: 16 },
+  heroBagImg:  { width: '100%', height: 320 },
   heroBtns: { width: '100%', gap: 12 },
   heroMainBtn: {
     width: '100%', backgroundColor: WHITE, borderRadius: 50,

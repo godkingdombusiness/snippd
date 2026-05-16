@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — grocery bag hero image wired into both welcome screens (2026-05-16)
+- `assets/grocery-bag-hero.jpg` — replaced with correct standalone bag illustration (no phone frame).
+- `screens/SignInScreen.js` + `screens/OnboardingScreen.js` — hero image blocks restored using clean `.jpg` asset.
+
 ### Fixed — OnboardingScreen Step 0 welcome redesigned to match mockup (2026-05-16)
 - `screens/OnboardingScreen.js` — Step 0 (dark-green welcome shown after signup) was showing old copy and a plain icon instead of the hero image.
   - Added `Image` import.
