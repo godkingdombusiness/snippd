@@ -58,11 +58,11 @@ var DEMO_PROFILE = {
 
 var MISSIONS = [
   { id: 'pure_savings',        label: 'Save Money',     sub: 'Find deals, coupons, and stack savings.',          icon: 'dollar-sign' },
-  { id: 'meal_planning',       label: 'Plan My Meals',  sub: 'Shop smarter with weekly meal planning.',           icon: 'calendar' },
+  { id: 'meal_planning',       label: 'Plan My Meals',  sub: 'Shop smarter with weekly meal planning.',           icon: 'calendar-alt' },
   { id: 'athletic_fuel',       label: 'Eat Healthier',  sub: 'High-protein & nutrition-focused choices.',         icon: 'heart' },
-  { id: 'clinical_guardrails', label: 'Manage Health',  sub: 'Dietary needs, allergens & health goals.',          icon: 'shield' },
+  { id: 'clinical_guardrails', label: 'Manage Health',  sub: 'Dietary needs, allergens & health goals.',          icon: 'shield-alt' },
   { id: 'family_optimization', label: 'Feed My Family', sub: 'Stretch your budget for everyone at home.',         icon: 'users' },
-  { id: 'convenience',         label: 'Keep It Simple', sub: 'Quick picks, minimal effort, less stress.',         icon: 'zap' },
+  { id: 'convenience',         label: 'Keep It Simple', sub: 'Quick picks, minimal effort, less stress.',         icon: 'bolt' },
 ];
 
 var BUDGET_PRESETS = ['75', '100', '150', '200', '250', '300', '400'];
@@ -94,12 +94,12 @@ var DIET_PREFS = [
 ];
 
 var COOKING_STYLES = [
-  { id: 'from_scratch',  label: 'Cook from scratch',    icon: 'book-open' },
-  { id: 'meal_prep',     label: 'Meal prep weekly',     icon: 'package' },
-  { id: 'quick_meals',   label: 'Quick 30-min meals',   icon: 'clock' },
-  { id: 'frozen',        label: 'Frozen & convenience', icon: 'box' },
-  { id: 'takeout',       label: 'Mostly takeout',       icon: 'map-pin' },
-  { id: 'variety',       label: 'Mix of everything',    icon: 'shuffle' },
+  { id: 'from_scratch', label: 'Cook from scratch',    desc: 'I enjoy cooking with raw, fresh ingredients.',          icon: 'utensils' },
+  { id: 'meal_prep',    label: 'Meal prep weekly',     desc: 'Batch cooking meals for the week.',                    icon: 'box-open' },
+  { id: 'quick_meals',  label: 'Quick 30-min meals',   desc: 'Fast, easy recipes with minimal steps.',               icon: 'clock' },
+  { id: 'frozen',       label: 'Frozen & convenience', desc: 'Pre-made, easy-assembly options.',                     icon: 'snowflake' },
+  { id: 'takeout',      label: 'Mostly takeout',       desc: 'Relying heavily on delivery or eating out.',           icon: 'shopping-bag' },
+  { id: 'variety',      label: 'Mix of everything',    desc: 'A flexible routine depending on the day.',             icon: 'random' },
 ];
 
 var DINNER_FREQ_OPTS = [
@@ -129,7 +129,7 @@ var STORES = [
 ];
 
 var DEAL_PREFS = [
-  { id: 'weekly_ads',       label: 'Weekly Ads',       icon: 'file-text' },
+  { id: 'weekly_ads',       label: 'Weekly Ads',       icon: 'file-alt' },
   { id: 'digital_coupons',  label: 'Digital Coupons',  icon: 'tag' },
   { id: 'bogos',            label: 'BOGOs',             icon: 'gift' },
   { id: 'loyalty_offers',   label: 'Loyalty Offers',   icon: 'star' },
@@ -242,7 +242,7 @@ function GridTile({ label, icon, selected, onPress }) {
     >
       {icon ? (
         <View style={[s.gridIcon, selected && s.gridIconOn]}>
-          <Feather name={icon} size={20} color={selected ? WHITE : GREEN} />
+          <FontAwesome5 name={icon} size={18} color={selected ? WHITE : GREEN} solid />
         </View>
       ) : null}
       <Text style={[s.gridLabel, selected && s.gridLabelOn]} numberOfLines={2}>{label}</Text>
@@ -300,20 +300,23 @@ function StoreCard({ label, selected, onPress }) {
   );
 }
 
-function CookCard({ label, icon, selected, onPress }) {
+function CookTile({ label, desc, icon, selected, onPress }) {
   return (
     <TouchableOpacity
-      style={[s.cookCard, selected && s.cookCardOn]}
+      style={[s.cTile, selected && s.cTileOn]}
       onPress={onPress}
       activeOpacity={0.75}
     >
-      <View style={[s.cookIcon, selected && s.cookIconOn]}>
-        <Feather name={icon} size={18} color={selected ? WHITE : GREEN} />
+      {selected && (
+        <View style={s.cTileCheck}>
+          <Feather name="check" size={10} color={WHITE} />
+        </View>
+      )}
+      <View style={[s.cTileIconWrap, selected && s.cTileIconWrapOn]}>
+        <FontAwesome5 name={icon} size={20} color={selected ? WHITE : GREEN} solid />
       </View>
-      <Text style={[s.cookLabel, selected && s.cookLabelOn]}>{label}</Text>
-      <View style={[s.cookCheck, selected && s.cookCheckOn]}>
-        {selected && <Feather name="check" size={11} color={WHITE} />}
-      </View>
+      <Text style={[s.cTileTitle, selected && s.cTileTitleOn]}>{label}</Text>
+      <Text style={s.cTileDesc}>{desc}</Text>
     </TouchableOpacity>
   );
 }
@@ -433,7 +436,7 @@ function MissionCard({ label, sub, icon, selected, onPress }) {
       </View>
       {/* Icon */}
       <View style={s.mIconWrap}>
-        <Feather name={icon} size={24} color={selected ? GREEN : NAVY} />
+        <FontAwesome5 name={icon} size={22} color={selected ? GREEN : NAVY} solid />
       </View>
       {/* Title */}
       <Text style={[s.mLabel, selected && s.mLabelOn]}>{label}</Text>
@@ -970,17 +973,21 @@ export default function OnboardingScreen({ navigation }) {
         {/* Card 1 — Cooking style + dinner frequency */}
         <View style={s.f4Card}>
           <Text style={s.f4CardTitle}>How do you usually cook?</Text>
-          {COOKING_STYLES.map(function (c) {
-            return (
-              <CookCard
-                key={c.id}
-                label={c.label}
-                icon={c.icon}
-                selected={data.cookingStyle.includes(c.id)}
-                onPress={function () { toggleArr('cookingStyle', c.id); }}
-              />
-            );
-          })}
+          <View style={s.f4Grid}>
+            {COOKING_STYLES.map(function (c) {
+              return (
+                <View key={c.id} style={s.f4GridCell}>
+                  <CookTile
+                    label={c.label}
+                    desc={c.desc}
+                    icon={c.icon}
+                    selected={data.cookingStyle.includes(c.id)}
+                    onPress={function () { toggleArr('cookingStyle', c.id); }}
+                  />
+                </View>
+              );
+            })}
+          </View>
           <Text style={[s.f4CardTitle, { marginTop: 20 }]}>How many dinners do you cook a week?</Text>
           <View style={s.f4Grid}>
             {DINNER_FREQ_OPTS.map(function (d) {
@@ -1489,15 +1496,15 @@ var s = StyleSheet.create({
   f4ContinueBtn: { backgroundColor: GREEN, borderRadius: 14, paddingVertical: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 8, marginBottom: 24, position: 'relative' },
   f4ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
 
-  // ── Cooking step checklist card ──
-  cookCard:    { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: WHITE, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', padding: 14, marginBottom: 8 },
-  cookCardOn:  { borderColor: GREEN, backgroundColor: '#F6FEFA' },
-  cookIcon:    { width: 36, height: 36, borderRadius: 10, backgroundColor: MINT, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  cookIconOn:  { backgroundColor: GREEN },
-  cookLabel:   { flex: 1, fontSize: 14, fontWeight: '500', color: '#374151' },
-  cookLabelOn: { color: NAVY, fontWeight: '600' },
-  cookCheck:   { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  cookCheckOn: { backgroundColor: GREEN, borderColor: GREEN },
+  // ── Cooking step 2-col tiles ──
+  cTile:          { flex: 1, backgroundColor: WHITE, borderRadius: 14, borderWidth: 1.5, borderColor: '#E5E7EB', padding: 14, minHeight: 128, position: 'relative' },
+  cTileOn:        { borderColor: GREEN, backgroundColor: '#F0FBF5' },
+  cTileCheck:     { position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: 11, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' },
+  cTileIconWrap:  { width: 46, height: 46, borderRadius: 23, backgroundColor: MINT, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  cTileIconWrapOn:{ backgroundColor: GREEN },
+  cTileTitle:     { fontSize: 13, fontWeight: '700', color: NAVY, marginBottom: 4, lineHeight: 18 },
+  cTileTitleOn:   { color: NAVY },
+  cTileDesc:      { fontSize: 11, color: GRAY, lineHeight: 15 },
 
   // ── Snippd Fact intercept modal ──
   modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
