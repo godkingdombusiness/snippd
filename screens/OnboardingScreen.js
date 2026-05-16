@@ -830,8 +830,8 @@ var s = StyleSheet.create({
   heroLogoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 18, width: '100%' },
   heroLogoImg:   { width: 290, height: 104 },
   heroTitle: {
-    fontSize: 38, fontWeight: '300', color: WHITE,
-    textAlign: 'center', letterSpacing: 5, lineHeight: 76, marginBottom: 12,
+    fontSize: 38, fontWeight: '700', color: WHITE,
+    textAlign: 'center', letterSpacing: -0.5, lineHeight: 46, marginBottom: 12,
     paddingHorizontal: 24, alignSelf: 'center', width: '100%',
   },
   heroSub: {

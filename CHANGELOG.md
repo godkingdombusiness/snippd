@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome headline bold + tight tracking + compact line-height (2026-05-16)
+- `screens/SignInScreen.js` — headline fontWeight 300→700, letterSpacing 5→-0.5, lineHeight 76→46.
+- `screens/OnboardingScreen.js` — same changes mirrored for step 0.
+
 ### Changed — welcome screen headline light weight + open tracking + full-width centering (2026-05-16)
 - `screens/SignInScreen.js` — headline weight 500→300 (Light — clean thin strokes, eliminates blocky appearance at large size); fontSize 42→38; letterSpacing 3→5 (wide open tracking); lineHeight 70→76; topGroup width 100% + headline alignSelf center + width 100% (absolute horizontal symmetry); subtitle paddingHorizontal removed (full container width, no pinching); logo 252×90→290×104 (+15%).
 - `screens/OnboardingScreen.js` — identical changes mirrored for step 0.
