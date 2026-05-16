@@ -719,9 +719,9 @@ var welcome = StyleSheet.create({
     lineHeight: 23, paddingHorizontal: 8, alignSelf: 'stretch',
   },
 
-  // Middle zone — alignSelf stretch fills true screen width so alignItems:center inside works correctly
-  heroWrap: { alignSelf: 'stretch', alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
-  heroImg:  { width: '78%', height: 410 },
+  // Middle zone — isolated full-width container, no padding, bag centers on exact screen axis
+  heroWrap: { width: '100%', paddingHorizontal: 0, alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
+  heroImg:  { width: '74%', height: 410 },
 
   // Bottom zone — alignSelf stretch restores full-width button layout
   ctaGroup: { gap: 12, paddingHorizontal: 24, alignSelf: 'stretch' },

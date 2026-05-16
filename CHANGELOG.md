@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — bag wrapper isolated: width 100% paddingHorizontal 0, image width 74% no offsets (2026-05-16)
+- `screens/SignInScreen.js` — heroWrap: width 100%, paddingHorizontal 0, alignItems center; heroImg: width 74% (from 78%), height 410, no margin/offset properties.
+- `screens/OnboardingScreen.js` — same applied to heroBagWrap / heroBagImg.
+
 ### Fixed — welcome buttons collapsed + bag off-center from alignItems:center parent (2026-05-16)
 - `screens/SignInScreen.js` — replaced `width: '100%'` with `alignSelf: 'stretch'` on `topGroup`, `heroWrap`, `headline`, `sub`; added `alignSelf: 'stretch'` to `ctaGroup` to restore full-width button layout. `alignSelf: 'stretch'` overrides the parent `alignItems: 'center'` and fills the true container width, while `width: '100%'` inside an `alignItems: 'center'` parent resolves relative to the collapsed content width.
 - `screens/OnboardingScreen.js` — same fixes applied to `heroLogoBlock`, `heroTitle`, `heroSub`, `heroBagWrap`, `heroBtns`.

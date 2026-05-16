@@ -843,8 +843,8 @@ var s = StyleSheet.create({
     textAlign: 'center', lineHeight: 23, fontWeight: '400',
     paddingHorizontal: 8, alignSelf: 'stretch',
   },
-  heroBagWrap: { alignSelf: 'stretch', alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
-  heroBagImg:  { width: '78%', height: 410 },
+  heroBagWrap: { width: '100%', paddingHorizontal: 0, alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
+  heroBagImg:  { width: '74%', height: 410 },
   heroBtns: { gap: 12, paddingHorizontal: 24, alignSelf: 'stretch' },
   heroMainBtn: {
     width: '100%', backgroundColor: WHITE, borderRadius: 12,
