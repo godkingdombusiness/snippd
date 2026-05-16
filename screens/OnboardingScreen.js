@@ -502,12 +502,14 @@ export default function OnboardingScreen({ navigation }) {
               Smarter grocery planning,{'\n'}less waste, more time for you.
             </Text>
 
-            {/* Hero grocery bag — 78% width, marginTop auto sinks toward CTAs */}
-            <Image
-              source={require('../assets/grocery-bag-tall-hero.png')}
-              style={s.heroBagImg}
-              resizeMode="contain"
-            />
+            {/* Hero grocery bag — full-width wrapper guarantees true horizontal center */}
+            <View style={s.heroBagWrap}>
+              <Image
+                source={require('../assets/grocery-bag-tall-hero.png')}
+                style={s.heroBagImg}
+                resizeMode="contain"
+              />
+            </View>
 
             {/* CTAs */}
             <View style={s.heroBtns}>
@@ -839,7 +841,8 @@ var s = StyleSheet.create({
     textAlign: 'center', lineHeight: 23, fontWeight: '400',
     paddingHorizontal: 8,
   },
-  heroBagImg: { width: '78%', height: 410, alignSelf: 'center', marginTop: 'auto', marginBottom: 16 },
+  heroBagWrap: { width: '100%', alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
+  heroBagImg:  { width: '78%', height: 410 },
   heroBtns: { gap: 12, paddingHorizontal: 24 },
   heroMainBtn: {
     width: '100%', backgroundColor: WHITE, borderRadius: 12,

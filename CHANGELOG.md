@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome bag centered via full-width wrapper (2026-05-16)
+- `screens/SignInScreen.js` — wrapped heroImg in `heroWrap` View (width: 100%, alignItems: center) so the bag anchors to the true screen horizontal axis; `marginTop: auto` moved from image to wrapper; removed `alignSelf: center` from image (no longer needed).
+- `screens/OnboardingScreen.js` — same pattern applied via `heroBagWrap`.
+
 ### Changed — welcome subtitle larger + explicit weight + tighter lineHeight (2026-05-16)
 - `screens/SignInScreen.js` — subtitle fontSize 13→15, fontWeight 'normal'→'400', lineHeight 20→23, paddingHorizontal 8 for symmetric two-line wrap.
 - `screens/OnboardingScreen.js` — same changes mirrored for step 0 heroSub.

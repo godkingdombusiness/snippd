@@ -389,12 +389,14 @@ export default function SignInScreen({ navigation }) {
             </Text>
           </View>
 
-          {/* HERO — marginTop auto sinks bag toward CTAs, leaving dark space above */}
-          <Image
-            source={require('../assets/grocery-bag-tall-hero.png')}
-            style={welcome.heroImg}
-            resizeMode="contain"
-          />
+          {/* HERO — full-width wrapper guarantees true horizontal center */}
+          <View style={welcome.heroWrap}>
+            <Image
+              source={require('../assets/grocery-bag-tall-hero.png')}
+              style={welcome.heroImg}
+              resizeMode="contain"
+            />
+          </View>
 
           {/* CTAs — bottom anchor */}
           <View style={welcome.ctaGroup}>
@@ -715,8 +717,9 @@ var welcome = StyleSheet.create({
     lineHeight: 23, paddingHorizontal: 8,
   },
 
-  // Middle zone: 78% width, marginTop auto sinks bag toward CTAs
-  heroImg: { width: '78%', height: 410, alignSelf: 'center', marginTop: 'auto', marginBottom: 16 },
+  // Middle zone: full-width wrapper centers bag on true screen axis; marginTop auto sinks it toward CTAs
+  heroWrap: { width: '100%', alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
+  heroImg:  { width: '78%', height: 410 },
 
   // Bottom zone
   ctaGroup: { gap: 12, paddingHorizontal: 24 },
