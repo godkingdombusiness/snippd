@@ -500,7 +500,7 @@ export default function OnboardingScreen({ navigation }) {
           {/* Hero grocery bag */}
           <View style={s.heroBagWrap}>
             <Image
-              source={require('../assets/grocery-bag-hero.jpg')}
+              source={require('../assets/grocery-bag-hero.png')}
               style={s.heroBagImg}
               resizeMode="contain"
             />

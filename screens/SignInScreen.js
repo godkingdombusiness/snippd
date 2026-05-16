@@ -391,7 +391,7 @@ export default function SignInScreen({ navigation }) {
           {/* Hero grocery bag */}
           <View style={welcome.heroWrap}>
             <Image
-              source={require('../assets/grocery-bag-hero.jpg')}
+              source={require('../assets/grocery-bag-hero.png')}
               style={welcome.heroImg}
               resizeMode="contain"
             />
