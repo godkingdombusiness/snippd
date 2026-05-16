@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — app flow wiring: persona reveal → daily intent filter (2026-05-16)
+- `screens/OnboardingScreen.js` — step 7 CTA button label changed "Build My Plan" → "Find Out My Shopping Persona" to match the reveal-intent language in the App User Flow Blueprint.
+- `screens/PersonaRevealScreen.js` — CTA now routes to `TodayDecision` (`navigation.navigate('TodayDecision')`) instead of `MainApp`; button label updated "Go to My Dashboard" → "See What's For Today" to align with the Daily Intent Filter step.
+
 ### Changed — onboarding step reorder + new household/customize questions (2026-05-16)
 - `screens/OnboardingScreen.js` — reordered stepRenders: household (was step 3) → step 2, budget (was step 2) → step 3; updated step 2 headline "Tell us about your household", added takeout frequency pill selector; updated step 5 headline "What's your cooking and meal style?"; updated step 7 headline "Customize your Snippd experience", added meal idea frequency pill selector; added `TAKEOUT_OPTS` + `MEAL_FREQ_OPTS` data arrays; added `takeoutFrequency` + `mealIdeaFrequency` to state and `finishOnboarding` upsert; added `h3FreqRow/Pill/Txt` styles.
 

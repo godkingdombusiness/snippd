@@ -859,7 +859,7 @@ export default function OnboardingScreen({ navigation }) {
           })}
         </View>
 
-        <BigBtn label="Build My Plan" onPress={finishOnboarding} loading={saving} />
+        <BigBtn label="Find Out My Shopping Persona" onPress={finishOnboarding} loading={saving} />
       </ScrollView>
     );
   }

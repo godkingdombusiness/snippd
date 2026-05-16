@@ -317,10 +317,10 @@ export default function PersonaRevealScreen({ route, navigation }) {
         {/* ── CTA ────────────────────────────────────────────────────────── */}
         <TouchableOpacity
           style={styles.ctaBtn}
-          onPress={() => navigation.replace('MainApp')}
+          onPress={() => navigation.navigate('TodayDecision')}
           activeOpacity={0.88}
         >
-          <Text style={styles.ctaBtnText}>Go to My Dashboard</Text>
+          <Text style={styles.ctaBtnText}>See What's For Today</Text>
           <Feather name="arrow-right" size={18} color={WHITE} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </ScrollView>
