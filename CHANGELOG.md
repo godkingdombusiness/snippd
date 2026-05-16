@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome typography further lightened + step 1 centered dominant headline (2026-05-16)
+- `screens/SignInScreen.js` — headline weight 600→500 (medium, clean strokes); letterSpacing 2→3 (open tracking); lineHeight 64→70 (comfortable vertical gap between stacked lines).
+- `screens/OnboardingScreen.js` — same welcome typography changes mirrored; step 1 headline 30→44pt/800, lineHeight 36→48, textAlign center, letterSpacing -0.5; step 1 subtitle 15→13pt, color #9CA3AF (medium gray), textAlign center, marginBottom 20→28; step1Scroll paddingTop 0→16; back button circle 36→40px for prominence.
+
 ### Changed — welcome screen typography polish: weight, tracking, line-height (2026-05-16)
 - `screens/SignInScreen.js` — headline `fontWeight` 700→600 (clean semi-bold, eliminates blocky stroke); `letterSpacing` 0.5→2 (letters breathe, premium feel); `lineHeight` 58→64 (comfortable gap between 'Welcome to' and 'Snippd'); added `alignSelf: 'stretch'` on headline so text container spans full padded width symmetrically (fixes optical off-center); subtitle `paddingHorizontal` 20→12; logo 224×80→252×90.
 - `screens/OnboardingScreen.js` — identical changes mirrored for step 0.

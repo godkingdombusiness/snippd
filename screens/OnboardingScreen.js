@@ -830,8 +830,8 @@ var s = StyleSheet.create({
   heroLogoBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 18 },
   heroLogoImg:   { width: 252, height: 90 },
   heroTitle: {
-    fontSize: 42, fontWeight: '600', color: WHITE,
-    textAlign: 'center', letterSpacing: 2, lineHeight: 64, marginBottom: 12,
+    fontSize: 42, fontWeight: '500', color: WHITE,
+    textAlign: 'center', letterSpacing: 3, lineHeight: 70, marginBottom: 12,
     paddingHorizontal: 24, alignSelf: 'stretch',
   },
   heroSub: {
@@ -865,7 +865,7 @@ var s = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 14, paddingBottom: 14, gap: 12,
   },
   backCircle: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: WHITE, borderWidth: 1.5, borderColor: BORDER,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -994,9 +994,9 @@ var s = StyleSheet.create({
   h3PrivacyTxt:  { fontSize: 11, color: GRAY },
 
   // ── Step 1 specific layout (white bg, card rows) ──
-  step1Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 0 },
-  step1Headline:  { fontSize: 30, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 36, marginBottom: 6 },
-  step1Sub:       { fontSize: 15, color: GRAY, lineHeight: 22, fontWeight: '300', marginBottom: 20 },
+  step1Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 16 },
+  step1Headline:  { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 10, textAlign: 'center' },
+  step1Sub:       { fontSize: 13, color: '#9CA3AF', lineHeight: 20, fontWeight: '400', marginBottom: 28, textAlign: 'center' },
   mList:          { gap: 10, marginBottom: 24 },
   mCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,

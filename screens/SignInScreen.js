@@ -704,9 +704,9 @@ var welcome = StyleSheet.create({
   topGroup:  { alignItems: 'center', paddingHorizontal: 24 },
   logoImg:   { width: 252, height: 90, marginBottom: 18 },
   headline: {
-    fontSize: 42, fontWeight: '600', color: WHITE,
-    textAlign: 'center', letterSpacing: 2,
-    lineHeight: 64, marginBottom: 12,
+    fontSize: 42, fontWeight: '500', color: WHITE,
+    textAlign: 'center', letterSpacing: 3,
+    lineHeight: 70, marginBottom: 12,
     alignSelf: 'stretch',
   },
   sub: {
