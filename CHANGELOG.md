@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — restore Try Demo Mode button to welcome screens (2026-05-16)
+- `screens/SignInScreen.js` — Demo Mode outline pill button restored between Get Started and Sign in on the welcome screen.
+- `screens/OnboardingScreen.js` — Demo Mode button restored in step 0 welcome CTA group.
+
 ### Changed — welcome screen redesign to match final mockup (2026-05-16)
 - `screens/SignInScreen.js` — switched logo to `Snippd Green Logo.png` (combined cart + wordmark); removed paddingHorizontal from scroll so hero image is true full-bleed; hero height 460px; removed Demo Mode button from welcome; sign-in link simplified to underlined "Sign in"; headline 52pt bold.
 - `screens/OnboardingScreen.js` — same changes mirrored for OnboardingScreen step 0 welcome; removed heroBagWrap wrapper that caused width collapse; full-bleed hero image.

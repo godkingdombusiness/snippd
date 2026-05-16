@@ -405,6 +405,15 @@ export default function SignInScreen({ navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={welcome.demoBtn}
+              onPress={handleDemoMode}
+              activeOpacity={0.8}
+            >
+              <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
+              <Text style={welcome.demoBtnTxt}>Try Demo Mode</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={function () { goForm('signin'); }}
               style={welcome.signInLink}
               activeOpacity={0.7}
@@ -718,6 +727,13 @@ var welcome = StyleSheet.create({
     paddingVertical: 18, borderRadius: 50,
   },
   primaryBtnTxt: { color: '#1B4332', fontSize: 17, fontWeight: '700' },
+  demoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.40)',
+    paddingVertical: 15, borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+  demoBtnTxt: { color: WHITE, fontSize: 15, fontWeight: '600' },
   signInLink:    { alignItems: 'center', paddingVertical: 10 },
   signInLinkTxt: { fontSize: 15, color: WHITE, fontWeight: '600', textDecorationLine: 'underline' },
 });

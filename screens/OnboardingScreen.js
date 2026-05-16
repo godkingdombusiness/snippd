@@ -508,6 +508,10 @@ export default function OnboardingScreen({ navigation }) {
             <TouchableOpacity style={s.heroMainBtn} onPress={next} activeOpacity={0.85}>
               <Text style={s.heroMainBtnText}>Get Started</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={s.heroDemoBtn} onPress={tryDemoMode} activeOpacity={0.8}>
+              <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
+              <Text style={s.heroDemoBtnText}>Try Demo Mode</Text>
+            </TouchableOpacity>
             <TouchableOpacity onPress={function () { navigation.navigate('Auth'); }} activeOpacity={0.7} style={s.heroSignInLink}>
               <Text style={s.heroSignInTxt}>Sign in</Text>
             </TouchableOpacity>
@@ -836,6 +840,13 @@ var s = StyleSheet.create({
     paddingVertical: 18, alignItems: 'center',
   },
   heroMainBtnText: { fontSize: 17, fontWeight: '700', color: '#1B4332' },
+  heroDemoBtn: {
+    width: '100%', borderRadius: 50, paddingVertical: 15,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.40)',
+  },
+  heroDemoBtnText: { fontSize: 15, fontWeight: '600', color: WHITE },
   heroSignInLink:  { alignItems: 'center', paddingVertical: 10 },
   heroSignInTxt:   { fontSize: 15, color: WHITE, fontWeight: '600', textDecorationLine: 'underline' },
 
