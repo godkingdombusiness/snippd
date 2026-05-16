@@ -835,8 +835,9 @@ var s = StyleSheet.create({
     paddingHorizontal: 24, alignSelf: 'center', width: '100%',
   },
   heroSub: {
-    fontSize: 13, color: 'rgba(255,255,255,0.80)',
-    textAlign: 'center', lineHeight: 20, fontWeight: '400',
+    fontSize: 15, color: 'rgba(255,255,255,0.80)',
+    textAlign: 'center', lineHeight: 23, fontWeight: '400',
+    paddingHorizontal: 8,
   },
   heroBagImg: { width: '78%', height: 410, alignSelf: 'center', marginTop: 'auto', marginBottom: 16 },
   heroBtns: { gap: 12, paddingHorizontal: 24 },

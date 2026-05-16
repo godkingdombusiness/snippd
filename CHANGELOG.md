@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — welcome subtitle larger + explicit weight + tighter lineHeight (2026-05-16)
+- `screens/SignInScreen.js` — subtitle fontSize 13→15, fontWeight 'normal'→'400', lineHeight 20→23, paddingHorizontal 8 for symmetric two-line wrap.
+- `screens/OnboardingScreen.js` — same changes mirrored for step 0 heroSub.
+
 ### Changed — welcome headline bold + tight tracking + compact line-height (2026-05-16)
 - `screens/SignInScreen.js` — headline fontWeight 300→700, letterSpacing 5→-0.5, lineHeight 76→46.
 - `screens/OnboardingScreen.js` — same changes mirrored for step 0.

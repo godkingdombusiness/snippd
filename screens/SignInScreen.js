@@ -710,9 +710,9 @@ var welcome = StyleSheet.create({
     alignSelf: 'center', width: '100%',
   },
   sub: {
-    fontSize: 13, color: 'rgba(255,255,255,0.80)',
-    textAlign: 'center', fontWeight: 'normal',
-    lineHeight: 20,
+    fontSize: 15, color: 'rgba(255,255,255,0.80)',
+    textAlign: 'center', fontWeight: '400',
+    lineHeight: 23, paddingHorizontal: 8,
   },
 
   // Middle zone: 78% width, marginTop auto sinks bag toward CTAs
