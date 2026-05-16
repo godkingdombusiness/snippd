@@ -947,7 +947,7 @@ var s = StyleSheet.create({
 
   // ── Step 2: budget ──
   b2Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 0 },
-  b2Headline:  { fontSize: 28, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 34, marginBottom: 10, textAlign: 'center' },
+  b2Headline:  { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 10, textAlign: 'center' },
   b2Sub:       { fontSize: 14, color: GRAY, lineHeight: 21, textAlign: 'center', marginBottom: 24, paddingHorizontal: 8 },
   b2Card: {
     backgroundColor: WHITE, borderRadius: 20,
@@ -1014,7 +1014,7 @@ var s = StyleSheet.create({
 
   // ── Step 3: household ──
   h3Scroll:    { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 0 },
-  h3Headline:  { fontSize: 30, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 36, marginBottom: 8, textAlign: 'center' },
+  h3Headline:  { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 8, textAlign: 'center' },
   h3Sub:       { fontSize: 14, color: GRAY, lineHeight: 21, textAlign: 'center', marginBottom: 24, paddingHorizontal: 8 },
   hGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
   hCard: {
@@ -1109,7 +1109,7 @@ var s = StyleSheet.create({
 
   // ── Content layout ──
   scroll:     { paddingHorizontal: 24, paddingBottom: 56, paddingTop: 4 },
-  headline:   { fontSize: 30, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 36, marginBottom: 10 },
+  headline:   { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 10, textAlign: 'center' },
   sub:        { fontSize: 16, color: GRAY, lineHeight: 24, fontWeight: '300', marginBottom: 28 },
   fieldLabel: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12 },
   hint:       { fontSize: 13, color: GRAY, textAlign: 'center', marginTop: 8, marginBottom: 24, lineHeight: 18 },

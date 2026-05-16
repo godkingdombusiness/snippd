@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — standardize all onboarding step headlines to match What Matters Most (2026-05-16)
+- `screens/OnboardingScreen.js` — `b2Headline`, `h3Headline`, and `headline` (shared by steps 4–7) all updated to `fontSize: 44, fontWeight: '800', letterSpacing: -0.5, lineHeight: 48, textAlign: 'center'` to match `step1Headline` for brand consistency.
+
 ### Changed — What Matters Most: 2-column grid cards with vertical stack layout (2026-05-16)
 - `screens/OnboardingScreen.js` — MISSIONS labels shortened ("Save Money", "Plan My Meals", "Eat Healthier", "Manage Health", "Feed My Family", "Keep It Simple"); icons updated to match; MissionCard rewritten from horizontal row to near-square 2-column grid card (Icon → Bold Title → Description, vertical stack); unselected state: white card, `#E5E7EB` border, faint circle checkbox top-right; selected state: GREEN border, GREEN label + sub + icon, solid GREEN circle with white check; mList changed to `flexDirection: row, flexWrap: wrap`; BigBtn replaced with custom Continue button (centered text, absolute-right arrow).
 
