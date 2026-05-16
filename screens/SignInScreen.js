@@ -767,4 +767,64 @@ var form = StyleSheet.create({
   tabBtnTxt:       { fontSize: 12, fontWeight: '500', color: GRAY },
   tabBtnTxtActive: { color: GREEN, fontWeight: '700' },
 
-  socialGroup: { gap: 1
+  socialGroup: { gap: 10, marginBottom: 24 },
+  socialBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14, paddingHorizontal: 20,
+    borderWidth: 1.5, borderColor: BORDER, borderRadius: 14,
+    backgroundColor: GLASS, gap: 14,
+  },
+  socialIcon:  { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+  socialLabel: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '500', color: NAVY },
+
+  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: BORDER },
+  dividerTxt:  { fontSize: 10, fontWeight: '600', color: GRAY, letterSpacing: 1, textTransform: 'uppercase' },
+
+  fieldGroup: { gap: 12, marginBottom: 8 },
+  fieldWrap:  {},
+  fieldLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: GRAY, marginBottom: 6 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
+    backgroundColor: WHITE, paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+    minHeight: 52,
+  },
+  inputWrapFocused: { borderColor: GREEN },
+  input: { flex: 1, fontSize: 15, color: NAVY, fontWeight: '400' },
+  eyeBtn: { padding: 4 },
+
+  forgotWrap: { alignItems: 'flex-end', marginBottom: 16, marginTop: 4 },
+  forgotTxt:  { fontSize: 13, color: GREEN, fontWeight: '500' },
+
+  trialNote: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    marginBottom: 16, backgroundColor: MINT_BG, borderRadius: 10, padding: 12,
+  },
+  trialNoteText: { flex: 1, fontSize: 12, color: NAVY, lineHeight: 18 },
+
+  errorTxt: { color: ERROR_RED, fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  infoTxt:  { color: GREEN,     fontSize: 13, marginBottom: 12, textAlign: 'center' },
+
+  submitBtn: {
+    backgroundColor: GREEN, borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center', marginTop: 16,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+  },
+  submitBtnDisabled: { opacity: 0.6 },
+  submitBtnTxt:      { color: WHITE, fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
+
+  trustCopy:   { fontSize: 12, color: GRAY, textAlign: 'center', marginTop: 16, lineHeight: 17 },
+  bottomLink:  { fontSize: 13, color: GRAY, textAlign: 'center', marginTop: 12 },
+  bottomLinkA: { color: GREEN, fontWeight: '600' },
+});
+
+// ── Root / container styles ────────────────────────────────────────────────────
+var root = StyleSheet.create({
+  container:    { flex: 1, backgroundColor: WHITE },
+  twoPanelRow:  { flex: 1, flexDirection: 'row' },
+  leftCol:      { width: '42%' },
+  rightCol:     { flex: 1 },
+});

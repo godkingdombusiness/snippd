@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — SignInScreen syntax error: restore truncated form stylesheet (2026-05-16)
+- `screens/SignInScreen.js` — file was truncated mid-line at `socialGroup: { gap: 1`; restored complete `form` StyleSheet (socialGroup, socialBtn, inputs, submit button, trust copy) and `root` StyleSheet. Brace balance verified OK.
+
 ### Fixed — SignInScreen asset paths and button styles corrected (2026-05-16)
 - `screens/SignInScreen.js` — fixed broken asset references introduced by linter (`Snippd-logo-green-large.png` → `Snippd Green Logo.png`, `grocery-bag-tall-hero.png` → `grocery-bag-hero.png`); restored pill buttons (`borderRadius: 50`); restored logo height (110px); headline size back to 52pt bold.
 
