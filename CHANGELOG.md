@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — grocery-bag-hero.png.jpg asset + wired into welcome screen (2026-05-16)
+- `assets/grocery-bag-hero.png.jpg` — Snippd-branded green tote bag hero image.
+- `screens/SignInScreen.js` — `heroWrap` image source updated from placeholder to `grocery-bag-hero.png.jpg`.
+
 ### Changed — SignInScreen welcome screen redesigned to match mockup (2026-05-16)
 - `screens/SignInScreen.js` — `renderWelcome()` and welcome styles updated:
   - Headline changed to "Welcome to Snippd" (40px, bold white).

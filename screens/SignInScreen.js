@@ -388,10 +388,10 @@ export default function SignInScreen({ navigation }) {
             Smarter grocery planning,{'\n'}less waste, more time for you.
           </Text>
 
-          {/* Hero grocery bag image — swap asset path when bag image is added to assets/ */}
+          {/* Hero grocery bag image */}
           <View style={welcome.heroWrap}>
             <Image
-              source={require('../assets/Snippd Green Logo.png')}
+              source={require('../assets/grocery-bag-hero.png.jpg')}
               style={welcome.heroImg}
               resizeMode="contain"
             />
