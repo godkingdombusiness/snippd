@@ -14,7 +14,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   StyleSheet, ActivityIndicator, Platform, KeyboardAvoidingView,
-  StatusBar, PanResponder, Image,
+  StatusBar, PanResponder, Image, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -94,12 +94,25 @@ var DIET_PREFS = [
 ];
 
 var COOKING_STYLES = [
-  { id: 'from_scratch',  label: 'Cook from scratch',   icon: 'book-open' },
-  { id: 'meal_prep',     label: 'Meal prep weekly',    icon: 'package' },
-  { id: 'quick_meals',   label: 'Quick 30-min meals',  icon: 'clock' },
-  { id: 'frozen',        label: 'Frozen / convenience',icon: 'box' },
-  { id: 'takeout',       label: 'Mostly takeout',      icon: 'map-pin' },
-  { id: 'variety',       label: 'Mix of everything',   icon: 'shuffle' },
+  { id: 'from_scratch',  label: 'Cook from scratch',    icon: 'book-open' },
+  { id: 'meal_prep',     label: 'Meal prep weekly',     icon: 'package' },
+  { id: 'quick_meals',   label: 'Quick 30-min meals',   icon: 'clock' },
+  { id: 'frozen',        label: 'Frozen & convenience', icon: 'box' },
+  { id: 'takeout',       label: 'Mostly takeout',       icon: 'map-pin' },
+  { id: 'variety',       label: 'Mix of everything',    icon: 'shuffle' },
+];
+
+var DINNER_FREQ_OPTS = [
+  { id: '1_2_days',  label: '1–2 days' },
+  { id: '3_4_days',  label: '3–4 days' },
+  { id: '5_6_days',  label: '5–6 days' },
+  { id: 'every_day', label: 'Every day' },
+];
+
+var MEAL_PRIORITIES = [
+  { id: 'family_friendly', label: 'Family-friendly' },
+  { id: 'budget_friendly',  label: 'Budget-friendly' },
+  { id: 'low_waste',        label: 'Low food waste' },
 ];
 
 var STORES = [
@@ -287,9 +300,38 @@ function StoreCard({ label, selected, onPress }) {
   );
 }
 
+function CookCard({ label, icon, selected, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[s.cookCard, selected && s.cookCardOn]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <View style={[s.cookIcon, selected && s.cookIconOn]}>
+        <Feather name={icon} size={18} color={selected ? WHITE : GREEN} />
+      </View>
+      <Text style={[s.cookLabel, selected && s.cookLabelOn]}>{label}</Text>
+      <View style={[s.cookCheck, selected && s.cookCheckOn]}>
+        {selected && <Feather name="check" size={11} color={WHITE} />}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 var SLIDER_MIN  = 75;
 var SLIDER_MAX  = 500;
 var SLIDER_STEP = 25;
+
+function getCookingFact(householdSize, dinnerFreq, cookingStyle) {
+  if (cookingStyle.includes('frozen') || cookingStyle.includes('takeout')) {
+    return "You don't have to cook completely from scratch to stack massive savings. Convenience and frozen aisles actually feature the highest volume of grocery coupon stacks! Snippd has pre-filtered the top quick-prep deals at your local stores to hit your exact budget target.";
+  }
+  var highFreq = dinnerFreq === '5_6_days' || dinnerFreq === 'every_day';
+  if (householdSize >= 3 && highFreq) {
+    return 'Cooking nearly every night for a larger household means you are managing a massive grocery list. By automatically grouping family-pack ingredient deals and matching bulk store coupons, Snippd is optimizing your weekly plan to save you up to $45 and 3 hours in the kitchen this week!';
+  }
+  return 'Smaller households face a hidden enemy: food waste from leftover ingredients. By prioritizing cross-utilization recipes, using the exact same fresh ingredients across different quick meals, Snippd ensures your trash stays empty and your wallet stays full!';
+}
 
 function getBudgetFact(size) {
   if (size >= 5) return 'Feeding a large house averages $350+ every week. We’ll hunt down steep bulk-buy grocery deals to keep your family completely covered.';
@@ -404,10 +446,11 @@ function MissionCard({ label, sub, icon, selected, onPress }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function OnboardingScreen({ navigation }) {
-  var [step, setStep]          = useState(0);
-  var [saving, setSaving]      = useState(false);
-  var [budgetWarn, setBWarn]   = useState('');
-  var [showFact, setShowFact]  = useState(false);
+  var [step, setStep]              = useState(0);
+  var [saving, setSaving]          = useState(false);
+  var [budgetWarn, setBWarn]       = useState('');
+  var [showFact, setShowFact]      = useState(false);
+  var [showCookingModal, setShowCookingModal] = useState(false);
 
   var [data, setData] = useState({
     missions:            [],
@@ -425,6 +468,8 @@ export default function OnboardingScreen({ navigation }) {
     stash_style:         'smart',
     takeoutFrequency:    '',
     mealIdeaFrequency:   '',
+    dinnerFrequency:     '',
+    mealPriorities:      [],
   });
 
   function upd(key, value) {
@@ -912,14 +957,22 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep5() {
+    var mealPrioritiesClear = data.mealPriorities.length === 0 || data.mealPriorities.includes('no_meal_pref');
+    function toggleMealPriority(id) {
+      var arr = data.mealPriorities.filter(function (v) { return v !== 'no_meal_pref'; });
+      upd('mealPriorities', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
+    }
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.headline}>What's your cooking{'\n'}and meal style?</Text>
-        <Text style={s.sub}>Pick all that match your typical week. No wrong answers.</Text>
-        <View style={s.cardList}>
+        <Text style={s.f4Headline}>What's your cooking{'\n'}& meal style?</Text>
+        <Text style={s.f4Sub}>Pick all that match your typical week. No wrong answers.</Text>
+
+        {/* Card 1 — Cooking style + dinner frequency */}
+        <View style={s.f4Card}>
+          <Text style={s.f4CardTitle}>How do you usually cook?</Text>
           {COOKING_STYLES.map(function (c) {
             return (
-              <OptionTile
+              <CookCard
                 key={c.id}
                 label={c.label}
                 icon={c.icon}
@@ -928,8 +981,59 @@ export default function OnboardingScreen({ navigation }) {
               />
             );
           })}
+          <Text style={[s.f4CardTitle, { marginTop: 20 }]}>How many dinners do you cook a week?</Text>
+          <View style={s.f4Grid}>
+            {DINNER_FREQ_OPTS.map(function (d) {
+              var sel = data.dinnerFrequency === d.id;
+              return (
+                <View key={d.id} style={s.f4GridCell}>
+                  <Pill
+                    label={d.label}
+                    selected={sel}
+                    onPress={function () { upd('dinnerFrequency', d.id); }}
+                    style={s.f4GridPill}
+                  />
+                </View>
+              );
+            })}
+          </View>
         </View>
-        <BigBtn label="Continue" onPress={next} />
+
+        {/* Card 2 — Meal priorities */}
+        <View style={s.f4Card}>
+          <Text style={s.f4CardTitle}>Meal priorities</Text>
+          <View style={s.f4Grid}>
+            {MEAL_PRIORITIES.map(function (m) {
+              return (
+                <View key={m.id} style={s.f4GridCell}>
+                  <Pill
+                    label={m.label}
+                    selected={data.mealPriorities.includes(m.id)}
+                    onPress={function () { toggleMealPriority(m.id); }}
+                    style={s.f4GridPill}
+                  />
+                </View>
+              );
+            })}
+            <View style={s.f4GridCell}>
+              <Pill
+                label="No preference"
+                selected={mealPrioritiesClear}
+                onPress={function () { upd('mealPriorities', []); }}
+                style={s.f4GridPill}
+              />
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={s.f4ContinueBtn}
+          onPress={function () { setShowCookingModal(true); }}
+          activeOpacity={0.88}
+        >
+          <Text style={s.f4ContinueTxt}>Continue</Text>
+          <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+        </TouchableOpacity>
       </ScrollView>
     );
   }
@@ -1010,6 +1114,36 @@ export default function OnboardingScreen({ navigation }) {
       <StatusBar barStyle="dark-content" backgroundColor={(step === 1 || step === 2 || step === 3) ? WHITE : CREAM} />
       <ProgressHeader step={step} onBack={back} />
       {stepRenders[step]()}
+
+      {/* Cooking step intercept — Snippd Fact modal */}
+      <Modal
+        visible={showCookingModal}
+        transparent
+        animationType="slide"
+        onRequestClose={function () { setShowCookingModal(false); }}
+      >
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <Text style={s.modalEmoji}>💡</Text>
+            <Text style={s.modalLabel}>Snippd Fact</Text>
+            <Text style={s.modalBody}>
+              {getCookingFact(
+                Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0),
+                data.dinnerFrequency,
+                data.cookingStyle,
+              )}
+            </Text>
+            <TouchableOpacity
+              style={s.modalBtn}
+              onPress={function () { setShowCookingModal(false); next(); }}
+              activeOpacity={0.88}
+            >
+              <Text style={s.modalBtnTxt}>Got it, let's go</Text>
+              <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1354,6 +1488,25 @@ var s = StyleSheet.create({
   f4GridPill:    { flex: 1 },
   f4ContinueBtn: { backgroundColor: GREEN, borderRadius: 14, paddingVertical: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 8, marginBottom: 24, position: 'relative' },
   f4ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
+
+  // ── Cooking step checklist card ──
+  cookCard:    { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: WHITE, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', padding: 14, marginBottom: 8 },
+  cookCardOn:  { borderColor: GREEN, backgroundColor: '#F6FEFA' },
+  cookIcon:    { width: 36, height: 36, borderRadius: 10, backgroundColor: MINT, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  cookIconOn:  { backgroundColor: GREEN },
+  cookLabel:   { flex: 1, fontSize: 14, fontWeight: '500', color: '#374151' },
+  cookLabelOn: { color: NAVY, fontWeight: '600' },
+  cookCheck:   { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  cookCheckOn: { backgroundColor: GREEN, borderColor: GREEN },
+
+  // ── Snippd Fact intercept modal ──
+  modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalCard:     { backgroundColor: '#FAFDF9', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 48, borderWidth: 1, borderColor: '#D4EDDA' },
+  modalEmoji:    { fontSize: 32, marginBottom: 10 },
+  modalLabel:    { fontSize: 11, fontWeight: '700', color: GREEN, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 },
+  modalBody:     { fontSize: 15, color: '#374151', lineHeight: 25, marginBottom: 28 },
+  modalBtn:      { backgroundColor: GREEN, borderRadius: 14, paddingVertical: 17, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', position: 'relative' },
+  modalBtnTxt:   { fontSize: 16, fontWeight: '700', color: WHITE },
 
   // ── Store grid ──
   storeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
