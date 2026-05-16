@@ -71,26 +71,26 @@ var ADULT_OPTIONS   = [1, 2, 3, 4];
 var CHILD_OPTIONS   = [0, 1, 2, 3, 4];
 
 var FOODS_AVOIDED = [
-  { id: 'gluten',       label: 'Gluten' },
-  { id: 'dairy',        label: 'Dairy' },
-  { id: 'nuts',         label: 'Tree Nuts' },
-  { id: 'peanuts',      label: 'Peanuts' },
-  { id: 'shellfish',    label: 'Shellfish' },
-  { id: 'pork',         label: 'Pork' },
-  { id: 'beef',         label: 'Beef' },
-  { id: 'soy',          label: 'Soy' },
-  { id: 'eggs',         label: 'Eggs' },
-  { id: 'high_sugar',   label: 'High Sugar' },
-  { id: 'high_sodium',  label: 'High Sodium' },
+  { id: 'gluten',       label: 'Gluten-free' },
+  { id: 'dairy',        label: 'Dairy-free' },
+  { id: 'nuts',         label: 'Nut allergy' },
+  { id: 'peanuts',      label: 'Peanut allergy' },
+  { id: 'shellfish',    label: 'Shellfish allergy' },
+  { id: 'pork',         label: 'Pork-free' },
+  { id: 'beef',         label: 'Beef-free' },
+  { id: 'soy',          label: 'Soy-free' },
+  { id: 'eggs',         label: 'Egg-free' },
+  { id: 'high_sugar',   label: 'Low sugar' },
+  { id: 'high_sodium',  label: 'Low sodium' },
 ];
 
 var DIET_PREFS = [
-  { id: 'budget_friendly',  label: 'Budget-friendly' },
-  { id: 'family_friendly',  label: 'Family-friendly' },
-  { id: 'high_protein',     label: 'High protein' },
   { id: 'low_carb',         label: 'Low carb' },
-  { id: 'plant_based',      label: 'Plant-based' },
-  { id: 'low_waste',        label: 'Low food waste' },
+  { id: 'high_protein',     label: 'High protein' },
+  { id: 'vegetarian',       label: 'Vegetarian' },
+  { id: 'vegan',            label: 'Vegan' },
+  { id: 'budget_friendly',  label: 'Budget-friendly' },
+  { id: 'kid_friendly',     label: 'Kid-friendly' },
 ];
 
 var COOKING_STYLES = [
@@ -249,10 +249,10 @@ function HChip({ label, selected, onPress }) {
   );
 }
 
-function Pill({ label, selected, onPress }) {
+function Pill({ label, selected, onPress, style }) {
   return (
     <TouchableOpacity
-      style={[s.pill, selected && s.pillOn]}
+      style={[s.pill, selected && s.pillOn, style]}
       onPress={onPress}
       activeOpacity={0.75}
     >
@@ -846,68 +846,67 @@ export default function OnboardingScreen({ navigation }) {
 
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={[s.headline, { textAlign: 'left', lineHeight: 44 }]}>
-          Food preferences{'\n'}& restrictions
-        </Text>
-        <Text style={s.sub}>I'll filter these out of every meal and deal recommendation.</Text>
+        <Text style={s.f4Headline}>Food preferences{'\n'}& restrictions</Text>
+        <Text style={s.f4Sub}>Choose anything that fits your household so Snippd can recommend better meals and deals.</Text>
 
-        <Text style={s.fieldLabel}>Foods to avoid</Text>
-        <View style={s.pillRow}>
-          {FOODS_AVOIDED.map(function (f) {
-            return (
+        {/* Card 1 — Preferences */}
+        <View style={s.f4Card}>
+          <Text style={s.f4CardTitle}>Preferences</Text>
+          <View style={s.f4Grid}>
+            {DIET_PREFS.map(function (d) {
+              return (
+                <View key={d.id} style={s.f4GridCell}>
+                  <Pill
+                    label={d.label}
+                    selected={data.dietPreferences.includes(d.id)}
+                    onPress={function () { toggleDiet(d.id); }}
+                    style={s.f4GridPill}
+                  />
+                </View>
+              );
+            })}
+            <View style={s.f4GridCell}>
               <Pill
-                key={f.id}
-                label={f.label}
-                selected={data.foodsAvoided.includes(f.id)}
-                onPress={function () { toggleFood(f.id); }}
+                label="No preference"
+                selected={dietClear}
+                onPress={function () { upd('dietPreferences', []); }}
+                style={s.f4GridPill}
               />
-            );
-          })}
-          <Pill
-            label="None"
-            selected={foodsClear}
-            onPress={function () { upd('foodsAvoided', []); }}
-          />
-        </View>
-
-        <Text style={[s.fieldLabel, { marginTop: 24 }]}>Diet preferences</Text>
-        <View style={s.pillRow}>
-          {DIET_PREFS.map(function (d) {
-            return (
-              <Pill
-                key={d.id}
-                label={d.label}
-                selected={data.dietPreferences.includes(d.id)}
-                onPress={function () { toggleDiet(d.id); }}
-              />
-            );
-          })}
-          <Pill
-            label="No specific diet"
-            selected={dietClear}
-            onPress={function () { upd('dietPreferences', []); }}
-          />
-        </View>
-
-        {/* Info banner — replaces red disclaimer */}
-        <View style={s.f4InfoBanner}>
-          <View style={s.f4InfoIconWrap}>
-            <Feather name="info" size={15} color={GREEN} />
+            </View>
           </View>
-          <Text style={s.f4InfoTxt}>
-            This ensures you see deals and recipes tailored to your health goals and taste. Snippd is a planning tool, not a medical guide. Always verify ingredient labels for severe allergies.
-          </Text>
         </View>
 
-        <TouchableOpacity style={s.h3ContinueBtn} onPress={next} activeOpacity={0.88}>
-          <Text style={s.h3ContinueTxt}>Continue</Text>
+        {/* Card 2 — Allergies & restrictions */}
+        <View style={s.f4Card}>
+          <Text style={s.f4CardTitle}>Allergies & restrictions</Text>
+          <View style={s.f4Grid}>
+            {FOODS_AVOIDED.map(function (f) {
+              return (
+                <View key={f.id} style={s.f4GridCell}>
+                  <Pill
+                    label={f.label}
+                    selected={data.foodsAvoided.includes(f.id)}
+                    onPress={function () { toggleFood(f.id); }}
+                    style={s.f4GridPill}
+                  />
+                </View>
+              );
+            })}
+            <View style={s.f4GridCell}>
+              <Pill
+                label="None"
+                selected={foodsClear}
+                onPress={function () { upd('foodsAvoided', []); }}
+                style={s.f4GridPill}
+              />
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity style={s.f4ContinueBtn} onPress={next} activeOpacity={0.88}>
+          <Text style={s.f4ContinueTxt}>Continue</Text>
           <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
         </TouchableOpacity>
-
-        <View style={s.h3Privacy}>
-          <Feather name="lock" size={12} color={GRAY} />
-          <Text style={s.h3PrivacyTxt}>Your info is private and never shared</Text>
-        </View>
       </ScrollView>
     );
   }
@@ -1339,11 +1338,22 @@ var s = StyleSheet.create({
 
   // ── Pills ──
   pillRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  pill:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, borderWidth: 1.5, borderColor: BORDER, backgroundColor: WHITE },
+  pill:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: WHITE },
   pillOn:      { borderColor: GREEN, backgroundColor: '#F0FBF5' },
-  pillText:    { fontSize: 14, fontWeight: '500', color: NAVY },
+  pillText:    { fontSize: 13, fontWeight: '500', color: '#4B5563' },
   pillTextOn:  { color: GREEN, fontWeight: '600' },
   pillCheck:   { width: 18, height: 18, borderRadius: 9, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
+
+  // ── Food preferences step (step 4) ──
+  f4Headline:    { fontSize: 28, fontWeight: '700', color: NAVY, letterSpacing: -0.4, lineHeight: 34, marginBottom: 8, textAlign: 'left' },
+  f4Sub:         { fontSize: 14, color: GRAY, lineHeight: 21, marginBottom: 24 },
+  f4Card:        { backgroundColor: WHITE, borderRadius: 18, padding: 18, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
+  f4CardTitle:   { fontSize: 11, fontWeight: '700', color: GRAY, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 },
+  f4Grid:        { flexDirection: 'row', flexWrap: 'wrap', margin: -4 },
+  f4GridCell:    { width: '50%', padding: 4 },
+  f4GridPill:    { flex: 1 },
+  f4ContinueBtn: { backgroundColor: GREEN, borderRadius: 14, paddingVertical: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 8, marginBottom: 24, position: 'relative' },
+  f4ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
 
   // ── Store grid ──
   storeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
