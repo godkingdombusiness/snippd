@@ -47,28 +47,28 @@ import {
 } from '../src/services/authService';
 
 // ── Brand palette ──────────────────────────────────────────────────────────────
-var GREEN     = '#0C9E54';
-var GREEN_MID = '#0C6B38';
-var W_BG      = '#0B3B1E';   // welcome screen dark green background
-var W_GREEN   = '#3DBA6F';   // welcome screen feature icon green (lighter, visible on dark)
-var NAVY      = '#172250';
-var MINT      = '#c5ffbc';
-var CREAM     = '#FAF8F1';
-var WHITE     = '#FFFFFF';
-var GRAY      = '#6B7280';
-var BORDER    = '#E5E7EB';
-var ERROR_RED = '#DC2626';
-var GLASS     = 'rgba(255,255,255,0.94)';
-var MINT_BG   = '#E8F5E9';
+const GREEN     = '#0C9E54';
+const GREEN_MID = '#0C6B38';
+const W_BG      = '#0B3B1E';   // welcome screen dark green background
+const W_GREEN   = '#3DBA6F';   // welcome screen feature icon green (lighter, visible on dark)
+const NAVY      = '#172250';
+const MINT      = '#c5ffbc';
+const CREAM     = '#FAF8F1';
+const WHITE     = '#FFFFFF';
+const GRAY      = '#6B7280';
+const BORDER    = '#E5E7EB';
+const ERROR_RED = '#DC2626';
+const GLASS     = 'rgba(255,255,255,0.94)';
+const MINT_BG   = '#E8F5E9';
 
-var STATS = [
+const STATS = [
   { value: 'Budget-first',   label: 'weekly planning'  },
   { value: 'Meals + stores', label: 'guided together'  },
   { value: 'Receipt-based',  label: 'learning'         },
 ];
 
 // ── Demo profile — seeds PersonaReveal without any Supabase writes ─────────────
-var DEMO_PROFILE = {
+const DEMO_PROFILE = {
   isDemoMode:                        true,
   missions:                          ['pure_savings', 'meal_planning', 'clinical_guardrails'],
   weeklyBudget:                      250,
@@ -85,19 +85,19 @@ var DEMO_PROFILE = {
 // ── Module-scope atom components ───────────────────────────────────────────────
 
 function GoogleIcon({ size }) {
-  var s = size || 20;
-  var colors = ['#4285F4', '#34A853', '#FBBC05', '#EA4335'];
+  const s = size || 20;
+  const colors = ['#4285F4', '#34A853', '#FBBC05', '#EA4335'];
   return (
     <View style={{ width: s, height: s, borderRadius: s / 2, overflow: 'hidden', flexDirection: 'row', flexWrap: 'wrap' }}>
       {colors.map(function (c, i) {
-        return <View key={i} style={{ width: s / 2, height: s / 2, backgroundColor: c }} />;
+        return <View key={'color-' + i} style={{ width: s / 2, height: s / 2, backgroundColor: c }} />;
       })}
     </View>
   );
 }
 
 function AppleIcon({ size }) {
-  var s = size || 20;
+  const s = size || 20;
   return (
     <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
       <Feather name="smartphone" size={s - 2} color={NAVY} />
@@ -115,7 +115,7 @@ function StatChip({ value, label, dark }) {
 }
 
 function SocialBtn({ icon, label, onPress, disabled }) {
-  var scale = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1)).current;
   function press() {
     Animated.spring(scale, { toValue: 0.97, useNativeDriver: true }).start();
     if (onPress) onPress();
@@ -229,27 +229,27 @@ function MobileHero() {
 
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 export default function SignInScreen({ navigation, route }) {
-  var dims     = useWindowDimensions();
-  var isTablet = dims.width > 768;
+  const dims     = useWindowDimensions();
+  const isTablet = dims.width > 768;
 
   // If navigated with { openForm: 'signin' } or { openForm: 'signup' }, skip welcome landing
-  var openForm = route?.params?.openForm || null;
+  const openForm = route?.params?.openForm || null;
 
   // 'welcome' lands first; 'form' shows the sign-in / create-account form
-  var [mode,         setMode]         = useState(openForm ? 'form' : 'welcome');
-  var [tab,          setTab]          = useState(openForm || 'signin');
-  var [name,         setName]         = useState('');
-  var [email,        setEmail]        = useState('');
-  var [password,     setPassword]     = useState('');
-  var [showPw,       setShowPw]       = useState(false);
-  var [loading,      setLoading]      = useState(false);
-  var [oauthLoading, setOauthLoading] = useState(null);
-  var [errorMsg,     setErrorMsg]     = useState('');
-  var [infoMsg,      setInfoMsg]      = useState('');
-  var [focusedField, setFocusedField] = useState(null);
+  const [mode,         setMode]         = useState(openForm ? 'form' : 'welcome');
+  const [tab,          setTab]          = useState(openForm || 'signin');
+  const [name,         setName]         = useState('');
+  const [email,        setEmail]        = useState('');
+  const [password,     setPassword]     = useState('');
+  const [showPw,       setShowPw]       = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(null);
+  const [errorMsg,     setErrorMsg]     = useState('');
+  const [infoMsg,      setInfoMsg]      = useState('');
+  const [focusedField, setFocusedField] = useState(null);
 
-  var fadeAnim  = useRef(new Animated.Value(0)).current;
-  var slideAnim = useRef(new Animated.Value(16)).current;
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(16)).current;
 
   useEffect(function () {
     tracker.track('signin_screen_viewed', {});
@@ -273,9 +273,9 @@ export default function SignInScreen({ navigation, route }) {
     navigation.navigate('PersonaReveal', DEMO_PROFILE);
   }
 
-  var handleEmail = useCallback(async function () {
+  const handleEmail = useCallback(async function () {
     clearError();
-    var trimmedEmail = email.trim().toLowerCase();
+    const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setErrorMsg('Enter a valid email address.');
       return;
@@ -287,7 +287,7 @@ export default function SignInScreen({ navigation, route }) {
     setLoading(true);
     try {
       if (tab === 'signin') {
-        var { data: signInData, error: signInErr } = await signInWithEmail(trimmedEmail, password);
+        const { data: signInData, error: signInErr } = await signInWithEmail(trimmedEmail, password);
         if (signInErr) throw signInErr;
         if (!signInData?.session) {
           setInfoMsg('Check your inbox to confirm your account, then sign in.');
@@ -295,13 +295,13 @@ export default function SignInScreen({ navigation, route }) {
         // Successful sign-in — App.js onAuthStateChange handles routing
       } else {
         // ── Sign up path ────────────────────────────────────────────────────
-        var trimmedName = name.trim();
+        const trimmedName = name.trim();
         if (!trimmedName) {
           setErrorMsg('Enter your name to get started.');
           setLoading(false);
           return;
         }
-        var { data: signUpData, error: signUpErr } = await signUpWithEmail(trimmedEmail, password);
+        const { data: signUpData, error: signUpErr } = await signUpWithEmail(trimmedEmail, password);
         if (signUpErr) throw signUpErr;
         if (!signUpData?.session) {
           setInfoMsg('Check your inbox to confirm your email, then sign in.');
@@ -309,13 +309,14 @@ export default function SignInScreen({ navigation, route }) {
           return;
         }
         // Write name to profile, then drop into onboarding
-        var { supabase } = require('../lib/supabase');
-        var user = signUpData.session.user;
+        const { supabase } = require('../lib/supabase');
+        const user = signUpData.session.user;
         if (user) {
           await supabase.from('profiles').upsert({
-            user_id:    user.id,
-            full_name:  trimmedName,
-            first_name: trimmedName.split(' ')[0],
+            user_id:      user.id,
+            full_name:    trimmedName,
+            first_name:   trimmedName.split(' ')[0],
+            billing_plan: 'trial',
           }, { onConflict: 'user_id' });
         }
         navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
@@ -327,32 +328,32 @@ export default function SignInScreen({ navigation, route }) {
     }
   }, [tab, name, email, password, navigation]);
 
-  var handleOAuth = useCallback(async function (provider) {
+  const handleOAuth = useCallback(async function (provider) {
     clearError();
     setOauthLoading(provider);
     try {
-      var result = provider === 'google'
+      const result = provider === 'google'
         ? await signInWithGoogle()
         : await signInWithApple();
       if (result.error) throw result.error;
       // Successful OAuth — App.js onAuthStateChange handles routing
     } catch (err) {
-      var friendly = formatAuthError(err);
+      const friendly = formatAuthError(err);
       setErrorMsg(friendly || (provider === 'google' ? 'Google' : 'Apple') + ' sign-in failed. Try email instead.');
     } finally {
       setOauthLoading(null);
     }
   }, []);
 
-  var handleForgotPassword = useCallback(async function () {
-    var trimmedEmail = email.trim().toLowerCase();
+  const handleForgotPassword = useCallback(async function () {
+    const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setErrorMsg('Enter your email above, then tap Forgot password?');
       return;
     }
     setLoading(true);
     try {
-      var { error: resetErr } = await resetPassword(trimmedEmail);
+      const { error: resetErr } = await resetPassword(trimmedEmail);
       if (resetErr) throw resetErr;
       setInfoMsg('Reset link sent to ' + trimmedEmail);
     } catch (err) {
@@ -652,7 +653,7 @@ export default function SignInScreen({ navigation, route }) {
 }
 
 // ── Left panel styles ──────────────────────────────────────────────────────────
-var left = StyleSheet.create({
+const left = StyleSheet.create({
   panel: { flex: 1, padding: 48, justifyContent: 'space-between', overflow: 'hidden' },
   highlight: {
     position: 'absolute', width: 400, height: 400,
@@ -679,7 +680,7 @@ var left = StyleSheet.create({
 });
 
 // ── Mobile hero styles ─────────────────────────────────────────────────────────
-var hero = StyleSheet.create({
+const hero = StyleSheet.create({
   wrap: { paddingBottom: 28 },
   wordmark: { fontFamily: 'Sublima-ExtraBold', fontSize: 26, color: NAVY, letterSpacing: -0.5, marginBottom: 16 },
   headline: { fontSize: 22, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 28, marginBottom: 8 },
@@ -694,7 +695,7 @@ var hero = StyleSheet.create({
 });
 
 // ── Welcome landing styles ─────────────────────────────────────────────────────
-var welcome = StyleSheet.create({
+const welcome = StyleSheet.create({
   root:  { flex: 1 },
 
   // flex-start: top group anchors top, hero sinks via marginTop auto
@@ -746,7 +747,7 @@ var welcome = StyleSheet.create({
 });
 
 // ── Form styles ────────────────────────────────────────────────────────────────
-var form = StyleSheet.create({
+const form = StyleSheet.create({
   scroll:       { flexGrow: 1, justifyContent: 'center', padding: 48 },
   scrollPhone:  { padding: 24, paddingTop: 16 },
   card:         { width: '100%' },
@@ -833,7 +834,7 @@ var form = StyleSheet.create({
 });
 
 // ── Root / container styles ────────────────────────────────────────────────────
-var root = StyleSheet.create({
+const root = StyleSheet.create({
   container:    { flex: 1, backgroundColor: WHITE },
   twoPanelRow:  { flex: 1, flexDirection: 'row' },
   leftCol:      { width: '42%' },

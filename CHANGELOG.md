@@ -4,6 +4,12 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — SignInScreen.js: convert var → const, fix array key, add billing_plan (2026-05-17)
+- `screens/SignInScreen.js` — All `var` declarations converted to `const` throughout (palette constants, STATS, DEMO_PROFILE, StyleSheet objects, all function-scope variables in handlers and render functions). `GoogleIcon` color map key changed from array index `i` to `'color-' + i` (resolves S6479). `billing_plan: 'trial'` added to the signup profile upsert so every new account is seeded with the trial plan immediately on creation.
+
+### Changed — onboarding data pipeline: map all step data to profiles upsert (2026-05-17)
+- `screens/OnboardingScreen.js` — `finishOnboarding` upsert expanded: `missions: data.missions` (selected mission IDs), `household: { adults, children }` JSON object (was integer `household_size` only), `cookingStyle: data.cookingStyle` (was not saved), `foodsAvoided: data.foodsAvoided` (renamed from `avoids`). All five frontend state fields now round-trip cleanly to Supabase `profiles`.
+
 ### Changed — food preferences step: typography alignment pass (2026-05-16)
 - `screens/OnboardingScreen.js` — `f4Headline` bumped to 40px/800 weight matching other step headlines (was 28/700); `f4Sub` set to 15px/400 weight light gray matching `sub` style; `f4CardTitle` changed from small-caps gray label to 14px/700 navy matching `fieldLabel`; `pillText` adjusted to `#374151` (gray-700) regular weight for neutral charcoal unselected state.
 
