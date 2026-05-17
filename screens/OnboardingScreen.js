@@ -27,16 +27,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
-const GREEN      = '#0C9E54';
-const DARK_GREEN = '#0A5C2B';
-const NAVY       = '#172250';
+const GREEN  = '#0C9E54';
+const NAVY   = '#172250';
 const CREAM      = '#FAF8F1';
 const WHITE      = '#FFFFFF';
 const GRAY       = '#6B7280';
 const BORDER     = '#E5E7EB';
 const MINT       = '#E8F5E9';
-const CORAL      = '#fb5b5b';
-const AMBER      = '#F59E0B';
+const CORAL  = '#fb5b5b';
 
 const TOTAL_STEPS   = 8;  // 0–7
 const CONTENT_STEPS = 7;  // steps 1–7 show progress
@@ -190,9 +188,9 @@ function ProgressHeader({ step = 1, onBack = null }) {
       {/* Segmented progress + "X of Y" */}
       <View style={s.progressCenter}>
         <View style={s.segRow}>
-          {Array.from({ length: CONTENT_STEPS }, function (_, i) { return 'seg-' + i; }).map(function (key, i) {
-            return <View key={key} style={[s.seg, i < step && s.segDone]} />;
-          })}
+          {Array.from({ length: CONTENT_STEPS }, (_, i) => 'seg-' + i).map((key, i) => (
+            <View key={key} style={[s.seg, i < step && s.segDone]} />
+          ))}
         </View>
         <Text style={s.stepLabel}>{step} of {CONTENT_STEPS}</Text>
       </View>
@@ -212,7 +210,7 @@ function BigBtn({ label = '', onPress = null, loading = false, variant = 'fill' 
   return (
     <TouchableOpacity style={btnStyle} onPress={onPress} activeOpacity={0.85} disabled={!!loading}>
       {loading
-        ? <ActivityIndicator color={variant === 'outline' ? WHITE : WHITE} size="small" />
+        ? <ActivityIndicator color={WHITE} size="small" />
         : <Text style={txtStyle}>{label}</Text>
       }
     </TouchableOpacity>
@@ -368,23 +366,23 @@ function BudgetSlider({ value, onChange, onRelease }) {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: function () { return true; },
-      onMoveShouldSetPanResponder:  function () { return true; },
-      onPanResponderGrant: function (e) {
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder:  () => true,
+      onPanResponderGrant: (e) => {
         if (!trackW.current) return;
-        const x   = e.nativeEvent.pageX - trackLeft.current;
-        const raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
+        const x       = e.nativeEvent.pageX - trackLeft.current;
+        const raw     = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
         const snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
         onChangeRef.current(Math.max(SLIDER_MIN, Math.min(SLIDER_MAX, snapped)));
       },
-      onPanResponderMove: function (e) {
+      onPanResponderMove: (e) => {
         if (!trackW.current) return;
-        const x   = e.nativeEvent.pageX - trackLeft.current;
-        const raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
+        const x       = e.nativeEvent.pageX - trackLeft.current;
+        const raw     = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
         const snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
         onChangeRef.current(Math.max(SLIDER_MIN, Math.min(SLIDER_MAX, snapped)));
       },
-      onPanResponderRelease: function () {
+      onPanResponderRelease: () => {
         if (onReleaseRef.current) onReleaseRef.current();
       },
     })
@@ -396,9 +394,9 @@ function BudgetSlider({ value, onChange, onRelease }) {
     <View
       ref={trackViewRef}
       style={s.sliderTrack}
-      onLayout={function () {
+      onLayout={() => {
         if (trackViewRef.current) {
-          trackViewRef.current.measure(function (fx, fy, w, h, px) {
+          trackViewRef.current.measure((fx, fy, w, h, px) => {
             trackW.current    = w;
             trackLeft.current = px;
           });
@@ -466,12 +464,78 @@ function MissionCard({ label, sub, icon, selected, onPress }) {
   );
 }
 
+OptionTile.propTypes = {
+  label:    PropTypes.string.isRequired,
+  icon:     PropTypes.string,
+  selected: PropTypes.bool,
+  onPress:  PropTypes.func.isRequired,
+  sublabel: PropTypes.string,
+};
+
+GridTile.propTypes = {
+  label:    PropTypes.string.isRequired,
+  icon:     PropTypes.string,
+  selected: PropTypes.bool,
+  onPress:  PropTypes.func.isRequired,
+};
+
+HChip.propTypes = {
+  label:    PropTypes.string.isRequired,
+  selected: PropTypes.bool,
+  onPress:  PropTypes.func.isRequired,
+};
+
+Pill.propTypes = {
+  label:    PropTypes.string.isRequired,
+  selected: PropTypes.bool,
+  onPress:  PropTypes.func.isRequired,
+  style:    PropTypes.object,
+};
+
+StoreCard.propTypes = {
+  label:    PropTypes.string.isRequired,
+  selected: PropTypes.bool,
+  onPress:  PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+};
+
+CookTile.propTypes = {
+  label:    PropTypes.string.isRequired,
+  desc:     PropTypes.string.isRequired,
+  icon:     PropTypes.string.isRequired,
+  selected: PropTypes.bool,
+  onPress:  PropTypes.func.isRequired,
+};
+
+BudgetSlider.propTypes = {
+  value:     PropTypes.number.isRequired,
+  onChange:  PropTypes.func.isRequired,
+  onRelease: PropTypes.func,
+};
+
+HouseholdCard.propTypes = {
+  label:       PropTypes.string.isRequired,
+  sub:         PropTypes.string.isRequired,
+  icon:        PropTypes.string.isRequired,
+  count:       PropTypes.number.isRequired,
+  onDecrement: PropTypes.func.isRequired,
+  onIncrement: PropTypes.func.isRequired,
+};
+
+MissionCard.propTypes = {
+  label:    PropTypes.string.isRequired,
+  sub:      PropTypes.string.isRequired,
+  icon:     PropTypes.string.isRequired,
+  selected: PropTypes.bool,
+  onPress:  PropTypes.func.isRequired,
+};
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function OnboardingScreen({ navigation }) {
   const [step, setStep]              = useState(0);
   const [saving, setSaving]          = useState(false);
-  const [budgetWarn, setBWarn]       = useState('');
+  const [budgetWarn, setBudgetWarn] = useState('');
   const [showFact, setShowFact]      = useState(false);
   const [showCookingModal, setShowCookingModal] = useState(false);
   const [processing, setProcessing]  = useState({ show: false, title: '', sub: '' });
@@ -497,70 +561,65 @@ export default function OnboardingScreen({ navigation }) {
   });
 
   function upd(key, value) {
-    setData(function (p) { return Object.assign({}, p, { [key]: value }); });
+    setData((p) => ({ ...p, [key]: value }));
   }
 
   function toggleArr(key, id) {
-    setData(function (p) {
+    setData((p) => {
       const arr = p[key];
-      return Object.assign({}, p, {
-        [key]: arr.includes(id)
-          ? arr.filter(function (v) { return v !== id; })
-          : arr.concat([id]),
-      });
+      return { ...p, [key]: arr.includes(id) ? arr.filter((v) => v !== id) : arr.concat([id]) };
     });
   }
 
   function adjustCount(key, delta) {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setData(function (p) {
-      const counts = Object.assign({}, p.householdCounts);
+    setData((p) => {
+      const counts = { ...p.householdCounts };
       counts[key] = Math.max(0, (counts[key] || 0) + delta);
-      return Object.assign({}, p, { householdCounts: counts });
+      return { ...p, householdCounts: counts };
     });
   }
 
   function togglePet(id) {
-    setData(function (p) {
-      if (id === 'none') return Object.assign({}, p, { pets: ['none'] });
-      const arr = p.pets.filter(function (v) { return v !== 'none'; });
-      return Object.assign({}, p, {
-        pets: arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]),
-      });
+    setData((p) => {
+      if (id === 'none') return { ...p, pets: ['none'] };
+      const arr = p.pets.filter((v) => v !== 'none');
+      return { ...p, pets: arr.includes(id) ? arr.filter((v) => v !== id) : arr.concat([id]) };
     });
   }
 
-  function next() { setStep(function (n) { return Math.min(n + 1, TOTAL_STEPS - 1); }); }
-  function back() { setStep(function (n) { return Math.max(n - 1, 0); }); }
+  function next() { setStep((n) => Math.min(n + 1, TOTAL_STEPS - 1)); }
+  function back() { setStep((n) => Math.max(n - 1, 0)); }
 
   function runProcessing(title, sub, callback) {
     setProcessing({ show: true, title, sub });
-    setTimeout(function () {
+    setTimeout(() => {
       setProcessing({ show: false, title: '', sub: '' });
       callback();
     }, 2500);
   }
 
   function buildPersonaParams(d, extra) {
-    const adults   = (d.householdCounts && d.householdCounts.adults) || 2;
-    const children = (d.householdCounts && d.householdCounts.children) || 0;
-    return Object.assign({
+    const adults   = d.householdCounts?.adults ?? 2;
+    const children = d.householdCounts?.children ?? 0;
+    return {
       isDemoMode:     false,
       missions:       d.missions,
-      weeklyBudget:   parseFloat(d.weeklyBudget) || 0,
-      weekly_budget_cents: Math.round((parseFloat(d.weeklyBudget) || 0) * 100),
+      weeklyBudget:   Number.parseFloat(d.weeklyBudget) || 0,
+      weekly_budget_cents: Math.round((Number.parseFloat(d.weeklyBudget) || 0) * 100),
       household: {
-        adults:     adults,
-        children:   children,
+        adults,
+        children,
         school_age: children,
-        infant:     0, toddler: 0, teenager: 0,
+        infant: 0, toddler: 0, teenager: 0,
       },
       cookingStyle:    d.cookingStyle,
       foodsAvoided:    d.foodsAvoided,
       dietPreferences: d.dietPreferences,
       preferred_stores: d.preferred_stores,
       dealPreferences: d.dealPreferences,
-    }, extra || {});
+      ...(extra || {}),
+    };
   }
 
   function tryDemoMode() {
@@ -571,15 +630,15 @@ export default function OnboardingScreen({ navigation }) {
     setSaving(true);
     try {
       const { data: authData } = await supabase.auth.getUser();
-      const user = authData && authData.user;
+      const user = authData?.user;
       if (user) {
-        const budget  = parseFloat(data.weeklyBudget) || 0;
+        const budget  = Number.parseFloat(data.weeklyBudget) || 0;
         const allGoals = data.missions.concat(data.dietPreferences);
         await supabase.from('profiles').upsert({
           user_id:              user.id,
           weekly_budget:        budget,
           grocery_pct:          data.grocery_pct,
-          household_size:       Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0) || 2,
+          household_size:       Object.values(data.householdCounts).reduce((a, b) => a + b, 0) || 2,
           household:            { adults: data.householdCounts.adults || 0, children: data.householdCounts.children || 0 },
           missions:             data.missions,
           food_goals:           allGoals,
@@ -657,7 +716,7 @@ export default function OnboardingScreen({ navigation }) {
                 <Feather name="play-circle" size={16} color={WHITE} style={{ marginRight: 8 }} />
                 <Text style={s.heroDemoBtnText}>Try Demo Mode</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={function () { navigation.navigate('Auth', { openForm: 'signin' }); }} activeOpacity={0.7} style={s.heroSignInLink}>
+              <TouchableOpacity onPress={() => navigation.navigate('Auth', { openForm: 'signin' })} activeOpacity={0.7} style={s.heroSignInLink}>
                 <Text style={s.heroSignInTxt}>Sign in</Text>
               </TouchableOpacity>
             </View>
@@ -675,22 +734,20 @@ export default function OnboardingScreen({ navigation }) {
         <Text style={s.step1Headline}>What matters most{'\n'}to you?</Text>
         <Text style={s.step1Sub}>Choose everything that applies.</Text>
         <View style={s.mList}>
-          {MISSIONS.map(function (m) {
-            return (
-              <MissionCard
-                key={m.id}
-                label={m.label}
-                sub={m.sub}
-                icon={m.icon}
-                selected={data.missions.includes(m.id)}
-                onPress={function () { toggleArr('missions', m.id); }}
-              />
-            );
-          })}
+          {MISSIONS.map((m) => (
+            <MissionCard
+              key={m.id}
+              label={m.label}
+              sub={m.sub}
+              icon={m.icon}
+              selected={data.missions.includes(m.id)}
+              onPress={() => toggleArr('missions', m.id)}
+            />
+          ))}
         </View>
         <TouchableOpacity
           style={s.mContinueBtn}
-          onPress={function () { runProcessing('Analyzing your goals...', 'Building your personalized Snippd profile.', next); }}
+          onPress={() => runProcessing('Analyzing your goals...', 'Building your personalized Snippd profile.', next)}
           activeOpacity={0.88}
         >
           <Text style={s.mContinueTxt}>Continue</Text>
@@ -701,30 +758,30 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep2() {
-    const sliderVal = parseInt(data.weeklyBudget, 10) || SLIDER_MIN;
+    const sliderVal = Number.parseInt(data.weeklyBudget, 10) || SLIDER_MIN;
 
-    const householdSize = Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0);
+    const householdSize = Object.values(data.householdCounts).reduce((a, b) => a + b, 0);
 
-    function handleSlider(v) {
+    const handleSlider = (v) => {
       upd('weeklyBudget', String(v));
       upd('weekly_budget_cents', v * 100);
-      setBWarn('');
-    }
+      setBudgetWarn('');
+    };
 
-    function handleSliderRelease() {
+    const handleSliderRelease = () => {
       setShowFact(true);
-    }
+    };
 
-    function handleText(text) {
-      const cleaned = text.replace(/[^0-9]/g, '');
+    const handleText = (text) => {
+      const cleaned = text.replace(/\D/g, '');
       upd('weeklyBudget', cleaned);
-      upd('weekly_budget_cents', Math.round((parseFloat(cleaned) || 0) * 100));
-      const val = parseInt(cleaned, 10);
-      if (!cleaned)         { setBWarn(''); return; }
-      if (val < 25)         { setBWarn('Plans work best with at least $25/week.'); return; }
-      if (val > 800)        { setBWarn('Double-check your weekly amount.'); return; }
-      setBWarn('');
-    }
+      upd('weekly_budget_cents', Math.round((Number.parseFloat(cleaned) || 0) * 100));
+      const val = Number.parseInt(cleaned, 10);
+      if (!cleaned)         { setBudgetWarn(''); return; }
+      if (val < 25)         { setBudgetWarn('Plans work best with at least $25/week.'); return; }
+      if (val > 800)        { setBudgetWarn('Double-check your weekly amount.'); return; }
+      setBudgetWarn('');
+    };
 
     return (
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -780,7 +837,7 @@ export default function OnboardingScreen({ navigation }) {
                 keyboardType="number-pad"
                 value={data.weeklyBudget}
                 onChangeText={handleText}
-                onBlur={function () { if (data.weeklyBudget) setShowFact(true); }}
+                onBlur={() => { if (data.weeklyBudget) setShowFact(true); }}
                 placeholder="225"
                 placeholderTextColor={BORDER}
                 maxLength={4}
@@ -825,7 +882,7 @@ export default function OnboardingScreen({ navigation }) {
 
         {/* 2-col stepper grid */}
         <View style={s.hGrid}>
-          {HOUSEHOLD_TYPES.map(function (ht) {
+          {HOUSEHOLD_TYPES.map((ht) => {
             const count = data.householdCounts[ht.id] || 0;
             return (
               <HouseholdCard
@@ -834,8 +891,8 @@ export default function OnboardingScreen({ navigation }) {
                 sub={ht.sub}
                 icon={ht.icon}
                 count={count}
-                onDecrement={function () { adjustCount(ht.id, -1); }}
-                onIncrement={function () { adjustCount(ht.id, 1); }}
+                onDecrement={() => adjustCount(ht.id, -1)}
+                onIncrement={() => adjustCount(ht.id, 1)}
               />
             );
           })}
@@ -850,13 +907,13 @@ export default function OnboardingScreen({ navigation }) {
             <Text style={s.toCardTitle}>What kind of pets do you have?</Text>
           </View>
           <View style={s.petRow}>
-            {PET_OPTS.map(function (opt) {
+            {PET_OPTS.map((opt) => {
               const sel = data.pets.includes(opt.id);
               return (
                 <TouchableOpacity
                   key={opt.id}
                   style={[s.toPill, sel && s.toPillOn]}
-                  onPress={function () { togglePet(opt.id); }}
+                  onPress={() => togglePet(opt.id)}
                   activeOpacity={0.8}
                 >
                   <Text style={[s.toPillTxt, sel && s.toPillTxtOn]}>{opt.label}</Text>
@@ -883,7 +940,7 @@ export default function OnboardingScreen({ navigation }) {
         {/* Continue CTA */}
         <TouchableOpacity
           style={s.h3ContinueBtn}
-          onPress={function () {
+          onPress={() => {
             if (!data.weeklyBudget) {
               const suggested = getDefaultWeeklyBudget(data.householdCounts);
               upd('weeklyBudget', String(suggested));
@@ -908,14 +965,14 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep4() {
-    function toggleFood(id) {
-      const arr = data.foodsAvoided.filter(function (v) { return v !== 'none'; });
-      upd('foodsAvoided', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
-    }
-    function toggleDiet(id) {
-      const arr = data.dietPreferences.filter(function (v) { return v !== 'no_diet'; });
-      upd('dietPreferences', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
-    }
+    const toggleFood = (id) => {
+      const arr = data.foodsAvoided.filter((v) => v !== 'none');
+      upd('foodsAvoided', arr.includes(id) ? arr.filter((v) => v !== id) : arr.concat([id]));
+    };
+    const toggleDiet = (id) => {
+      const arr = data.dietPreferences.filter((v) => v !== 'no_diet');
+      upd('dietPreferences', arr.includes(id) ? arr.filter((v) => v !== id) : arr.concat([id]));
+    };
     const foodsClear = data.foodsAvoided.length === 0 || data.foodsAvoided.includes('none');
     const dietClear  = data.dietPreferences.length === 0 || data.dietPreferences.includes('no_diet');
 
@@ -928,23 +985,21 @@ export default function OnboardingScreen({ navigation }) {
         <View style={s.f4Card}>
           <Text style={s.f4CardTitle}>Preferences</Text>
           <View style={s.f4Grid}>
-            {DIET_PREFS.map(function (d) {
-              return (
-                <View key={d.id} style={s.f4GridCell}>
-                  <Pill
-                    label={d.label}
-                    selected={data.dietPreferences.includes(d.id)}
-                    onPress={function () { toggleDiet(d.id); }}
-                    style={s.f4GridPill}
-                  />
-                </View>
-              );
-            })}
+            {DIET_PREFS.map((d) => (
+              <View key={d.id} style={s.f4GridCell}>
+                <Pill
+                  label={d.label}
+                  selected={data.dietPreferences.includes(d.id)}
+                  onPress={() => toggleDiet(d.id)}
+                  style={s.f4GridPill}
+                />
+              </View>
+            ))}
             <View style={s.f4GridCell}>
               <Pill
                 label="No preference"
                 selected={dietClear}
-                onPress={function () { upd('dietPreferences', []); }}
+                onPress={() => upd('dietPreferences', [])}
                 style={s.f4GridPill}
               />
             </View>
@@ -955,23 +1010,21 @@ export default function OnboardingScreen({ navigation }) {
         <View style={s.f4Card}>
           <Text style={s.f4CardTitle}>Allergies & restrictions</Text>
           <View style={s.f4Grid}>
-            {FOODS_AVOIDED.map(function (f) {
-              return (
-                <View key={f.id} style={s.f4GridCell}>
-                  <Pill
-                    label={f.label}
-                    selected={data.foodsAvoided.includes(f.id)}
-                    onPress={function () { toggleFood(f.id); }}
-                    style={s.f4GridPill}
-                  />
-                </View>
-              );
-            })}
+            {FOODS_AVOIDED.map((f) => (
+              <View key={f.id} style={s.f4GridCell}>
+                <Pill
+                  label={f.label}
+                  selected={data.foodsAvoided.includes(f.id)}
+                  onPress={() => toggleFood(f.id)}
+                  style={s.f4GridPill}
+                />
+              </View>
+            ))}
             <View style={s.f4GridCell}>
               <Pill
                 label="None"
                 selected={foodsClear}
-                onPress={function () { upd('foodsAvoided', []); }}
+                onPress={() => upd('foodsAvoided', [])}
                 style={s.f4GridPill}
               />
             </View>
@@ -988,10 +1041,10 @@ export default function OnboardingScreen({ navigation }) {
 
   function renderStep5() {
     const mealPrioritiesClear = data.mealPriorities.length === 0 || data.mealPriorities.includes('no_meal_pref');
-    function toggleMealPriority(id) {
-      const arr = data.mealPriorities.filter(function (v) { return v !== 'no_meal_pref'; });
-      upd('mealPriorities', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
-    }
+    const toggleMealPriority = (id) => {
+      const arr = data.mealPriorities.filter((v) => v !== 'no_meal_pref');
+      upd('mealPriorities', arr.includes(id) ? arr.filter((v) => v !== id) : arr.concat([id]));
+    };
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.f4Headline}>What's your cooking{'\n'}& meal style?</Text>
@@ -1001,35 +1054,30 @@ export default function OnboardingScreen({ navigation }) {
         <View style={s.f4Card}>
           <Text style={s.f4CardTitle}>How do you usually cook?</Text>
           <View style={s.f4Grid}>
-            {COOKING_STYLES.map(function (c) {
-              return (
-                <View key={c.id} style={s.f4GridCell}>
-                  <CookTile
-                    label={c.label}
-                    desc={c.desc}
-                    icon={c.icon}
-                    selected={data.cookingStyle.includes(c.id)}
-                    onPress={function () { toggleArr('cookingStyle', c.id); }}
-                  />
-                </View>
-              );
-            })}
+            {COOKING_STYLES.map((c) => (
+              <View key={c.id} style={s.f4GridCell}>
+                <CookTile
+                  label={c.label}
+                  desc={c.desc}
+                  icon={c.icon}
+                  selected={data.cookingStyle.includes(c.id)}
+                  onPress={() => toggleArr('cookingStyle', c.id)}
+                />
+              </View>
+            ))}
           </View>
           <Text style={[s.f4CardTitle, { marginTop: 20 }]}>How many dinners do you cook a week?</Text>
           <View style={s.f4Grid}>
-            {DINNER_FREQ_OPTS.map(function (d) {
-              const sel = data.dinnerFrequency === d.id;
-              return (
-                <View key={d.id} style={s.f4GridCell}>
-                  <Pill
-                    label={d.label}
-                    selected={sel}
-                    onPress={function () { upd('dinnerFrequency', d.id); }}
-                    style={s.f4GridPill}
-                  />
-                </View>
-              );
-            })}
+            {DINNER_FREQ_OPTS.map((d) => (
+              <View key={d.id} style={s.f4GridCell}>
+                <Pill
+                  label={d.label}
+                  selected={data.dinnerFrequency === d.id}
+                  onPress={() => upd('dinnerFrequency', d.id)}
+                  style={s.f4GridPill}
+                />
+              </View>
+            ))}
           </View>
         </View>
 
@@ -1037,23 +1085,21 @@ export default function OnboardingScreen({ navigation }) {
         <View style={s.f4Card}>
           <Text style={s.f4CardTitle}>Meal priorities</Text>
           <View style={s.f4Grid}>
-            {MEAL_PRIORITIES.map(function (m) {
-              return (
-                <View key={m.id} style={s.f4GridCell}>
-                  <Pill
-                    label={m.label}
-                    selected={data.mealPriorities.includes(m.id)}
-                    onPress={function () { toggleMealPriority(m.id); }}
-                    style={s.f4GridPill}
-                  />
-                </View>
-              );
-            })}
+            {MEAL_PRIORITIES.map((m) => (
+              <View key={m.id} style={s.f4GridCell}>
+                <Pill
+                  label={m.label}
+                  selected={data.mealPriorities.includes(m.id)}
+                  onPress={() => toggleMealPriority(m.id)}
+                  style={s.f4GridPill}
+                />
+              </View>
+            ))}
             <View style={s.f4GridCell}>
               <Pill
                 label="No preference"
                 selected={mealPrioritiesClear}
-                onPress={function () { upd('mealPriorities', []); }}
+                onPress={() => upd('mealPriorities', [])}
                 style={s.f4GridPill}
               />
             </View>
@@ -1062,7 +1108,7 @@ export default function OnboardingScreen({ navigation }) {
 
         <TouchableOpacity
           style={s.f4ContinueBtn}
-          onPress={function () { setShowCookingModal(true); }}
+          onPress={() => setShowCookingModal(true)}
           activeOpacity={0.88}
         >
           <Text style={s.f4ContinueTxt}>Continue</Text>
@@ -1079,7 +1125,7 @@ export default function OnboardingScreen({ navigation }) {
         <Text style={s.headline}>Choose your{'\n'}favorite stores</Text>
         <Text style={s.sub}>Pick up to 3 stores you shop at regularly — I'll track deals at each one.</Text>
         <View style={s.storeGrid}>
-          {STORES.map(function (st) {
+          {STORES.map((st) => {
             const selected = data.preferred_stores.includes(st.id);
             return (
               <StoreCard
@@ -1087,14 +1133,14 @@ export default function OnboardingScreen({ navigation }) {
                 label={st.label}
                 selected={selected}
                 disabled={atLimit && !selected}
-                onPress={function () { toggleArr('preferred_stores', st.id); }}
+                onPress={() => toggleArr('preferred_stores', st.id)}
               />
             );
           })}
         </View>
         <TouchableOpacity
           style={s.f4ContinueBtn}
-          onPress={function () { runProcessing('Scouting deals at your stores...', 'Connecting to live savings at your favorite retailers.', next); }}
+          onPress={() => runProcessing('Scouting deals at your stores...', 'Connecting to live savings at your favorite retailers.', next)}
           activeOpacity={0.88}
         >
           <Text style={s.f4ContinueTxt}>Continue</Text>
@@ -1115,35 +1161,30 @@ export default function OnboardingScreen({ navigation }) {
         {/* Deal preferences */}
         <Text style={s.fieldLabel}>How should Snippd find your savings?</Text>
         <View style={s.dealGrid}>
-          {DEAL_PREFS.map(function (d) {
-            return (
-              <GridTile
-                key={d.id}
-                label={d.label}
-                icon={d.icon}
-                selected={data.dealPreferences.includes(d.id)}
-                onPress={function () { toggleArr('dealPreferences', d.id); }}
-              />
-            );
-          })}
+          {DEAL_PREFS.map((d) => (
+            <GridTile
+              key={d.id}
+              label={d.label}
+              icon={d.icon}
+              selected={data.dealPreferences.includes(d.id)}
+              onPress={() => toggleArr('dealPreferences', d.id)}
+            />
+          ))}
         </View>
 
         {/* Meal idea frequency */}
         <Text style={[s.fieldLabel, { marginTop: 24 }]}>How often do you want meal ideas?</Text>
         <View style={s.h3FreqRow}>
-          {MEAL_FREQ_OPTS.map(function (opt) {
-            const selected = data.mealIdeaFrequency === opt.id;
-            return (
-              <TouchableOpacity
-                key={opt.id}
-                style={[s.h3FreqPill, selected && s.h3FreqPillOn]}
-                onPress={function () { upd('mealIdeaFrequency', opt.id); }}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.h3FreqTxt, selected && s.h3FreqTxtOn]}>{opt.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          {MEAL_FREQ_OPTS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[s.h3FreqPill, data.mealIdeaFrequency === opt.id && s.h3FreqPillOn]}
+              onPress={() => upd('mealIdeaFrequency', opt.id)}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.h3FreqTxt, data.mealIdeaFrequency === opt.id && s.h3FreqTxtOn]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <BigBtn label="Find Out My Shopping Persona" onPress={finishOnboarding} loading={saving} />
@@ -1177,7 +1218,7 @@ export default function OnboardingScreen({ navigation }) {
         visible={showCookingModal}
         transparent
         animationType="slide"
-        onRequestClose={function () { setShowCookingModal(false); }}
+        onRequestClose={() => setShowCookingModal(false)}
       >
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
@@ -1185,14 +1226,14 @@ export default function OnboardingScreen({ navigation }) {
             <Text style={s.modalLabel}>Snippd Fact</Text>
             <Text style={s.modalBody}>
               {getCookingFact(
-                Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0),
+                Object.values(data.householdCounts).reduce((a, b) => a + b, 0),
                 data.dinnerFrequency,
                 data.cookingStyle,
               )}
             </Text>
             <TouchableOpacity
               style={s.modalBtn}
-              onPress={function () { setShowCookingModal(false); next(); }}
+              onPress={() => { setShowCookingModal(false); next(); }}
               activeOpacity={0.88}
             >
               <Text style={s.modalBtnTxt}>Got it, let's go</Text>
@@ -1204,6 +1245,10 @@ export default function OnboardingScreen({ navigation }) {
     </SafeAreaView>
   );
 }
+
+OnboardingScreen.propTypes = {
+  navigation: PropTypes.shape({ navigate: PropTypes.func.isRequired }).isRequired,
+};
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 

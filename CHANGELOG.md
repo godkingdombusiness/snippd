@@ -4,6 +4,18 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — OnboardingScreen.js: 62 IDE diagnostic issues resolved (2026-05-17)
+- Removed unused constants `DARK_GREEN` and `AMBER` (S1481).
+- Added `.propTypes` declarations for all 9 module-scope sub-components: `OptionTile`, `GridTile`, `HChip`, `Pill`, `StoreCard`, `CookTile`, `BudgetSlider`, `HouseholdCard`, `MissionCard` — resolves 39 S6774 prop-validation hints.
+- Added `OnboardingScreen.propTypes = { navigation: PropTypes.shape({ navigate }) }` for the screen's own `navigation` prop — resolves 4 S6774 hints.
+- Converted all `function`-keyword callbacks to arrow functions throughout: `ProgressHeader` Array.from/map, `BudgetSlider` PanResponder/onLayout, `upd`/`toggleArr`/`adjustCount`/`togglePet` setData updaters, `next`/`back` setStep updaters, `runProcessing` setTimeout, `finishOnboarding` reduce, all `.map(function...)` in renderStep1–7, all inline `onPress={function...}` handlers, `renderStep2` inner `handleSlider`/`handleSliderRelease`/`handleText`/`onBlur`, `renderStep4` `toggleFood`/`toggleDiet`, `renderStep5` `toggleMealPriority`, modal `onRequestClose` and `onPress` — resolves ~21 S6550 warnings.
+- Fixed `variant === 'outline' ? WHITE : WHITE` → `WHITE` in `BigBtn` ActivityIndicator (S3923 — both branches identical).
+- Renamed `setBWarn` → `setBudgetWarn` to match useState setter naming convention (S6754).
+- Replaced all `Object.assign({}, p, {...})` with object spread `{ ...p, ... }` — resolves 6 S6661 warnings.
+- Replaced optional-chain candidates: `d.householdCounts && d.householdCounts.adults` → `d.householdCounts?.adults` etc., `authData && authData.user` → `authData?.user` — resolves S6582.
+- Replaced `parseInt`/`parseFloat` with `Number.parseInt`/`Number.parseFloat` throughout — resolves S7773.
+- Replaced `/[^0-9]/` regex with `/\D/` in handleText — resolves S6353.
+
 ### Fixed — Babel parse error: curly apostrophes in getBudgetFact strings (2026-05-17)
 - `screens/OnboardingScreen.js` — Four string literals in `getBudgetFact` used Unicode right-single-quotation-mark (U+2019) from copy-paste, causing `SyntaxError: Unexpected character` at line 345. Converted all four to double-quoted string literals so apostrophes are valid ASCII.
 
