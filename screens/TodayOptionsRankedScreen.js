@@ -1,600 +1,616 @@
-// screens/TodayOptionsRankedScreen.js
-// "What's the plan for tonight?" — 3-card decision hub.
-// Context from TodaySetupGateScreen drives: wallet banner, portion badges,
-// recipe selection, pricing, coupon rows, and CTA routing.
+/**
+ * TodayOptionsRankedScreen.js
+ *
+ * Premium ranked options screen shown after TodaySetupGateScreen is complete.
+ * Replaces the visual design of TodayDecisionScreen while reusing the same
+ * decisionEngineService scoring logic.
+ *
+ * Route params: { context: { weeklyBudgetCents, remainingBudgetCents,
+ *   householdSize, peopleEatingToday, groceryStatus, timeBeforeDinner,
+ *   pantryPreference, todayGoal } }
+ */
 
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  StatusBar, Platform,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
-import PropTypes from 'prop-types';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { tracker } from '../src/lib/eventTracker';
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const GREEN       = '#0C9E54';
-const GREEN_DARK  = '#065F46';
-const BLUE        = '#1D4ED8';
-const BLUE_DARK   = '#1E3A8A';
-const CHARCOAL    = '#1E293B';
-const CHARCOAL_DK = '#0F172A';
-const WHITE       = '#FFFFFF';
-const NAVY        = '#0A192F';
-const SLATE       = '#475569';
-const GRAY        = '#94A3B8';
-const BORDER      = '#E5E7EB';
-const MINT_SOFT   = '#F0FDF4';
-const AMBER       = '#D97706';
+var { rankOptions, OPTION_TYPES } = require('../src/services/foodOptions/decisionEngineService');
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function fmt(cents) {
-  return '$' + (cents / 100).toFixed(2);
+var GREEN  = '#0C9E54';
+var NAVY   = '#172250';
+var CREAM  = '#FAF8F1';
+var MINT   = '#E8F5E9';
+var WHITE  = '#FFFFFF';
+var GRAY   = '#6B7280';
+var BORDER = '#E5E7EB';
+var CORAL  = '#fb5b5b';
+var AMBER  = '#F59E0B';
+
+// ── Cost estimation helpers ───────────────────────────────────────────────────
+
+var COST_RANGES = {
+  cook_from_pantry:   function (hs) { return { low: 0,                             high: Math.round(hs * 250) }; },
+  quick_grocery_run:  function (hs) { return { low: Math.round(hs * 350),          high: Math.round(hs * 550) }; },
+  grocery_pickup:     function (hs) { return { low: Math.round(hs * 450),          high: Math.round(hs * 750) }; },
+  uber_eats_pickup:   function (hs) { return { low: Math.round(hs * 900),          high: Math.round(hs * 1200) }; },
+  eat_out_smart:      function (hs) { return { low: Math.round(hs * 800),          high: Math.round(hs * 1400) }; },
+  uber_eats_delivery: function (hs) { return { low: Math.round(hs * 1100),         high: Math.round(hs * 1600) }; },
+};
+
+var PER_PERSON_CENTS = {
+  cook_from_pantry:   250,
+  quick_grocery_run:  450,
+  grocery_pickup:     600,
+  uber_eats_pickup:   1050,
+  eat_out_smart:      1100,
+  uber_eats_delivery: 1350,
+};
+
+function getCostRange(optionType, householdSize) {
+  var hs = householdSize || 2;
+  var fn = COST_RANGES[optionType];
+  return fn ? fn(hs) : { low: 0, high: 0 };
 }
 
-function primaryGoalLabel(behaviorProfile) {
-  const p = behaviorProfile ?? [];
-  if (p.includes('high_protein'))  return 'High Protein';
-  if (p.includes('lower_calorie')) return 'Light & Lean';
-  if (p.includes('fastest'))       return 'Quick Prep';
-  if (p.includes('spend_least'))   return 'Max Savings';
-  if (p.includes('kid_friendly'))  return 'Kid-Friendly';
-  if (p.includes('healthier'))     return 'Clean Eats';
-  return 'Balanced';
+function formatDollars(cents) {
+  return '$' + Math.round(cents / 100);
 }
 
-function activeMinsLabel(timeWindow) {
-  if (timeWindow === 'under_15') return '15';
-  if (timeWindow === '15_30')    return '25';
-  if (timeWindow === '30_45')    return '35';
-  return '45';
+function formatCostRange(optionType, householdSize) {
+  var range = getCostRange(optionType, householdSize);
+  if (range.low === 0 && range.high === 0) return '$0';
+  if (range.low === 0) return formatDollars(range.high);
+  return formatDollars(range.low) + '-' + formatDollars(range.high);
 }
 
-function buildCards(context) {
-  const bp         = context.behaviorProfile ?? [];
-  const eaters     = context.tonightEatersCount ?? context.householdSize ?? 2;
-  const remaining  = context.remainingBudgetCents ?? 0;
-  const isProtein  = bp.includes('high_protein') || bp.includes('fastest');
-  const isBudget   = bp.includes('spend_least');
+function formatPerPerson(optionType) {
+  var cents = PER_PERSON_CENTS[optionType] || 0;
+  return '~' + formatDollars(cents) + ' per person';
+}
 
-  // ── Card 1 — Cook at Home ────────────────────────────────────────────────
-  const cookTotalCents  = isProtein ? 842 : isBudget ? 624 : 842;
-  const cookCouponCents = isProtein ? 350 : 200;
-  const cookMins        = activeMinsLabel(context.timeWindow);
-  const cookRecipe      = isProtein
-    ? 'Quick Garlic-Herb Chicken & Asparagus'
-    : isBudget
-    ? 'Batch Turkey & Brown Rice Bowl'
-    : 'Herb-Marinated Chicken & Roasted Veggies';
-  const cookDesc = 'Ingredients ready for curbside pickup at your preferred store.';
-  const cookCoupons = isProtein
-    ? ['$1.00 off Tyson Chicken Strips', 'BOGO savings applied to Quaker Oats']
-    : ['$0.75 off store-brand rice', 'Digital clip: $1.25 off lean turkey'];
+// ── Time estimate labels ──────────────────────────────────────────────────────
 
-  // ── Card 2 — Store Delivery ──────────────────────────────────────────────
-  const delivTotalCents  = cookTotalCents;
-  const delivCouponCents = cookCouponCents;
+var TIME_LABELS = {
+  cook_from_pantry:   '~45 min total',
+  quick_grocery_run:  '~60 min total',
+  grocery_pickup:     '~50 min total',
+  uber_eats_pickup:   '~30 min total',
+  eat_out_smart:      '~60 min total',
+  uber_eats_delivery: '~50 min total',
+};
 
-  // ── Card 3 — Eat Out / Takeout ───────────────────────────────────────────
-  const takeoutTotal = 1250;
-  const perPerson    = (takeoutTotal / eaters / 100).toFixed(2);
+// ── CTA labels per option ─────────────────────────────────────────────────────
+
+var CTA_LABELS = {
+  cook_from_pantry:   'View pantry meals',
+  quick_grocery_run:  'Build quick cart',
+  grocery_pickup:     'Choose store',
+  uber_eats_pickup:   'Open in Uber Eats',
+  eat_out_smart:      'Find local options',
+  uber_eats_delivery: 'Compare delivery options',
+};
+
+// ── Context pill helpers ──────────────────────────────────────────────────────
+
+function buildContextPills(context) {
+  var pills = [];
+  var ctx = context || {};
+
+  // Budget
+  if (ctx.remainingBudgetCents > 0) {
+    pills.push({ id: 'budget', label: '$' + Math.round(ctx.remainingBudgetCents / 100) + ' left', estimated: !ctx.weeklyBudgetCents });
+  } else {
+    pills.push({ id: 'budget', label: 'No budget set', estimated: true });
+  }
+
+  // People
+  var people = ctx.peopleEatingToday || ctx.householdSize || 2;
+  pills.push({ id: 'people', label: people + (people === 1 ? ' person' : ' people'), estimated: false });
+
+  // Time
+  var timeMap = {
+    under_15: 'Under 15 min',
+    '15_30':  '15-30 min',
+    '30_45':  '30-45 min',
+    over_45:  'Over 45 min',
+  };
+  if (ctx.timeBeforeDinner && timeMap[ctx.timeBeforeDinner]) {
+    pills.push({ id: 'time', label: timeMap[ctx.timeBeforeDinner], estimated: false });
+  } else {
+    pills.push({ id: 'time', label: '30 min', estimated: true });
+  }
+
+  // Grocery status
+  var groceryMap = {
+    yes:       'Shopped',
+    no:        'Not shopped',
+    partially: 'Partial shop',
+  };
+  if (ctx.groceryStatus && groceryMap[ctx.groceryStatus]) {
+    pills.push({ id: 'grocery', label: groceryMap[ctx.groceryStatus], estimated: false });
+  } else {
+    pills.push({ id: 'grocery', label: 'Shop status unknown', estimated: true });
+  }
+
+  return pills;
+}
+
+// ── Score pill label → bg color ───────────────────────────────────────────────
+
+var SCORE_PILL_COLORS = {
+  'Best fit':  GREEN,
+  'Good fit':  '#3B82F6',
+  'Possible':  AMBER,
+  'Not ideal': CORAL,
+};
+
+// ── Module-scope component functions ─────────────────────────────────────────
+
+function renderContextPill(pill) {
+  var isEstimated = pill.estimated;
+  return (
+    <View
+      key={pill.id}
+      style={[styles.contextPill, isEstimated && styles.contextPillEstimated]}
+    >
+      <Text style={styles.contextPillText}>
+        {pill.label}{isEstimated ? ' (est)' : ''}
+      </Text>
+    </View>
+  );
+}
+
+function OptionCard(props) {
+  var option      = props.option;
+  var isTop       = props.isTop;
+  var onPress     = props.onPress;
+  var householdSize = props.householdSize || 2;
+
+  var scoreColor  = SCORE_PILL_COLORS[option.scoreLabel] || GRAY;
+  var costRange   = formatCostRange(option.optionType, householdSize);
+  var perPerson   = formatPerPerson(option.optionType);
+  var timeLabel   = TIME_LABELS[option.optionType] || '';
+  var ctaLabel    = CTA_LABELS[option.optionType] || 'View options';
+
+  return (
+    <View style={[styles.optionCard, isTop && styles.optionCardTop]}>
+
+      {/* Top row: score pill + label */}
+      <View style={styles.optionTopRow}>
+        <View style={[styles.scorePill, { backgroundColor: scoreColor + '22', borderColor: scoreColor + '55' }]}>
+          <Text style={[styles.scorePillText, { color: scoreColor }]}>{option.scoreLabel}</Text>
+        </View>
+        <Text style={[styles.optionLabel, isTop && styles.optionLabelTop]} numberOfLines={1}>
+          {option.label}
+        </Text>
+      </View>
+
+      {/* Price */}
+      <Text style={[styles.priceText, isTop && styles.priceTextTop]}>
+        ~{costRange}
+      </Text>
+      <Text style={[styles.perPersonText, isTop && styles.perPersonTextTop]}>
+        {perPerson}
+      </Text>
+
+      {/* Time */}
+      <View style={styles.timeRow}>
+        <Feather name="clock" size={13} color={isTop ? 'rgba(255,255,255,0.7)' : GRAY} />
+        <Text style={[styles.timeText, isTop && styles.timeTextTop]}>{timeLabel}</Text>
+      </View>
+
+      {/* Why */}
+      <Text style={[styles.whyText, isTop && styles.whyTextTop]}>
+        {option.why}
+      </Text>
+
+      {/* CTA */}
+      <TouchableOpacity
+        style={[styles.ctaBtn, isTop ? styles.ctaBtnTop : styles.ctaBtnOther]}
+        onPress={onPress}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.ctaBtnText, isTop ? styles.ctaBtnTopText : styles.ctaBtnOtherText]}>
+          {ctaLabel}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ── Default context used when nothing is passed ───────────────────────────────
+
+var DEFAULT_CONTEXT = {
+  weeklyBudgetCents:    20000,
+  remainingBudgetCents: 12000,
+  householdSize:        2,
+  peopleEatingToday:    2,
+  groceryStatus:        'no',
+  timeBeforeDinner:     '30_45',
+  pantryPreference:     'not_sure',
+  todayGoal:            'spend_least',
+};
+
+// ── Translate TodaySetupGate context → decisionEngine context ─────────────────
+
+function buildEngineContext(ctx) {
+  var timeMap = {
+    under_15: 12,
+    '15_30':  22,
+    '30_45':  37,
+    over_45:  60,
+  };
+
+  var goalGoalMap = {
+    spend_least:   'lower-sugar',
+    high_protein:  'high-protein',
+    lower_calorie: 'under-600-cal',
+    kid_friendly:  'kid-friendly',
+    fastest:       'lower-sugar',
+    healthier:     'lower-sodium',
+    comfort:       'lower-sugar',
+    family_meal:   'lower-sugar',
+  };
+
+  var prefMap = {
+    spend_least:   'saver',
+    high_protein:  'saver',
+    lower_calorie: 'saver',
+    kid_friendly:  'saver',
+    fastest:       'convenience',
+    healthier:     'saver',
+    comfort:       'explorer',
+    family_meal:   'saver',
+  };
+
+  var cookingTimeMin = (ctx.timeBeforeDinner && timeMap[ctx.timeBeforeDinner]) || 30;
+  var foodGoal       = ctx.todayGoal ? [goalGoalMap[ctx.todayGoal] || 'lower-sugar'] : [];
+  var prefStyle      = ctx.todayGoal ? (prefMap[ctx.todayGoal] || 'saver') : 'saver';
+
+  // Estimate pantry based on groceryStatus
+  var pantryCount = 8;
+  if (ctx.groceryStatus === 'yes')       pantryCount = 15;
+  if (ctx.groceryStatus === 'no')        pantryCount = 4;
+  if (ctx.groceryStatus === 'partially') pantryCount = 9;
+  if (ctx.pantryPreference === 'use_first') pantryCount = Math.max(pantryCount, 10);
 
   return {
-    cook: {
-      totalCents:   cookTotalCents,
-      couponCents:  cookCouponCents,
-      recipe:       cookRecipe,
-      desc:         cookDesc,
-      coupons:      cookCoupons,
-      mins:         cookMins,
-    },
-    delivery: {
-      totalCents:   delivTotalCents,
-      couponCents:  delivCouponCents,
-      recipe:       cookRecipe,
-    },
-    takeout: {
-      totalCents:   takeoutTotal,
-      perPerson,
-      eaters,
-    },
-    eaters,
-    goalLabel: primaryGoalLabel(bp),
-    remaining,
-    weekly: context.weeklyBudgetCents ?? 25000,
+    remainingBudgetCents: ctx.remainingBudgetCents || 0,
+    weeklyBudgetCents:    ctx.weeklyBudgetCents    || 20000,
+    householdSize:        ctx.householdSize        || 2,
+    cookingTimeMin:       cookingTimeMin,
+    foodGoals:            foodGoal,
+    pantryCount:          pantryCount,
+    hasKids:              ctx.todayGoal === 'kid_friendly' || ctx.todayGoal === 'family_meal',
+    preferenceStyle:      prefStyle,
   };
 }
 
-// ── Sub-components (module scope) ─────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 
-function WalletBanner({ remaining, weekly, onPress }) {
-  return (
-    <TouchableOpacity style={wb.card} onPress={onPress} activeOpacity={0.9}>
-      <View style={wb.left}>
-        <FontAwesome5 name="wallet" size={22} color={WHITE} solid />
-      </View>
-      <View style={wb.mid}>
-        <Text style={wb.amount}>
-          You have <Text style={wb.highlight}>{fmt(remaining)}</Text> remaining
-        </Text>
-        <Text style={wb.sub}>of your {fmt(weekly)} weekly grocery budget.</Text>
-      </View>
-      <Feather name="chevron-right" size={20} color={WHITE} style={{ opacity: 0.7 }} />
-    </TouchableOpacity>
-  );
-}
-WalletBanner.propTypes = {
-  remaining: PropTypes.number.isRequired,
-  weekly:    PropTypes.number.isRequired,
-  onPress:   PropTypes.func.isRequired,
-};
+export default function TodayOptionsRankedScreen(props) {
+  var navigation = props.navigation;
+  var route      = props.route;
+  var params     = (route && route.params) || {};
+  var context    = params.context || DEFAULT_CONTEXT;
 
-function PortionBadge({ eaters, goalLabel }) {
-  return (
-    <View style={pb.badge}>
-      <Text style={pb.text}>{eaters} Portion{eaters !== 1 ? 's' : ''} | {goalLabel}</Text>
-    </View>
-  );
-}
-PortionBadge.propTypes = {
-  eaters:    PropTypes.number.isRequired,
-  goalLabel: PropTypes.string.isRequired,
-};
+  var [options, setOptions] = useState([]);
+  var [loading, setLoading] = useState(true);
 
-function CouponRow({ label, saving, items }) {
-  return (
-    <View style={cr.wrap}>
-      <View style={cr.header}>
-        <View style={cr.left}>
-          <FontAwesome5 name="ticket-alt" size={12} color={GREEN} solid style={{ marginRight: 6 }} />
-          <Text style={cr.label}>{label}</Text>
-        </View>
-        <Text style={cr.saving}>{saving}</Text>
-      </View>
-      {(items ?? []).map((item, i) => (
-        <View key={i} style={cr.item}>
-          <Feather name="check" size={11} color={GREEN} style={{ marginRight: 6 }} />
-          <Text style={cr.itemText}>{item}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-CouponRow.propTypes = {
-  label:  PropTypes.string.isRequired,
-  saving: PropTypes.string.isRequired,
-  items:  PropTypes.arrayOf(PropTypes.string),
-};
+  var householdSize = context.householdSize || 2;
 
-function ImagePlaceholder({ bg, icon, eaters, goalLabel }) {
-  return (
-    <View style={[ip.box, { backgroundColor: bg }]}>
-      <FontAwesome5 name={icon} size={28} color="rgba(255,255,255,0.35)" solid />
-      <View style={ip.badgeWrap}>
-        <PortionBadge eaters={eaters} goalLabel={goalLabel} />
-      </View>
-    </View>
-  );
-}
-ImagePlaceholder.propTypes = {
-  bg:        PropTypes.string.isRequired,
-  icon:      PropTypes.string.isRequired,
-  eaters:    PropTypes.number.isRequired,
-  goalLabel: PropTypes.string.isRequired,
-};
+  useEffect(function () {
+    var engineCtx = buildEngineContext(context);
+    var allTypes  = Object.values(OPTION_TYPES);
+    var ranked    = rankOptions(allTypes, engineCtx);
+    setOptions(ranked);
+    setLoading(false);
 
-function Sidebar({ bg, darkBg, icon, label, badge, badgeDark }) {
-  return (
-    <View style={[sb.col, { backgroundColor: bg }]}>
-      <View style={[sb.iconWrap, { backgroundColor: darkBg }]}>
-        <FontAwesome5 name={icon} size={22} color={WHITE} solid />
-      </View>
-      <Text style={sb.label}>{label}</Text>
-      <View style={[sb.badge, badgeDark && sb.badgeDark]}>
-        <Text style={sb.badgeText}>{badge}</Text>
-      </View>
-    </View>
-  );
-}
-Sidebar.propTypes = {
-  bg:        PropTypes.string.isRequired,
-  darkBg:    PropTypes.string.isRequired,
-  icon:      PropTypes.string.isRequired,
-  label:     PropTypes.string.isRequired,
-  badge:     PropTypes.string.isRequired,
-  badgeDark: PropTypes.bool,
-};
-
-// ── Main screen ───────────────────────────────────────────────────────────────
-export default function TodayOptionsRankedScreen({ navigation, route }) {
-  const context = route?.params?.context ?? {
-    weeklyBudgetCents:    25000,
-    remainingBudgetCents: 16300,
-    householdSize:        2,
-    tonightEatersCount:   2,
-    shoppingStatus:       'not_yet',
-    timeWindow:           '15_30',
-    behaviorProfile:      ['high_protein'],
-    mode:                 'plan_tonight',
-  };
-
-  const cards = useMemo(() => buildCards(context), []);
-
-  React.useEffect(() => {
     tracker.track('today_options_viewed', {
-      mode:            context.mode,
-      behavior_profile: context.behaviorProfile,
-      eaters:          cards.eaters,
+      option_count: ranked.length,
+      has_budget:   (context.weeklyBudgetCents || 0) > 0,
     });
   }, []);
 
-  function navCook() {
-    navigation.navigate('StorePickupHandoff', { context });
+  function handleOptionPress(option) {
+    switch (option.optionType) {
+      case 'cook_from_pantry':
+        navigation.navigate('PantryInventory');
+        break;
+      case 'quick_grocery_run':
+        navigation.navigate('QuickGroceryRun', { context: context });
+        break;
+      case 'grocery_pickup':
+        navigation.navigate('StorePickupHandoff');
+        break;
+      case 'uber_eats_pickup':
+        navigation.navigate('UberEatsPickupHandoff', { score: option.totalScore });
+        break;
+      case 'eat_out_smart':
+        navigation.navigate('EatOutSmart', { context: context });
+        break;
+      case 'uber_eats_delivery':
+        navigation.navigate('UberEatsDelivery', { score: option.totalScore });
+        break;
+      default:
+        navigation.navigate('MainApp');
+    }
   }
-  function navDelivery() {
-    navigation.navigate('StoreCartHandoff', { context });
+
+  function handleBack() {
+    if (navigation && navigation.canGoBack()) {
+      navigation.goBack();
+    }
   }
-  function navTakeout() {
-    navigation.navigate('EatOutSmart', { context });
+
+  var contextPills = buildContextPills(context);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={GREEN} size="large" />
+          <Text style={styles.loadingText}>Ranking your options...</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={CREAM} />
 
       <ScrollView
-        contentContainerStyle={s.scroll}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.canGoBack() && navigation.goBack()} style={s.backBtn}>
-            <Feather name="arrow-left" size={20} color={NAVY} />
-          </TouchableOpacity>
-          <Text style={s.headline}>What's the plan{'\n'}for tonight?</Text>
-          <Text style={s.sub}>Choose the option that fits your time, goals, and budget.</Text>
-        </View>
 
-        {/* ── Wallet Banner ────────────────────────────────────────────── */}
-        <View style={s.bannerWrap}>
-          <WalletBanner
-            remaining={cards.remaining}
-            weekly={cards.weekly}
-            onPress={() => navigation.navigate('BudgetDashboard')}
-          />
-        </View>
+        {/* Back button */}
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color={NAVY} />
+        </TouchableOpacity>
 
-        {/* ══ Card 1 — Cook at Home ════════════════════════════════════ */}
-        <View style={[s.card, s.cardShadow]}>
-          <Sidebar
-            bg={GREEN}
-            darkBg={GREEN_DARK}
-            icon="utensils"
-            label={'Cook at\nHome'}
-            badge="MAX SAVINGS"
-          />
-          <View style={s.cardBody}>
-            <ImagePlaceholder
-              bg="#2D6A4F"
-              icon="drumstick-bite"
-              eaters={cards.eaters}
-              goalLabel={cards.goalLabel}
-            />
-            <View style={s.cardContent}>
-              <Text style={s.recipeTitle}>{cards.cook.recipe}</Text>
-              <Text style={s.recipeDesc}>{cards.cook.desc}</Text>
+        {/* Context pill row */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.contextRow}
+          contentContainerStyle={styles.contextRowContent}
+        >
+          {contextPills.map(function (pill) { return renderContextPill(pill); })}
+        </ScrollView>
 
-              <View style={s.metricsRow}>
-                <View style={s.metric}>
-                  <Text style={s.metricPrice}>{fmt(cards.cook.totalCents)}</Text>
-                  <Text style={s.metricLabel}>TOTAL COST</Text>
-                  <Text style={s.metricSub}>
-                    Includes {fmt(cards.cook.couponCents)} digital coupon clip
-                  </Text>
-                </View>
-                <View style={s.metricDivider} />
-                <View style={s.metric}>
-                  <Text style={s.metricTime}>{cards.cook.mins}</Text>
-                  <Text style={s.metricLabel}>MINS</Text>
-                  <Text style={s.metricSub}>ACTIVE TIME</Text>
-                </View>
-              </View>
+        {/* Headline */}
+        <Text style={styles.headline}>What's your best move today?</Text>
+        <Text style={styles.sub}>
+          Ranked by your budget, time, pantry, stores, and food goals.
+        </Text>
 
-              <CouponRow
-                label="Coupon Stack Applied"
-                saving={`Saved ${fmt(cards.cook.couponCents)} extra`}
-                items={cards.cook.coupons}
+        {/* Options list */}
+        <View style={styles.optionList}>
+          {options.map(function (option, idx) {
+            return (
+              <OptionCard
+                key={option.optionType}
+                option={option}
+                isTop={idx === 0}
+                householdSize={householdSize}
+                onPress={function () { handleOptionPress(option); }}
               />
-
-              <TouchableOpacity style={[s.cta, s.ctaGreen]} onPress={navCook} activeOpacity={0.85}>
-                <Text style={[s.ctaText, s.ctaTextWhite]}>Order Curbside Pickup</Text>
-                <Feather name="arrow-right" size={15} color={WHITE} style={{ marginLeft: 6 }} />
-              </TouchableOpacity>
-            </View>
-          </View>
+            );
+          })}
         </View>
 
-        {/* ══ Card 2 — Store Delivery (no Instacart) ══════════════════ */}
-        <View style={[s.card, s.cardShadow]}>
-          <Sidebar
-            bg={BLUE}
-            darkBg={BLUE_DARK}
-            icon="truck"
-            label={'Store\nDelivery'}
-            badge="FAST & CONVENIENT"
-            badgeDark
-          />
-          <View style={s.cardBody}>
-            <ImagePlaceholder
-              bg="#1E40AF"
-              icon="shopping-bag"
-              eaters={cards.eaters}
-              goalLabel={cards.goalLabel}
-            />
-            <View style={s.cardContent}>
-              <Text style={s.recipeTitle}>Port ingredients directly to your door.</Text>
-              <Text style={s.recipeDesc}>
-                Fulfilled via same-day store delivery using your remaining {fmt(cards.remaining)} weekly balance.
-              </Text>
-
-              <View style={s.metricsRow}>
-                <View style={s.metric}>
-                  <Text style={s.metricPrice}>
-                    {fmt(cards.delivery.totalCents)}
-                    <Text style={s.metricFeeSuffix}> + fees</Text>
-                  </Text>
-                  <Text style={s.metricLabel}>TOTAL COST</Text>
-                  <Text style={s.metricSub}>Coupons auto-applied at checkout</Text>
-                </View>
-                <View style={s.metricDivider} />
-                <View style={s.metric}>
-                  <Text style={s.metricTime}>35</Text>
-                  <Text style={s.metricLabel}>MINS</Text>
-                  <Text style={s.metricSub}>TO YOUR DOOR</Text>
-                </View>
-              </View>
-
-              <View style={[cr.wrap, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-                <View style={cr.header}>
-                  <View style={cr.left}>
-                    <FontAwesome5 name="tag" size={12} color={BLUE} solid style={{ marginRight: 6 }} />
-                    <Text style={[cr.label, { color: BLUE }]}>Clipped to Cart</Text>
-                  </View>
-                  <Text style={[cr.saving, { color: BLUE }]}>Saved {fmt(cards.delivery.couponCents)}</Text>
-                </View>
-                <Text style={[cr.itemText, { color: SLATE, marginTop: 4 }]}>
-                  Your digital coupon stack has been automatically ported to offset delivery fees.
-                </Text>
-              </View>
-
-              <TouchableOpacity style={[s.cta, s.ctaBlue]} onPress={navDelivery} activeOpacity={0.85}>
-                <Text style={[s.ctaText, s.ctaTextBlue]}>Send to Delivery Cart</Text>
-                <Feather name="arrow-right" size={15} color={BLUE} style={{ marginLeft: 6 }} />
-              </TouchableOpacity>
-            </View>
+        {/* Bottom Stash message */}
+        <View style={styles.stash}>
+          <View style={styles.stashBubble}>
+            <Text style={styles.stashBubbleText}>S</Text>
           </View>
+          <Text style={styles.stashText}>
+            Snippd compares cooking, pickup, delivery, and grocery options against your real weekly budget so the choice is clear before you spend.
+          </Text>
         </View>
 
-        {/* ══ Card 3 — Eat Out / Takeout ══════════════════════════════ */}
-        <View style={[s.card, s.cardShadow]}>
-          <Sidebar
-            bg={CHARCOAL}
-            darkBg={CHARCOAL_DK}
-            icon="coffee"
-            label={'Eat Out /\nTakeout'}
-            badge="SMART CHOICE"
-            badgeDark
-          />
-          <View style={s.cardBody}>
-            <ImagePlaceholder
-              bg="#334155"
-              icon="hamburger"
-              eaters={cards.eaters}
-              goalLabel={cards.goalLabel}
-            />
-            <View style={s.cardContent}>
-              <Text style={s.recipeTitle}>Chipotle High-Protein Bowl Match</Text>
-              <Text style={s.recipeDesc}>
-                We mapped your macro goals to the cleanest, lowest-cost local takeout option nearby.
-              </Text>
-
-              {/* Uber Eats promo row */}
-              <View style={s.uberRow}>
-                <View style={s.uberBadge}>
-                  <FontAwesome5 name="motorcycle" size={13} color={WHITE} solid />
-                  <Text style={s.uberBadgeText}>Uber Eats</Text>
-                </View>
-                <Text style={s.uberPromo}>Promo Applied: SNIPPD20</Text>
-              </View>
-              <Text style={s.uberPromoSub}>
-                20% discount code auto-injected into your delivery checkout path.
-              </Text>
-
-              <View style={s.metricsRow}>
-                <View style={s.metric}>
-                  <Text style={s.metricPrice}>~{fmt(cards.takeout.totalCents)}</Text>
-                  <Text style={s.metricLabel}>TOTAL COST</Text>
-                  <Text style={s.metricSub}>~${cards.takeout.perPerson} / person</Text>
-                  <Text style={s.metricSub}>Includes 20% in-app promo code</Text>
-                </View>
-                <View style={s.metricDivider} />
-                <View style={s.metric}>
-                  <Text style={s.metricTime}>10</Text>
-                  <Text style={s.metricLabel}>MIN PICKUP</Text>
-                  <Text style={s.metricSub}>25 MIN DELIVERY</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity style={[s.cta, s.ctaOutline]} onPress={navTakeout} activeOpacity={0.85}>
-                <Text style={[s.ctaText, s.ctaTextDark]}>View Clean Takeout Match</Text>
-                <Feather name="arrow-right" size={15} color={NAVY} style={{ marginLeft: 6 }} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <View style={{ height: 32 }} />
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-TodayOptionsRankedScreen.propTypes = {
-  navigation: PropTypes.shape({
-    navigate:   PropTypes.func.isRequired,
-    canGoBack:  PropTypes.func,
-    goBack:     PropTypes.func,
-  }).isRequired,
-  route: PropTypes.object,
-};
+var styles = StyleSheet.create({
+  root:        { flex: 1, backgroundColor: CREAM },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loadingText: { fontSize: 14, color: GRAY },
 
-// ── Stylesheets ────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: WHITE },
-  scroll: { paddingBottom: 24 },
+  scroll:        { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
 
-  // Header
-  header:  { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  backBtn: { marginBottom: 12, alignSelf: 'flex-start' },
-  headline: {
-    fontSize: 28, fontWeight: '800', color: NAVY,
-    letterSpacing: -0.5, lineHeight: 34, marginBottom: 6,
+  backBtn: {
+    alignSelf:   'flex-start',
+    padding:     20,
+    paddingBottom: 8,
   },
-  sub: { fontSize: 14, color: SLATE, lineHeight: 20 },
 
-  // Wallet banner
-  bannerWrap: { paddingHorizontal: 20, marginBottom: 20 },
+  // Context pills
+  contextRow:        { flexGrow: 0, marginBottom: 20 },
+  contextRowContent: { paddingHorizontal: 20, gap: 8 },
+  contextPill: {
+    backgroundColor: WHITE,
+    borderRadius:    20,
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+    borderWidth:     1,
+    borderColor:     BORDER,
+  },
+  contextPillEstimated: {
+    borderColor: AMBER,
+  },
+  contextPillText: {
+    fontSize:   12,
+    fontWeight: '600',
+    color:      NAVY,
+  },
 
-  // Cards
-  card: {
-    marginHorizontal: 20, marginBottom: 16,
-    borderRadius: 18, overflow: 'hidden',
+  // Headline
+  headline: {
+    fontSize:      26,
+    fontWeight:    '800',
+    color:         NAVY,
+    letterSpacing: -0.5,
+    lineHeight:    32,
+    paddingHorizontal: 20,
+    marginBottom:  8,
+  },
+  sub: {
+    fontSize:  14,
+    color:     GRAY,
+    lineHeight: 20,
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+
+  // Option list
+  optionList: { paddingHorizontal: 20, gap: 12, marginBottom: 24 },
+
+  // Option card
+  optionCard: {
+    backgroundColor: WHITE,
+    borderRadius:    22,
+    padding:         18,
+    shadowColor:     '#000',
+    shadowOffset:    { width: 0, height: 2 },
+    shadowOpacity:   0.06,
+    shadowRadius:    8,
+    elevation:       2,
+  },
+  optionCardTop: {
+    backgroundColor: GREEN,
+  },
+
+  // Top row
+  optionTopRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    gap:            10,
+    marginBottom:   12,
+    flexWrap:       'wrap',
+  },
+  scorePill: {
+    borderRadius:      20,
+    paddingHorizontal: 9,
+    paddingVertical:   3,
+    borderWidth:       1,
+  },
+  scorePillText: {
+    fontSize:   10,
+    fontWeight: '800',
+  },
+  optionLabel: {
+    flex:       1,
+    fontSize:   15,
+    fontWeight: '700',
+    color:      NAVY,
+  },
+  optionLabelTop: { color: WHITE },
+
+  // Price
+  priceText: {
+    fontSize:     22,
+    fontWeight:   '800',
+    color:        NAVY,
+    marginBottom: 2,
+  },
+  priceTextTop: { color: WHITE },
+  perPersonText: {
+    fontSize:     13,
+    color:        GRAY,
+    marginBottom: 10,
+  },
+  perPersonTextTop: { color: 'rgba(255,255,255,0.7)' },
+
+  // Time
+  timeRow: {
     flexDirection: 'row',
+    alignItems:    'center',
+    gap:           6,
+    marginBottom:  10,
+  },
+  timeText:    { fontSize: 13, color: GRAY },
+  timeTextTop: { color: 'rgba(255,255,255,0.75)' },
+
+  // Why text
+  whyText: {
+    fontSize:     13,
+    color:        GRAY,
+    fontStyle:    'italic',
+    lineHeight:   19,
+    marginBottom: 14,
+  },
+  whyTextTop: {
+    color:     'rgba(255,255,255,0.85)',
+    fontStyle: 'normal',
+  },
+
+  // CTA button
+  ctaBtn: {
+    borderRadius:    12,
+    paddingVertical: 12,
+    alignItems:      'center',
+  },
+  ctaBtnTop: {
     backgroundColor: WHITE,
   },
-  cardShadow: {
-    ...Platform.select({
-      web:     { boxShadow: '0 2px 16px rgba(0,0,0,0.08)' },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 },
-    }),
+  ctaBtnOther: {
+    borderWidth:  1.5,
+    borderColor:  GREEN,
   },
-  cardBody:    { flex: 1, flexDirection: 'column' },
-  cardContent: { padding: 14 },
+  ctaBtnText:      { fontSize: 14, fontWeight: '700' },
+  ctaBtnTopText:   { color: GREEN },
+  ctaBtnOtherText: { color: GREEN },
 
-  // Metrics row
-  metricsRow:    { flexDirection: 'row', gap: 12, marginBottom: 12, marginTop: 8 },
-  metric:        { flex: 1 },
-  metricDivider: { width: 1, backgroundColor: BORDER },
-  metricPrice: {
-    fontSize: 20, fontWeight: '800', color: NAVY, letterSpacing: -0.3,
+  // Stash
+  stash: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           12,
+    backgroundColor: MINT,
+    borderRadius:  16,
+    padding:       16,
+    marginHorizontal: 20,
+    borderWidth:   1,
+    borderColor:   '#C8E6C9',
   },
-  metricFeeSuffix: { fontSize: 13, fontWeight: '500', color: GRAY },
-  metricTime:  { fontSize: 20, fontWeight: '800', color: GREEN },
-  metricLabel: { fontSize: 10, fontWeight: '700', color: GRAY, letterSpacing: 0.5, marginTop: 1 },
-  metricSub:   { fontSize: 11, color: SLATE, lineHeight: 15, marginTop: 2 },
+  stashBubble: {
+    width:           32,
+    height:          32,
+    borderRadius:    16,
+    backgroundColor: GREEN,
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
+  },
+  stashBubbleText: {
+    color:      WHITE,
+    fontSize:   14,
+    fontWeight: '900',
+  },
+  stashText: {
+    flex:       1,
+    fontSize:   13,
+    color:      NAVY,
+    lineHeight: 20,
+  },
 
-  // Recipe copy
-  recipeTitle: { fontSize: 15, fontWeight: '700', color: NAVY, marginBottom: 4, lineHeight: 20 },
-  recipeDesc:  { fontSize: 12, color: SLATE, lineHeight: 17, marginBottom: 4 },
-
-  // Uber Eats row
-  uberRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  uberBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#000', borderRadius: 6,
-    paddingHorizontal: 8, paddingVertical: 4,
-  },
-  uberBadgeText: { fontSize: 11, fontWeight: '700', color: WHITE },
-  uberPromo:     { fontSize: 12, fontWeight: '600', color: NAVY },
-  uberPromoSub:  { fontSize: 11, color: SLATE, lineHeight: 15, marginBottom: 8 },
-
-  // CTA buttons
-  cta: {
-    borderRadius: 10, paddingVertical: 11,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    marginTop: 12,
-  },
-  ctaGreen:     { backgroundColor: GREEN },
-  ctaBlue:      { borderWidth: 1.5, borderColor: BLUE },
-  ctaOutline:   { borderWidth: 1.5, borderColor: BORDER },
-  ctaText:      { fontSize: 13, fontWeight: '700' },
-  ctaTextWhite: { color: WHITE },
-  ctaTextBlue:  { color: BLUE },
-  ctaTextDark:  { color: NAVY },
-});
-
-const wb = StyleSheet.create({
-  card: {
-    backgroundColor: GREEN, borderRadius: 14,
-    flexDirection: 'row', alignItems: 'center',
-    padding: 14, gap: 12,
-    ...Platform.select({
-      web:     { boxShadow: '0 2px 12px rgba(12,158,84,0.25)' },
-      default: { shadowColor: GREEN, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 3 },
-    }),
-  },
-  left:      { width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.15)', alignItems: 'center', justifyContent: 'center' },
-  mid:       { flex: 1 },
-  amount:    { fontSize: 14, fontWeight: '700', color: WHITE, lineHeight: 20 },
-  highlight: { fontSize: 16, fontWeight: '800', color: WHITE },
-  sub:       { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 1 },
-});
-
-const pb = StyleSheet.create({
-  badge: {
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 6,
-    paddingHorizontal: 8, paddingVertical: 4,
-  },
-  text: { fontSize: 11, fontWeight: '700', color: WHITE, letterSpacing: 0.3 },
-});
-
-const ip = StyleSheet.create({
-  box: {
-    height: 88, width: '100%',
-    alignItems: 'center', justifyContent: 'center',
-    position: 'relative',
-  },
-  badgeWrap: { position: 'absolute', top: 8, left: 10 },
-});
-
-const sb = StyleSheet.create({
-  col: {
-    width: 88, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 18, paddingHorizontal: 8, gap: 10,
-  },
-  iconWrap: {
-    width: 48, height: 48, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  label: {
-    fontSize: 12, fontWeight: '800', color: WHITE,
-    textAlign: 'center', lineHeight: 16, letterSpacing: 0.2,
-  },
-  badge: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4,
-  },
-  badgeDark: { backgroundColor: 'rgba(0,0,0,0.25)' },
-  badgeText: {
-    fontSize: 8, fontWeight: '800', color: WHITE,
-    letterSpacing: 0.5, textAlign: 'center',
-  },
-});
-
-const cr = StyleSheet.create({
-  wrap: {
-    backgroundColor: MINT_SOFT, borderRadius: 10,
-    borderWidth: 1, borderColor: '#BBF7D0',
-    padding: 10, marginBottom: 4,
-  },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 6,
-  },
-  left:   { flexDirection: 'row', alignItems: 'center' },
-  label:  { fontSize: 12, fontWeight: '700', color: GREEN },
-  saving: { fontSize: 12, fontWeight: '700', color: GREEN },
-  item:   { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
-  itemText: { fontSize: 11, color: SLATE, flex: 1 },
+  bottomSpacer: { height: 24 },
 });
