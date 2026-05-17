@@ -36,7 +36,7 @@ const PERSONAS = {
     tagline: 'Fuel your goals at grocery store prices.',
     description: "You train hard and eat with intention. I'll stack deals on your proteins, track your macros budget, and alert you when your performance staples go on sale.",
     traits: ['Macro-Tracker', 'Protein Hunter', 'Prep Master'],
-    color: '#7C3AED',
+    color: GREEN,
   },
   family_cfo: {
     name: 'The Family CFO',
@@ -296,7 +296,7 @@ export default function PersonaRevealScreen({ route, navigation }) {
           activeOpacity={0.88}
         >
           <Text style={styles.ctaBtnText}>See What's For Today</Text>
-          <Feather name="arrow-right" size={18} color={WHITE} style={{ marginLeft: 8 }} />
+          <Feather name="arrow-right" size={18} color={GREEN} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
 
       </ScrollView>
@@ -454,13 +454,13 @@ const styles = StyleSheet.create({
 
   // ── CTA ───────────────────────────────────────────────────────────────────
   ctaBtn: {
-    backgroundColor: GREEN, borderRadius: 16, paddingVertical: 20,
+    backgroundColor: WHITE, borderRadius: 16, paddingVertical: 20,
     alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 20, borderWidth: 1.5, borderColor: GREEN,
     ...Platform.select({
-      web:     { boxShadow: '0 4px 20px rgba(12,158,84,0.40)' },
+      web:     { boxShadow: '0 4px 20px rgba(12,158,84,0.16)' },
       default: { shadowColor: GREEN, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 7 },
     }),
   },
-  ctaBtnText: { fontSize: 18, fontWeight: '800', color: WHITE },
+  ctaBtnText: { fontSize: 18, fontWeight: '800', color: GREEN },
 });
