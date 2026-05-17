@@ -456,12 +456,12 @@ function HouseholdCard({ label, sub, icon, count, onDecrement, onIncrement }) {
   );
 }
 
-function MissionCard({ label, sub, icon, selected, onPress }) {
+function MissionCard({ label, sub, icon, selected, disabled, onPress }) {
   return (
     <TouchableOpacity
-      style={[s.mCard, selected && s.mCardOn]}
-      onPress={onPress}
-      activeOpacity={0.78}
+      style={[s.mCard, selected && s.mCardOn, disabled && s.mCardDisabled]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.78}
     >
       {/* Top-right circle checkbox */}
       <View style={s.mCheckWrap}>
@@ -544,6 +544,7 @@ MissionCard.propTypes = {
   sub:      PropTypes.string.isRequired,
   icon:     PropTypes.string.isRequired,
   selected: PropTypes.bool,
+  disabled: PropTypes.bool,
   onPress:  PropTypes.func.isRequired,
 };
 
@@ -746,21 +747,43 @@ export default function OnboardingScreen({ navigation }) {
   // ── Steps 1-7 render functions ─────────────────────────────────────────────
 
   function renderStep1() {
+    const missionCount = data.missions.length;
+    const atLimit      = missionCount >= 3;
+
+    const toggleMission = (id) => {
+      if (data.missions.includes(id)) {
+        upd('missions', data.missions.filter((v) => v !== id));
+      } else if (missionCount < 3) {
+        upd('missions', data.missions.concat([id]));
+      }
+    };
+
     return (
       <ScrollView contentContainerStyle={s.step1Scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.step1Headline}>What matters most{'\n'}to you?</Text>
-        <Text style={s.step1Sub}>Choose everything that applies.</Text>
+        <Text style={s.step1Sub}>Select your top 3.</Text>
+
+        <View style={[s.archLimitChip, atLimit && s.archLimitChipFull]}>
+          <Text style={[s.archLimitTxt, atLimit && s.archLimitTxtFull]}>
+            {missionCount} of 3 selected{atLimit ? ' · Max reached' : ''}
+          </Text>
+        </View>
+
         <View style={s.mList}>
-          {MISSIONS.map((m) => (
-            <MissionCard
-              key={m.id}
-              label={m.label}
-              sub={m.sub}
-              icon={m.icon}
-              selected={data.missions.includes(m.id)}
-              onPress={() => toggleArr('missions', m.id)}
-            />
-          ))}
+          {MISSIONS.map((m) => {
+            const selected = data.missions.includes(m.id);
+            return (
+              <MissionCard
+                key={m.id}
+                label={m.label}
+                sub={m.sub}
+                icon={m.icon}
+                selected={selected}
+                disabled={atLimit && !selected}
+                onPress={() => toggleMission(m.id)}
+              />
+            );
+          })}
         </View>
         <TouchableOpacity
           style={s.mContinueBtn}
@@ -1478,7 +1501,8 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  mCardOn:      { borderColor: GREEN, backgroundColor: GREEN },
+  mCardOn:       { borderColor: GREEN, backgroundColor: GREEN },
+  mCardDisabled: { opacity: 0.35 },
   mCheckWrap:   { position: 'absolute', top: 10, right: 10 },
   mCheck: {
     width: 20, height: 20, borderRadius: 10,
