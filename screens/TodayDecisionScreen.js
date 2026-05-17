@@ -209,7 +209,7 @@ export default function TodayDecisionScreen({ navigation }) {
           <Feather name="chevron-right" size={20} color={GREEN} />
         </View>
 
-        {/* CHOICE CARD 1: Cook at Home (Brand Green Theme) */}
+        {/* CHOICE CARD 1: Cook at Home (Fulfillment: Publix) */}
         <View style={styles.triageCard}>
           <View style={[styles.sideIndicator, { backgroundColor: GREEN }]}>
             <Feather name="home" size={20} color={WHITE} />
@@ -223,14 +223,23 @@ export default function TodayDecisionScreen({ navigation }) {
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.mealTitle}>Quick Garlic-Herb Chicken & Asparagus</Text>
                 <Text style={styles.mealDesc}>Ingredients ready for pickup at Publix.</Text>
-                <View style={styles.overlayTag}><Text style={styles.overlayTagText}>{profileData.tonightEatersCount} Portions | High Protein</Text></View>
               </View>
+            </View>
+
+            {/* HERO FEATURE: High-Contrast Coupon Savings Banner */}
+            <View style={styles.heroSavingsBadge}>
+              <Text style={styles.heroSavingsBadgeText}>
+                🎟️ Coupon Stack Applied · Saved ${profileData.couponSavings.toFixed(2)} Extra
+              </Text>
+              <Text style={styles.heroSavingsSubText}>
+                Auto-clipped: $1.00 off Tyson Chicken + matching private-label BOGOs
+              </Text>
             </View>
 
             <View style={styles.metricsContainer}>
               <View style={styles.metricStack}>
                 <Text style={styles.metricValue}>$8.42</Text>
-                <Text style={styles.metricLabel}>TOTAL COST</Text>
+                <Text style={styles.metricLabel}>TOTAL COST (WITH SAVINGS)</Text>
               </View>
               <View style={styles.metricDivider} />
               <View style={styles.metricStack}>
@@ -239,24 +248,18 @@ export default function TodayDecisionScreen({ navigation }) {
               </View>
             </View>
 
-            <View style={styles.nestedCouponCard}>
-              <Text style={styles.couponHeader}>🎟️ Coupon Stack Applied | Saved ${profileData.couponSavings.toFixed(2)} extra</Text>
-              <Text style={styles.couponLine}>✓ $1.00 off Tyson Chicken Strips</Text>
-              <Text style={styles.couponLine}>✓ BOGO savings applied to Quaker Oats</Text>
-            </View>
-
             {/* ROUTE CORRECTION: Straight to Cook At Home Pantry/Curbside Triage */}
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: WHITE, borderWidth: 1, borderColor: GREEN }]}
+              style={[styles.actionButton, { backgroundColor: GREEN }]}
               onPress={() => navigation.navigate('CookAtHomeTriage', { profileData })}
             >
-              <Text style={[styles.actionButtonText, { color: GREEN }]}>Order Curbside Pickup</Text>
-              <Feather name="arrow-right" size={16} color={GREEN} style={{ marginLeft: 6 }} />
+              <Text style={styles.actionButtonText}>Order Curbside Pickup</Text>
+              <Feather name="arrow-right" size={16} color={WHITE} style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* CHOICE CARD 2: Store Delivery (Fulfillment Blue Theme) */}
+        {/* CHOICE CARD 2: Store Delivery (Fulfillment: Instacart) */}
         <View style={styles.triageCard}>
           <View style={[styles.sideIndicator, { backgroundColor: '#1565C0' }]}>
             <Feather name="truck" size={20} color={WHITE} />
@@ -273,6 +276,16 @@ export default function TodayDecisionScreen({ navigation }) {
               </View>
             </View>
 
+            {/* HERO FEATURE: High-Contrast Delivery Savings Banner */}
+            <View style={[styles.heroSavingsBadge, { backgroundColor: '#E3F2FD' }]}>
+              <Text style={[styles.heroSavingsBadgeText, { color: '#1565C0' }]}>
+                🚙 Clipped to Cart · Saved ${profileData.couponSavings.toFixed(2)}
+              </Text>
+              <Text style={[styles.heroSavingsSubText, { color: '#1E3A8A' }]}>
+                Your live digital coupon stack has been ported to offset delivery fees
+              </Text>
+            </View>
+
             <View style={styles.metricsContainer}>
               <View style={styles.metricStack}>
                 <Text style={styles.metricValue}>$8.42<Text style={{ fontSize: 11, color: GRAY }}>+fees</Text></Text>
@@ -285,18 +298,13 @@ export default function TodayDecisionScreen({ navigation }) {
               </View>
             </View>
 
-            <View style={[styles.nestedCouponCard, { backgroundColor: '#E3F2FD' }]}>
-              <Text style={[styles.couponHeader, { color: '#1565C0' }]}>🚙 Clipped to Cart | Saved ${profileData.couponSavings.toFixed(2)}</Text>
-              <Text style={[styles.couponLine, { color: '#1565C0' }]}>Coupon stack ported to offset delivery fees.</Text>
-            </View>
-
             <TouchableOpacity style={[styles.actionButton, { backgroundColor: WHITE, borderWidth: 1, borderColor: '#1565C0' }]} onPress={() => navigation.navigate('UberEatsHandoff', { optionType: 'uber_eats_delivery' })}>
               <Text style={[styles.actionButtonText, { color: '#1565C0' }]}>Send to Instacart Cart</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* CHOICE CARD 3: Takeout / Eat Out (Sleek Black Theme - Uber Eats API Handshake) */}
+        {/* CHOICE CARD 3: Takeout / Eat Out (Fulfillment: Uber Eats API) */}
         <View style={styles.triageCard}>
           <View style={[styles.sideIndicator, { backgroundColor: BLACK }]}>
             <Feather name="shopping-bag" size={20} color={WHITE} />
@@ -313,21 +321,26 @@ export default function TodayDecisionScreen({ navigation }) {
               </View>
             </View>
 
+            {/* HERO FEATURE: High-Contrast Takeout Savings Banner */}
+            <View style={[styles.heroSavingsBadge, { backgroundColor: '#F1F5F9' }]}>
+              <Text style={[styles.heroSavingsBadgeText, { color: BLACK }]}>
+                🏷️ Promo Applied · Code '{profileData.promoCode}' Injecting...
+              </Text>
+              <Text style={[styles.heroSavingsSubText, { color: SLATE }]}>
+                20% in-app discount code applied to lock this option under your budget limit
+              </Text>
+            </View>
+
             <View style={styles.metricsContainer}>
               <View style={styles.metricStack}>
                 <Text style={styles.metricValue}>~$12.50</Text>
-                <Text style={styles.metricLabel}>TOTAL COST</Text>
+                <Text style={styles.metricLabel}>TOTAL COST (WITH PROMO)</Text>
               </View>
               <View style={styles.metricDivider} />
               <View style={styles.metricStack}>
                 <Text style={styles.metricValue}>~{(12.50 / profileData.tonightEatersCount).toFixed(2)}</Text>
                 <Text style={styles.metricLabel}>PER PERSON</Text>
               </View>
-            </View>
-
-            <View style={[styles.nestedCouponCard, { backgroundColor: '#F1F5F9' }]}>
-              <Text style={[styles.couponHeader, { color: BLACK }]}>🏷️ Uber Eats Promo Applied: '{profileData.promoCode}'</Text>
-              <Text style={[styles.couponLine, { color: SLATE }]}>20% discount code auto-injected at delivery checkout.</Text>
             </View>
 
             <TouchableOpacity style={[styles.actionButton, { backgroundColor: WHITE, borderWidth: 1, borderColor: BLACK }]} onPress={() => navigation.navigate('UberEatsHandoff', { optionType: 'uber_eats_pickup' })}>
@@ -409,6 +422,30 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 18, fontWeight: '800', color: NAVY },
   metricLabel: { fontSize: 9, fontWeight: '700', color: GRAY, letterSpacing: 0.5, marginTop: 2 },
   metricDivider: { width: 1, height: 24, backgroundColor: BORDER },
+  heroSavingsBadge: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#DCFCE7'
+  },
+  heroSavingsBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: GREEN,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3
+  },
+  heroSavingsSubText: {
+    fontSize: 11,
+    color: SLATE,
+    marginTop: 2,
+    lineHeight: 15,
+    fontWeight: '500'
+  },
   nestedCouponCard: { backgroundColor: '#E8F5E9', borderRadius: 10, padding: 12, marginBottom: 16, gap: 4 },
   couponHeader: { fontSize: 11, fontWeight: '700', color: GREEN },
   couponLine: { fontSize: 11, color: SLATE },
