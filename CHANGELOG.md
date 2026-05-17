@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — Onboarding Step 1: enforce 3-selection cap on "What matters most to you?" (2026-05-17)
+- `screens/OnboardingScreen.js` — Subtitle changed from "Choose everything that applies." to "Select your top 3." Added `toggleMission` function that blocks additions once 3 missions are selected (deselection always allowed). Added counter chip (reuses `archLimitChip` / `archLimitChipFull` styles): mint-green below limit, amber + "Max reached" at 3. `MissionCard` gains `disabled` prop — unselected cards render at 35% opacity (`mCardDisabled: { opacity: 0.35 }`) with `onPress={undefined}` when limit is reached. `mCardOn` style comment typo fixed (extra space, cosmetic only).
+
 ### Changed — TodaySetupGateScreen: full rewrite as animated profile-optimization engine (2026-05-17)
 - `screens/TodaySetupGateScreen.js` — Removed questionnaire form entirely (budget input, household counter, pill selectors, food preferences section, "Show My Best Options" CTA, "Add food preferences" button, back arrow, Skip link, CREAM background). Replaced with zero-input loading engine on pure white (`#FFFFFF`) canvas.
 - **Logo**: `snippd` in bold green (`#0C9E54`, `fontSize:28 fontWeight:800 letterSpacing:-0.6`) centered at top.
