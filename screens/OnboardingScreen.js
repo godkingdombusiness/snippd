@@ -16,6 +16,7 @@ import {
   StyleSheet, ActivityIndicator, Platform, KeyboardAvoidingView,
   StatusBar, PanResponder, Image, Modal, LayoutAnimation, UIManager,
 } from 'react-native';
+import PropTypes from 'prop-types';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -174,7 +175,7 @@ const MEAL_FREQ_OPTS = [
 
 // ── Atom components (always at module scope) ──────────────────────────────────
 
-function ProgressHeader({ step, onBack }) {
+function ProgressHeader({ step = 1, onBack = null }) {
   return (
     <View style={s.header}>
       {/* Back — outlined circle button */}
@@ -189,8 +190,8 @@ function ProgressHeader({ step, onBack }) {
       {/* Segmented progress + "X of Y" */}
       <View style={s.progressCenter}>
         <View style={s.segRow}>
-          {Array.from({ length: CONTENT_STEPS }).map(function (_, i) {
-            return <View key={i} style={[s.seg, i < step && s.segDone]} />;
+          {Array.from({ length: CONTENT_STEPS }, function (_, i) { return 'seg-' + i; }).map(function (key, i) {
+            return <View key={key} style={[s.seg, i < step && s.segDone]} />;
           })}
         </View>
         <Text style={s.stepLabel}>{step} of {CONTENT_STEPS}</Text>
@@ -201,8 +202,9 @@ function ProgressHeader({ step, onBack }) {
     </View>
   );
 }
+ProgressHeader.propTypes = { step: PropTypes.number, onBack: PropTypes.func };
 
-function BigBtn({ label, onPress, loading, variant }) {
+function BigBtn({ label = '', onPress = null, loading = false, variant = 'fill' }) {
   const btnStyle = variant === 'outline'
     ? [s.bigBtn, s.bigBtnOutline]
     : [s.bigBtn, s.bigBtnFill];
@@ -216,6 +218,7 @@ function BigBtn({ label, onPress, loading, variant }) {
     </TouchableOpacity>
   );
 }
+BigBtn.propTypes = { label: PropTypes.string, onPress: PropTypes.func, loading: PropTypes.bool, variant: PropTypes.string };
 
 function OptionTile({ label, icon, selected, onPress, sublabel }) {
   return (
@@ -284,23 +287,20 @@ function Pill({ label, selected, onPress, style }) {
   );
 }
 
-function StoreCard({ label, selected, onPress }) {
-  const initials = label.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+function StoreCard({ label, selected, onPress, disabled }) {
   return (
     <TouchableOpacity
-      style={[s.storeCard, selected && s.storeCardOn]}
+      style={[s.storeCard, selected && s.storeCardOn, disabled && s.storeCardDisabled]}
       onPress={onPress}
-      activeOpacity={0.75}
+      activeOpacity={disabled ? 1 : 0.72}
+      disabled={disabled}
     >
-      <View style={[s.storeAvatar, selected && s.storeAvatarOn]}>
-        <Text style={[s.storeInitials, selected && s.storeInitialsOn]}>{initials}</Text>
-      </View>
-      <Text style={[s.storeLabel, selected && s.storeLabelOn]} numberOfLines={2}>{label}</Text>
-      {selected ? (
+      {selected && (
         <View style={s.storeCheck}>
           <Feather name="check" size={10} color={WHITE} />
         </View>
-      ) : null}
+      )}
+      <Text style={[s.storeLabel, selected && s.storeLabelOn]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -1028,23 +1028,29 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep6() {
+    const atLimit = data.preferred_stores.length >= 3;
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.headline}>Choose your{'\n'}favorite stores</Text>
-        <Text style={s.sub}>Select all the stores you shop at regularly — I'll track deals at each one.</Text>
+        <Text style={s.sub}>Pick up to 3 stores you shop at regularly — I'll track deals at each one.</Text>
         <View style={s.storeGrid}>
           {STORES.map(function (st) {
+            const selected = data.preferred_stores.includes(st.id);
             return (
               <StoreCard
                 key={st.id}
                 label={st.label}
-                selected={data.preferred_stores.includes(st.id)}
+                selected={selected}
+                disabled={atLimit && !selected}
                 onPress={function () { toggleArr('preferred_stores', st.id); }}
               />
             );
           })}
         </View>
-        <BigBtn label="Continue" onPress={next} />
+        <TouchableOpacity style={s.f4ContinueBtn} onPress={next} activeOpacity={0.88}>
+          <Text style={s.f4ContinueTxt}>Continue</Text>
+          <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+        </TouchableOpacity>
       </ScrollView>
     );
   }
@@ -1498,24 +1504,13 @@ const s = StyleSheet.create({
   modalBtnTxt:   { fontSize: 16, fontWeight: '700', color: WHITE },
 
   // ── Store grid ──
-  storeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
-  storeCard: {
-    width: '47%', backgroundColor: WHITE, borderRadius: 14,
-    borderWidth: 1.5, borderColor: BORDER,
-    padding: 14, alignItems: 'center', gap: 8, position: 'relative',
-  },
-  storeCardOn:     { backgroundColor: MINT, borderColor: GREEN },
-  storeAvatar:     { width: 52, height: 52, borderRadius: 14, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center' },
-  storeAvatarOn:   { backgroundColor: GREEN },
-  storeInitials:   { fontSize: 18, fontWeight: '800', color: GRAY },
-  storeInitialsOn: { color: WHITE },
-  storeLabel:      { fontSize: 12, fontWeight: '600', color: NAVY, textAlign: 'center' },
-  storeLabelOn:    { color: NAVY },
-  storeCheck: {
-    position: 'absolute', top: 6, right: 6,
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center',
-  },
+  storeGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
+  storeCard:        { width: '47%', backgroundColor: WHITE, borderRadius: 14, borderWidth: 1.5, borderColor: BORDER, paddingVertical: 18, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 64 },
+  storeCardOn:      { backgroundColor: '#F0FBF5', borderColor: GREEN },
+  storeCardDisabled:{ opacity: 0.38 },
+  storeLabel:       { fontSize: 13, fontWeight: '600', color: NAVY, textAlign: 'center' },
+  storeLabelOn:     { color: NAVY },
+  storeCheck:       { position: 'absolute', top: 7, right: 7, width: 20, height: 20, borderRadius: 10, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' },
 
   // ── Primary button ──
   bigBtn: {

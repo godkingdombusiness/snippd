@@ -7,6 +7,12 @@ Format: [version] — YYYY-MM-DD
 ### Changed — food preferences step: typography alignment pass (2026-05-16)
 - `screens/OnboardingScreen.js` — `f4Headline` bumped to 40px/800 weight matching other step headlines (was 28/700); `f4Sub` set to 15px/400 weight light gray matching `sub` style; `f4CardTitle` changed from small-caps gray label to 14px/700 navy matching `fieldLabel`; `pillText` adjusted to `#374151` (gray-700) regular weight for neutral charcoal unselected state.
 
+### Changed — stores step: clean pill cards, 3-store cap, pill Continue button (2026-05-16)
+- `screens/OnboardingScreen.js` — `StoreCard` rebuilt: monogram avatar removed; clean white card with store name centered; selected state = `#F0FBF5` mint bg + green border + absolute green checkmark badge top-right; disabled state = 38% opacity (fires when selection is at 3 and card is not selected). `renderStep6`: subtitle updated ("Pick up to 3 stores…"); 3-store selection cap via `atLimit` — disabled prop passed to unselected cards beyond limit; `BigBtn` replaced with `f4ContinueBtn` (borderRadius 14, right-arrow icon). Styles: `storeCard` slimmed (paddingVertical 18, no gap), `storeCardDisabled` added, avatar/initials styles removed.
+
+### Fixed — IDE diagnostic warnings: prop-types + array index key (2026-05-16)
+- `screens/OnboardingScreen.js` — Added `import PropTypes from 'prop-types'`; added `ProgressHeader.propTypes` and `BigBtn.propTypes` to resolve S6774 prop-validation warnings; added default param values to both components; progress-bar `.map()` key changed from array index `i` to `'seg-' + i` to resolve S6479 hint.
+
 ### Fixed — convert all 80 var declarations to const (2026-05-16)
 - `screens/OnboardingScreen.js` — All 80 `var` declarations converted to `const` (no binding is ever directly reassigned; property-level mutations like `counts[key]=` and `ref.current=` are safe with `const`). Resolves 82 SonarLint S3504 IDE diagnostics. Metro bundle continues to compile cleanly (1907 modules, 0 errors).
 
