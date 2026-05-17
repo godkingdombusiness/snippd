@@ -74,27 +74,13 @@ const BUDGET_PRESETS = ['75', '100', '150', '200', '250', '300', '400'];
 const ADULT_OPTIONS   = [1, 2, 3, 4];
 const CHILD_OPTIONS   = [0, 1, 2, 3, 4];
 
-const FOODS_AVOIDED = [
-  { id: 'gluten',       label: 'Gluten-free' },
-  { id: 'dairy',        label: 'Dairy-free' },
-  { id: 'nuts',         label: 'Nut allergy' },
-  { id: 'peanuts',      label: 'Peanut allergy' },
-  { id: 'shellfish',    label: 'Shellfish allergy' },
-  { id: 'pork',         label: 'Pork-free' },
-  { id: 'beef',         label: 'Beef-free' },
-  { id: 'soy',          label: 'Soy-free' },
-  { id: 'eggs',         label: 'Egg-free' },
-  { id: 'high_sugar',   label: 'Low sugar' },
-  { id: 'high_sodium',  label: 'Low sodium' },
-];
-
-const DIET_PREFS = [
-  { id: 'low_carb',         label: 'Low carb' },
-  { id: 'high_protein',     label: 'High protein' },
-  { id: 'vegetarian',       label: 'Vegetarian' },
-  { id: 'vegan',            label: 'Vegan' },
-  { id: 'budget_friendly',  label: 'Budget-friendly' },
-  { id: 'kid_friendly',     label: 'Kid-friendly' },
+const FOOD_ARCHETYPES = [
+  { id: 'high_protein_macro', label: 'High-Protein / Macro-Focused', sub: 'Triggers stacks for chicken breast, lean meats, Greek yogurt, and eggs.',       icon: 'dumbbell'  },
+  { id: 'mindful_snacker',    label: 'Mindful Snacker',              sub: 'Triggers stacks for nuts, healthy chips, snack bars, and popcorn.',              icon: 'apple-alt' },
+  { id: 'clean_organic',      label: 'Clean & Organic',              sub: 'Triggers stacks for fresh produce, non-GMO items, and whole foods.',             icon: 'leaf'      },
+  { id: 'quick_convenient',   label: 'Quick & Convenient',           sub: 'Triggers stacks for pre-made meals, frozen staples, and easy-prep items.',       icon: 'bolt'      },
+  { id: 'family_favorites',   label: 'Family Favorites',             sub: 'Triggers bulk-buy coupons for kid-friendly snacks and pantry staples.',          icon: 'home'      },
+  { id: 'plant_based',        label: 'Plant-Based',                  sub: 'Triggers coupons for tofu, dairy alternatives, and meat substitutes.',           icon: 'seedling'  },
 ];
 
 const COOKING_STYLES = [
@@ -323,6 +309,37 @@ function CookTile({ label, desc, icon, selected, onPress }) {
     </TouchableOpacity>
   );
 }
+
+function ArchetypeCard({ label, sub, icon, selected, disabled, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[s.archCard, selected && s.archCardOn, disabled && s.archCardDisabled]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.78}
+    >
+      <View style={[s.archIconWrap, selected && s.archIconWrapOn]}>
+        <FontAwesome5 name={icon} size={22} color={selected ? WHITE : GREEN} solid />
+      </View>
+      <View style={s.archTextWrap}>
+        <Text style={[s.archLabel, selected && s.archLabelOn]}>{label}</Text>
+        <Text style={[s.archSub, selected && s.archSubOn]}>{sub}</Text>
+      </View>
+      {selected && (
+        <View style={s.archCheck}>
+          <Feather name="check" size={12} color={WHITE} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+ArchetypeCard.propTypes = {
+  label:    PropTypes.string.isRequired,
+  sub:      PropTypes.string.isRequired,
+  icon:     PropTypes.string.isRequired,
+  selected: PropTypes.bool,
+  disabled: PropTypes.bool,
+  onPress:  PropTypes.func.isRequired,
+};
 
 const SLIDER_MIN  = 75;
 const SLIDER_MAX  = 500;
@@ -965,71 +982,44 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep4() {
-    const toggleFood = (id) => {
-      const arr = data.foodsAvoided.filter((v) => v !== 'none');
-      upd('foodsAvoided', arr.includes(id) ? arr.filter((v) => v !== id) : arr.concat([id]));
+    const archetypeIds   = FOOD_ARCHETYPES.map((a) => a.id);
+    const archetypeCount = data.cookingStyle.filter((v) => archetypeIds.includes(v)).length;
+    const atLimit        = archetypeCount >= 3;
+
+    const toggleArchetype = (id) => {
+      if (data.cookingStyle.includes(id)) {
+        upd('cookingStyle', data.cookingStyle.filter((v) => v !== id));
+      } else if (archetypeCount < 3) {
+        upd('cookingStyle', data.cookingStyle.concat([id]));
+      }
     };
-    const toggleDiet = (id) => {
-      const arr = data.dietPreferences.filter((v) => v !== 'no_diet');
-      upd('dietPreferences', arr.includes(id) ? arr.filter((v) => v !== id) : arr.concat([id]));
-    };
-    const foodsClear = data.foodsAvoided.length === 0 || data.foodsAvoided.includes('none');
-    const dietClear  = data.dietPreferences.length === 0 || data.dietPreferences.includes('no_diet');
 
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.f4Headline}>Food preferences{'\n'}& restrictions</Text>
-        <Text style={s.f4Sub}>Choose anything that fits your household so Snippd can recommend better meals and deals.</Text>
+        <Text style={s.f4Headline}>What's your{'\n'}eating style?</Text>
+        <Text style={s.f4Sub}>Choose up to 3 that match your household. This powers your personalized deal stack.</Text>
 
-        {/* Card 1 — Preferences */}
-        <View style={s.f4Card}>
-          <Text style={s.f4CardTitle}>Preferences</Text>
-          <View style={s.f4Grid}>
-            {DIET_PREFS.map((d) => (
-              <View key={d.id} style={s.f4GridCell}>
-                <Pill
-                  label={d.label}
-                  selected={data.dietPreferences.includes(d.id)}
-                  onPress={() => toggleDiet(d.id)}
-                  style={s.f4GridPill}
-                />
-              </View>
-            ))}
-            <View style={s.f4GridCell}>
-              <Pill
-                label="No preference"
-                selected={dietClear}
-                onPress={() => upd('dietPreferences', [])}
-                style={s.f4GridPill}
-              />
-            </View>
-          </View>
+        {/* Selection counter chip */}
+        <View style={[s.archLimitChip, atLimit && s.archLimitChipFull]}>
+          <Text style={[s.archLimitTxt, atLimit && s.archLimitTxtFull]}>
+            {archetypeCount} of 3 selected{atLimit ? ' · Max reached' : ''}
+          </Text>
         </View>
 
-        {/* Card 2 — Allergies & restrictions */}
-        <View style={s.f4Card}>
-          <Text style={s.f4CardTitle}>Allergies & restrictions</Text>
-          <View style={s.f4Grid}>
-            {FOODS_AVOIDED.map((f) => (
-              <View key={f.id} style={s.f4GridCell}>
-                <Pill
-                  label={f.label}
-                  selected={data.foodsAvoided.includes(f.id)}
-                  onPress={() => toggleFood(f.id)}
-                  style={s.f4GridPill}
-                />
-              </View>
-            ))}
-            <View style={s.f4GridCell}>
-              <Pill
-                label="None"
-                selected={foodsClear}
-                onPress={() => upd('foodsAvoided', [])}
-                style={s.f4GridPill}
-              />
-            </View>
-          </View>
-        </View>
+        {FOOD_ARCHETYPES.map((a) => {
+          const selected = data.cookingStyle.includes(a.id);
+          return (
+            <ArchetypeCard
+              key={a.id}
+              label={a.label}
+              sub={a.sub}
+              icon={a.icon}
+              selected={selected}
+              disabled={atLimit && !selected}
+              onPress={() => toggleArchetype(a.id)}
+            />
+          );
+        })}
 
         <TouchableOpacity style={s.f4ContinueBtn} onPress={next} activeOpacity={0.88}>
           <Text style={s.f4ContinueTxt}>Continue</Text>
@@ -1594,6 +1584,23 @@ const s = StyleSheet.create({
   f4GridPill:    { flex: 1 },
   f4ContinueBtn: { backgroundColor: GREEN, borderRadius: 14, paddingVertical: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 8, marginBottom: 24, position: 'relative' },
   f4ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
+
+  // ── Archetype cards (food personality step) ──
+  archCard:          { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, borderRadius: 14, borderWidth: 1.5, borderColor: BORDER, padding: 16, marginBottom: 12, gap: 14 },
+  archCardOn:        { backgroundColor: GREEN, borderColor: GREEN },
+  archCardDisabled:  { opacity: 0.35 },
+  archIconWrap:      { width: 50, height: 50, borderRadius: 13, backgroundColor: MINT, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  archIconWrapOn:    { backgroundColor: 'rgba(255,255,255,0.2)' },
+  archTextWrap:      { flex: 1 },
+  archLabel:         { fontSize: 15, fontWeight: '700', color: NAVY, marginBottom: 3 },
+  archLabelOn:       { color: WHITE },
+  archSub:           { fontSize: 12, color: GRAY, lineHeight: 17 },
+  archSubOn:         { color: 'rgba(255,255,255,0.85)' },
+  archCheck:         { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  archLimitChip:     { alignSelf: 'flex-start', backgroundColor: MINT, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 16 },
+  archLimitChipFull: { backgroundColor: '#FFF3E0' },
+  archLimitTxt:      { fontSize: 12, fontWeight: '600', color: GREEN },
+  archLimitTxtFull:  { color: '#E65100' },
 
   // ── Cooking step 2-col tiles ──
   cTile:          { flex: 1, backgroundColor: WHITE, borderRadius: 14, borderWidth: 1.5, borderColor: '#E5E7EB', padding: 14, minHeight: 128, position: 'relative' },

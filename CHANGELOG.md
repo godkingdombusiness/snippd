@@ -4,6 +4,11 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — Food Preferences step overhauled: behavioral archetypes, 3-pick limit, solid green selected state (2026-05-17)
+- `screens/OnboardingScreen.js` — Replaced `FOODS_AVOIDED` + `DIET_PREFS` constants and the two-card pill layout with a single-column `FOOD_ARCHETYPES` list of 6 behavioral eating profiles: High-Protein / Macro-Focused, Mindful Snacker, Clean & Organic, Quick & Convenient, Family Favorites, Plant-Based. Max 3 selections enforced — unselected cards above the limit render at 35% opacity with `onPress={undefined}`. Counter chip ("X of 3 selected · Max reached") toggles from mint-green to amber when full. All selections write into the existing `cookingStyle` array in Supabase `profiles` — no schema changes needed.
+- Added `ArchetypeCard` module-scope component: horizontal row with 50×50 icon tile, label + sub text, and a translucent check circle. Unselected: white card, mint icon tile, navy label, gray sub. Selected: solid `#0C9E54` card, translucent white icon tile, white label/sub.
+- 17 new StyleSheet entries: `archCard`, `archCardOn`, `archCardDisabled`, `archIconWrap`, `archIconWrapOn`, `archTextWrap`, `archLabel`, `archLabelOn`, `archSub`, `archSubOn`, `archCheck`, `archLimitChip`, `archLimitChipFull`, `archLimitTxt`, `archLimitTxtFull`.
+
 ### Fixed — OnboardingScreen.js: 62 IDE diagnostic issues resolved (2026-05-17)
 - Removed unused constants `DARK_GREEN` and `AMBER` (S1481).
 - Added `.propTypes` declarations for all 9 module-scope sub-components: `OptionTile`, `GridTile`, `HChip`, `Pill`, `StoreCard`, `CookTile`, `BudgetSlider`, `HouseholdCard`, `MissionCard` — resolves 39 S6774 prop-validation hints.
