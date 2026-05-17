@@ -4,6 +4,16 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — TodayOptionsRankedScreen: full visual rebuild as 3-card decision hub (2026-05-17)
+- `screens/TodayOptionsRankedScreen.js` — Complete rewrite into "What's the plan for tonight?" 3-card layout.
+- **WalletBanner**: Green card showing remaining vs. weekly grocery budget, derived from `context.remainingBudgetCents` / `context.weeklyBudgetCents`.
+- **Card 1 — Cook at Home** (green `#0C9E54` left sidebar, utensils icon, MAX SAVINGS badge): Recipe driven by `behaviorProfile` — `high_protein` / `fastest` → "Quick Garlic-Herb Chicken & Asparagus"; `spend_least` → "Batch Turkey & Brown Rice Bowl"; default → "Herb-Marinated Chicken & Roasted Veggies". Active-time label from `timeWindow`. `CouponRow` items with green checkmarks. CTA: "Order Curbside Pickup →" → `StorePickupHandoff`.
+- **Card 2 — Store Delivery** (blue `#1D4ED8` sidebar, truck icon, FAST & CONVENIENT badge): Generic "same-day store delivery" language — no Instacart or third-party brand. Blue coupon row. CTA: "Send to Delivery Cart →" → `StoreCartHandoff`.
+- **Card 3 — Eat Out / Takeout** (charcoal `#1E293B` sidebar, coffee icon, SMART CHOICE badge): Chipotle match, Uber Eats with SNIPPD20 promo code. Per-person cost = `(1250 / tonightEatersCount / 100).toFixed(2)`. CTA: "View Clean Takeout Match →" → `EatOutSmart`.
+- **PortionBadge**: Shows "N Portions | Goal Label" (high_protein→"High Protein", lower_calorie→"Lower Cal", spend_least→"Budget", kid_friendly→"Kid Friendly", default→"Balanced").
+- All pricing, portion data, recipe names, and per-person math derived from `context` passed via `route.params.context` from `TodaySetupGateScreen`.
+- Module-scope components: `WalletBanner`, `PortionBadge`, `CouponRow`, `ImagePlaceholder`, `Sidebar`. Multiple StyleSheets: `s`, `wb`, `pb`, `ip`, `sb`, `cr`.
+
 ### Changed — OnboardingScreen: snippd logo added to all 7 steps (2026-05-17)
 - `screens/OnboardingScreen.js` — Added module-scope `SnippdLogo` component (`fontSize:24 fontWeight:800 color:GREEN letterSpacing:-0.5`) with `obLogoWrap` / `obLogoText` styles. Injected `<SnippdLogo />` as the first child of every step's `ScrollView` (steps 1–7). Hero screen (step 0) unchanged — it has its own branding.
 
