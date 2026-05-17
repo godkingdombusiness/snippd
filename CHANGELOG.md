@@ -4,6 +4,16 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — TodaySetupGateScreen: full rewrite as animated profile-optimization engine (2026-05-17)
+- `screens/TodaySetupGateScreen.js` — Removed questionnaire form entirely (budget input, household counter, pill selectors, food preferences section, "Show My Best Options" CTA, "Add food preferences" button, back arrow, Skip link, CREAM background). Replaced with zero-input loading engine on pure white (`#FFFFFF`) canvas.
+- **Logo**: `snippd` in bold green (`#0C9E54`, `fontSize:28 fontWeight:800 letterSpacing:-0.6`) centered at top.
+- **Circular ring**: `144×144` two-half-circle rotation technique — gray `#E5E7EB` background track ring, green `#0C9E54` fill arcs via two clipped `Animated.View`s. Right arc sweeps 0→50%, left arc sweeps 50→100%. White donut cover creates the ring shape. `FontAwesome5 leaf` icon centered inside.
+- **Headline**: "Optimizing your profile... {N}%" — driven by `animVal.addListener` feeding `setProgress(Math.round(value * 100))`.
+- **Progress bar**: flat 6px capsule, green fill animated via `width` interpolation (`'0%'→'100%'`).
+- **4 timeline rows**: each reads live from profile — store count, weekly budget, yearly savings (budget × 52 × 0.15). Row statuses: `done` (check-circle icon + mint pill), `active` (green dot-ring + outline badge), `upcoming` (gray ring + gray pill). Phase thresholds: row 0 active at 0%, row 1 at 28%, row 2 at 54%, row 3 at 78%.
+- **Auto-navigate**: `Animated.timing` completes at 4400ms → `tracker.track('today_setup_auto_loaded')` → 650ms delay → `navigation.navigate('TodayOptionsRanked', { context: buildContext(profile) })`. Context built from saved profile (weekly_budget, household_size, grocery_status, time_before_dinner, pantry_preference, today_goal).
+- Module-scope sub-components: `RowIcon`, `StatusBadge`, `TimelineRow`. StyleSheet split into `s`, `rowStyles`, `iconStyles`, `badgeStyles`.
+
 ### Changed — PremiumBetaPaywallScreen: payment link routing + SNIPPDDEMO promo bypass (2026-05-17)
 - `screens/PremiumBetaPaywallScreen.js` — Replaced edge function checkout with direct `Linking.openURL` to hosted Stripe payment links (`EXPO_PUBLIC_STRIPE_FOUNDER` / `EXPO_PUBLIC_STRIPE_BETA_PRO`). No secret key needed client-side. Deep-link handler (`snippd://checkout-complete?status=success`) still resets nav to `MainApp`.
 - Added promo code section below billing note: `TextInput` + "Apply" button row. Code `SNIPPDDEMO` writes `subscription_status: 'active', billing_plan: 'demo'` to `profiles` and navigates to `MainApp` after 700ms. Invalid code shows inline red error. Success state turns input mint-green and button green with "Applied" text. All other users continue through the normal Stripe payment flow.
