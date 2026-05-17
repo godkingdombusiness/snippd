@@ -26,23 +26,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
-var GREEN      = '#0C9E54';
-var DARK_GREEN = '#0A5C2B';
-var NAVY       = '#172250';
-var CREAM      = '#FAF8F1';
-var WHITE      = '#FFFFFF';
-var GRAY       = '#6B7280';
-var BORDER     = '#E5E7EB';
-var MINT       = '#E8F5E9';
-var CORAL      = '#fb5b5b';
-var AMBER      = '#F59E0B';
+const GREEN      = '#0C9E54';
+const DARK_GREEN = '#0A5C2B';
+const NAVY       = '#172250';
+const CREAM      = '#FAF8F1';
+const WHITE      = '#FFFFFF';
+const GRAY       = '#6B7280';
+const BORDER     = '#E5E7EB';
+const MINT       = '#E8F5E9';
+const CORAL      = '#fb5b5b';
+const AMBER      = '#F59E0B';
 
-var TOTAL_STEPS   = 8;  // 0–7
-var CONTENT_STEPS = 7;  // steps 1–7 show progress
+const TOTAL_STEPS   = 8;  // 0–7
+const CONTENT_STEPS = 7;  // steps 1–7 show progress
 
 // ── Demo profile (no Supabase writes) ────────────────────────────────────────
 
-var DEMO_PROFILE = {
+const DEMO_PROFILE = {
   isDemoMode:                     true,
   missions:                       ['pure_savings', 'meal_planning', 'clinical_guardrails'],
   weeklyBudget:                   250,
@@ -61,7 +61,7 @@ var DEMO_PROFILE = {
 
 // ── Static data (module scope to avoid re-creation on render) ─────────────────
 
-var MISSIONS = [
+const MISSIONS = [
   { id: 'pure_savings',        label: 'Save Money',     sub: 'Find deals, coupons, and stack savings.',          icon: 'dollar-sign' },
   { id: 'meal_planning',       label: 'Plan My Meals',  sub: 'Shop smarter with weekly meal planning.',           icon: 'calendar-alt' },
   { id: 'athletic_fuel',       label: 'Eat Healthier',  sub: 'High-protein & nutrition-focused choices.',         icon: 'heart' },
@@ -70,12 +70,12 @@ var MISSIONS = [
   { id: 'convenience',         label: 'Keep It Simple', sub: 'Quick picks, minimal effort, less stress.',         icon: 'bolt' },
 ];
 
-var BUDGET_PRESETS = ['75', '100', '150', '200', '250', '300', '400'];
+const BUDGET_PRESETS = ['75', '100', '150', '200', '250', '300', '400'];
 
-var ADULT_OPTIONS   = [1, 2, 3, 4];
-var CHILD_OPTIONS   = [0, 1, 2, 3, 4];
+const ADULT_OPTIONS   = [1, 2, 3, 4];
+const CHILD_OPTIONS   = [0, 1, 2, 3, 4];
 
-var FOODS_AVOIDED = [
+const FOODS_AVOIDED = [
   { id: 'gluten',       label: 'Gluten-free' },
   { id: 'dairy',        label: 'Dairy-free' },
   { id: 'nuts',         label: 'Nut allergy' },
@@ -89,7 +89,7 @@ var FOODS_AVOIDED = [
   { id: 'high_sodium',  label: 'Low sodium' },
 ];
 
-var DIET_PREFS = [
+const DIET_PREFS = [
   { id: 'low_carb',         label: 'Low carb' },
   { id: 'high_protein',     label: 'High protein' },
   { id: 'vegetarian',       label: 'Vegetarian' },
@@ -98,7 +98,7 @@ var DIET_PREFS = [
   { id: 'kid_friendly',     label: 'Kid-friendly' },
 ];
 
-var COOKING_STYLES = [
+const COOKING_STYLES = [
   { id: 'from_scratch', label: 'Cook from scratch',    desc: 'I enjoy cooking with raw, fresh ingredients.',          icon: 'utensils' },
   { id: 'meal_prep',    label: 'Meal prep weekly',     desc: 'Batch cooking meals for the week.',                    icon: 'box-open' },
   { id: 'quick_meals',  label: 'Quick 30-min meals',   desc: 'Fast, easy recipes with minimal steps.',               icon: 'clock' },
@@ -107,20 +107,20 @@ var COOKING_STYLES = [
   { id: 'variety',      label: 'Mix of everything',    desc: 'A flexible routine depending on the day.',             icon: 'random' },
 ];
 
-var DINNER_FREQ_OPTS = [
+const DINNER_FREQ_OPTS = [
   { id: '1_2_days',  label: '1–2 days' },
   { id: '3_4_days',  label: '3–4 days' },
   { id: '5_6_days',  label: '5–6 days' },
   { id: 'every_day', label: 'Every day' },
 ];
 
-var MEAL_PRIORITIES = [
+const MEAL_PRIORITIES = [
   { id: 'family_friendly', label: 'Family-friendly' },
   { id: 'budget_friendly',  label: 'Budget-friendly' },
   { id: 'low_waste',        label: 'Low food waste' },
 ];
 
-var STORES = [
+const STORES = [
   { id: 'publix',         label: 'Publix' },
   { id: 'aldi',           label: 'Aldi' },
   { id: 'walmart',        label: 'Walmart' },
@@ -133,7 +133,7 @@ var STORES = [
   { id: 'food_lion',      label: 'Food Lion' },
 ];
 
-var DEAL_PREFS = [
+const DEAL_PREFS = [
   { id: 'weekly_ads',       label: 'Weekly Ads',       icon: 'file-alt' },
   { id: 'digital_coupons',  label: 'Digital Coupons',  icon: 'tag' },
   { id: 'bogos',            label: 'BOGOs',             icon: 'gift' },
@@ -142,7 +142,7 @@ var DEAL_PREFS = [
   { id: 'lowest_total',     label: 'Lowest Total',     icon: 'dollar-sign' },
 ];
 
-var HOUSEHOLD_TYPES = [
+const HOUSEHOLD_TYPES = [
   { id: 'adults',   label: 'Adults',           sub: 'Ages 23–64',          icon: 'user' },
   { id: 'college',  label: 'College-aged',      sub: 'Ages 18–22',          icon: 'graduation-cap' },
   { id: 'teens',    label: 'Teens',             sub: 'Ages 13–17',          icon: 'running' },
@@ -151,21 +151,21 @@ var HOUSEHOLD_TYPES = [
   { id: 'guests',   label: 'Guests / Roommates',sub: 'Others in household', icon: 'users' },
 ];
 
-var TAKEOUT_OPTS = [
+const TAKEOUT_OPTS = [
   { id: 'rarely',     label: 'Rarely' },
   { id: '1_2x_week',  label: '1–2x / week' },
   { id: '3_4x_week',  label: '3–4x / week' },
   { id: '5plus_week', label: '5+ times / week' },
 ];
 
-var PET_OPTS = [
+const PET_OPTS = [
   { id: 'dog',  label: 'Dog' },
   { id: 'cat',  label: 'Cat' },
   { id: 'both', label: 'Both' },
   { id: 'none', label: 'None' },
 ];
 
-var MEAL_FREQ_OPTS = [
+const MEAL_FREQ_OPTS = [
   { id: 'daily',      label: 'Daily suggestions'   },
   { id: 'few_week',   label: 'A few times a week'  },
   { id: 'weekly',     label: 'Weekly plan only'     },
@@ -203,10 +203,10 @@ function ProgressHeader({ step, onBack }) {
 }
 
 function BigBtn({ label, onPress, loading, variant }) {
-  var btnStyle = variant === 'outline'
+  const btnStyle = variant === 'outline'
     ? [s.bigBtn, s.bigBtnOutline]
     : [s.bigBtn, s.bigBtnFill];
-  var txtStyle = variant === 'outline' ? [s.bigBtnText, { color: WHITE }] : s.bigBtnText;
+  const txtStyle = variant === 'outline' ? [s.bigBtnText, { color: WHITE }] : s.bigBtnText;
   return (
     <TouchableOpacity style={btnStyle} onPress={onPress} activeOpacity={0.85} disabled={!!loading}>
       {loading
@@ -285,7 +285,7 @@ function Pill({ label, selected, onPress, style }) {
 }
 
 function StoreCard({ label, selected, onPress }) {
-  var initials = label.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+  const initials = label.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
   return (
     <TouchableOpacity
       style={[s.storeCard, selected && s.storeCardOn]}
@@ -326,15 +326,15 @@ function CookTile({ label, desc, icon, selected, onPress }) {
   );
 }
 
-var SLIDER_MIN  = 75;
-var SLIDER_MAX  = 500;
-var SLIDER_STEP = 25;
+const SLIDER_MIN  = 75;
+const SLIDER_MAX  = 500;
+const SLIDER_STEP = 25;
 
 function getCookingFact(householdSize, dinnerFreq, cookingStyle) {
   if (cookingStyle.includes('frozen') || cookingStyle.includes('takeout')) {
     return "You don't have to cook completely from scratch to stack massive savings. Convenience and frozen aisles actually feature the highest volume of grocery coupon stacks! Snippd has pre-filtered the top quick-prep deals at your local stores to hit your exact budget target.";
   }
-  var highFreq = dinnerFreq === '5_6_days' || dinnerFreq === 'every_day';
+  const highFreq = dinnerFreq === '5_6_days' || dinnerFreq === 'every_day';
   if (householdSize >= 3 && highFreq) {
     return 'Cooking nearly every night for a larger household means you are managing a massive grocery list. By automatically grouping family-pack ingredient deals and matching bulk store coupons, Snippd is optimizing your weekly plan to save you up to $45 and 3 hours in the kitchen this week!';
   }
@@ -349,30 +349,30 @@ function getBudgetFact(size) {
 }
 
 function BudgetSlider({ value, onChange, onRelease }) {
-  var trackViewRef = useRef(null);
-  var trackW       = useRef(0);
-  var trackLeft    = useRef(0);
-  var onChangeRef  = useRef(onChange);
-  var onReleaseRef = useRef(onRelease);
+  const trackViewRef = useRef(null);
+  const trackW       = useRef(0);
+  const trackLeft    = useRef(0);
+  const onChangeRef  = useRef(onChange);
+  const onReleaseRef = useRef(onRelease);
   onChangeRef.current  = onChange;
   onReleaseRef.current = onRelease;
 
-  var panResponder = useRef(
+  const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: function () { return true; },
       onMoveShouldSetPanResponder:  function () { return true; },
       onPanResponderGrant: function (e) {
         if (!trackW.current) return;
-        var x   = e.nativeEvent.pageX - trackLeft.current;
-        var raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
-        var snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
+        const x   = e.nativeEvent.pageX - trackLeft.current;
+        const raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
+        const snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
         onChangeRef.current(Math.max(SLIDER_MIN, Math.min(SLIDER_MAX, snapped)));
       },
       onPanResponderMove: function (e) {
         if (!trackW.current) return;
-        var x   = e.nativeEvent.pageX - trackLeft.current;
-        var raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
-        var snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
+        const x   = e.nativeEvent.pageX - trackLeft.current;
+        const raw = SLIDER_MIN + (x / trackW.current) * (SLIDER_MAX - SLIDER_MIN);
+        const snapped = Math.round(raw / SLIDER_STEP) * SLIDER_STEP;
         onChangeRef.current(Math.max(SLIDER_MIN, Math.min(SLIDER_MAX, snapped)));
       },
       onPanResponderRelease: function () {
@@ -381,7 +381,7 @@ function BudgetSlider({ value, onChange, onRelease }) {
     })
   ).current;
 
-  var pct = Math.max(0, Math.min(1, (value - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)));
+  const pct = Math.max(0, Math.min(1, (value - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)));
 
   return (
     <View
@@ -405,7 +405,7 @@ function BudgetSlider({ value, onChange, onRelease }) {
 }
 
 function HouseholdCard({ label, sub, icon, count, onDecrement, onIncrement }) {
-  var active = count > 0;
+  const active = count > 0;
   return (
     <TouchableOpacity
       style={[s.hCard, active && s.hCardOn]}
@@ -460,13 +460,13 @@ function MissionCard({ label, sub, icon, selected, onPress }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function OnboardingScreen({ navigation }) {
-  var [step, setStep]              = useState(0);
-  var [saving, setSaving]          = useState(false);
-  var [budgetWarn, setBWarn]       = useState('');
-  var [showFact, setShowFact]      = useState(false);
-  var [showCookingModal, setShowCookingModal] = useState(false);
+  const [step, setStep]              = useState(0);
+  const [saving, setSaving]          = useState(false);
+  const [budgetWarn, setBWarn]       = useState('');
+  const [showFact, setShowFact]      = useState(false);
+  const [showCookingModal, setShowCookingModal] = useState(false);
 
-  var [data, setData] = useState({
+  const [data, setData] = useState({
     missions:            [],
     weeklyBudget:        '',
     weekly_budget_cents: 0,
@@ -492,7 +492,7 @@ export default function OnboardingScreen({ navigation }) {
 
   function toggleArr(key, id) {
     setData(function (p) {
-      var arr = p[key];
+      const arr = p[key];
       return Object.assign({}, p, {
         [key]: arr.includes(id)
           ? arr.filter(function (v) { return v !== id; })
@@ -504,7 +504,7 @@ export default function OnboardingScreen({ navigation }) {
   function adjustCount(key, delta) {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setData(function (p) {
-      var counts = Object.assign({}, p.householdCounts);
+      const counts = Object.assign({}, p.householdCounts);
       counts[key] = Math.max(0, (counts[key] || 0) + delta);
       return Object.assign({}, p, { householdCounts: counts });
     });
@@ -513,7 +513,7 @@ export default function OnboardingScreen({ navigation }) {
   function togglePet(id) {
     setData(function (p) {
       if (id === 'none') return Object.assign({}, p, { pets: ['none'] });
-      var arr = p.pets.filter(function (v) { return v !== 'none'; });
+      const arr = p.pets.filter(function (v) { return v !== 'none'; });
       return Object.assign({}, p, {
         pets: arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]),
       });
@@ -524,8 +524,8 @@ export default function OnboardingScreen({ navigation }) {
   function back() { setStep(function (n) { return Math.max(n - 1, 0); }); }
 
   function buildPersonaParams(d, extra) {
-    var adults   = (d.householdCounts && d.householdCounts.adults) || 2;
-    var children = (d.householdCounts && d.householdCounts.children) || 0;
+    const adults   = (d.householdCounts && d.householdCounts.adults) || 2;
+    const children = (d.householdCounts && d.householdCounts.children) || 0;
     return Object.assign({
       isDemoMode:     false,
       missions:       d.missions,
@@ -552,11 +552,11 @@ export default function OnboardingScreen({ navigation }) {
   async function finishOnboarding() {
     setSaving(true);
     try {
-      var { data: authData } = await supabase.auth.getUser();
-      var user = authData && authData.user;
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData && authData.user;
       if (user) {
-        var budget  = parseFloat(data.weeklyBudget) || 0;
-        var allGoals = data.missions.concat(data.dietPreferences);
+        const budget  = parseFloat(data.weeklyBudget) || 0;
+        const allGoals = data.missions.concat(data.dietPreferences);
         await supabase.from('profiles').upsert({
           user_id:              user.id,
           weekly_budget:        budget,
@@ -676,9 +676,9 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep2() {
-    var sliderVal = parseInt(data.weeklyBudget, 10) || SLIDER_MIN;
+    const sliderVal = parseInt(data.weeklyBudget, 10) || SLIDER_MIN;
 
-    var householdSize = Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0);
+    const householdSize = Object.values(data.householdCounts).reduce(function (a, b) { return a + b; }, 0);
 
     function handleSlider(v) {
       upd('weeklyBudget', String(v));
@@ -691,10 +691,10 @@ export default function OnboardingScreen({ navigation }) {
     }
 
     function handleText(text) {
-      var cleaned = text.replace(/[^0-9]/g, '');
+      const cleaned = text.replace(/[^0-9]/g, '');
       upd('weeklyBudget', cleaned);
       upd('weekly_budget_cents', Math.round((parseFloat(cleaned) || 0) * 100));
-      var val = parseInt(cleaned, 10);
+      const val = parseInt(cleaned, 10);
       if (!cleaned)         { setBWarn(''); return; }
       if (val < 25)         { setBWarn('Plans work best with at least $25/week.'); return; }
       if (val > 800)        { setBWarn('Double-check your weekly amount.'); return; }
@@ -793,7 +793,7 @@ export default function OnboardingScreen({ navigation }) {
         {/* 2-col stepper grid */}
         <View style={s.hGrid}>
           {HOUSEHOLD_TYPES.map(function (ht) {
-            var count = data.householdCounts[ht.id] || 0;
+            const count = data.householdCounts[ht.id] || 0;
             return (
               <HouseholdCard
                 key={ht.id}
@@ -818,7 +818,7 @@ export default function OnboardingScreen({ navigation }) {
           </View>
           <View style={s.petRow}>
             {PET_OPTS.map(function (opt) {
-              var sel = data.pets.includes(opt.id);
+              const sel = data.pets.includes(opt.id);
               return (
                 <TouchableOpacity
                   key={opt.id}
@@ -864,15 +864,15 @@ export default function OnboardingScreen({ navigation }) {
 
   function renderStep4() {
     function toggleFood(id) {
-      var arr = data.foodsAvoided.filter(function (v) { return v !== 'none'; });
+      const arr = data.foodsAvoided.filter(function (v) { return v !== 'none'; });
       upd('foodsAvoided', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
     }
     function toggleDiet(id) {
-      var arr = data.dietPreferences.filter(function (v) { return v !== 'no_diet'; });
+      const arr = data.dietPreferences.filter(function (v) { return v !== 'no_diet'; });
       upd('dietPreferences', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
     }
-    var foodsClear = data.foodsAvoided.length === 0 || data.foodsAvoided.includes('none');
-    var dietClear  = data.dietPreferences.length === 0 || data.dietPreferences.includes('no_diet');
+    const foodsClear = data.foodsAvoided.length === 0 || data.foodsAvoided.includes('none');
+    const dietClear  = data.dietPreferences.length === 0 || data.dietPreferences.includes('no_diet');
 
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -942,9 +942,9 @@ export default function OnboardingScreen({ navigation }) {
   }
 
   function renderStep5() {
-    var mealPrioritiesClear = data.mealPriorities.length === 0 || data.mealPriorities.includes('no_meal_pref');
+    const mealPrioritiesClear = data.mealPriorities.length === 0 || data.mealPriorities.includes('no_meal_pref');
     function toggleMealPriority(id) {
-      var arr = data.mealPriorities.filter(function (v) { return v !== 'no_meal_pref'; });
+      const arr = data.mealPriorities.filter(function (v) { return v !== 'no_meal_pref'; });
       upd('mealPriorities', arr.includes(id) ? arr.filter(function (v) { return v !== id; }) : arr.concat([id]));
     }
     return (
@@ -973,7 +973,7 @@ export default function OnboardingScreen({ navigation }) {
           <Text style={[s.f4CardTitle, { marginTop: 20 }]}>How many dinners do you cook a week?</Text>
           <View style={s.f4Grid}>
             {DINNER_FREQ_OPTS.map(function (d) {
-              var sel = data.dinnerFrequency === d.id;
+              const sel = data.dinnerFrequency === d.id;
               return (
                 <View key={d.id} style={s.f4GridCell}>
                   <Pill
@@ -1077,7 +1077,7 @@ export default function OnboardingScreen({ navigation }) {
         <Text style={[s.fieldLabel, { marginTop: 24 }]}>How often do you want meal ideas?</Text>
         <View style={s.h3FreqRow}>
           {MEAL_FREQ_OPTS.map(function (opt) {
-            var selected = data.mealIdeaFrequency === opt.id;
+            const selected = data.mealIdeaFrequency === opt.id;
             return (
               <TouchableOpacity
                 key={opt.id}
@@ -1096,7 +1096,7 @@ export default function OnboardingScreen({ navigation }) {
     );
   }
 
-  var stepRenders = [null, renderStep1, renderStep3, renderStep2, renderStep4, renderStep5, renderStep6, renderStep7];
+  const stepRenders = [null, renderStep1, renderStep3, renderStep2, renderStep4, renderStep5, renderStep6, renderStep7];
 
   return (
     <SafeAreaView style={[s.root, (step === 1 || step === 2 || step === 3) && s.rootWhite]} edges={['top', 'bottom']}>
@@ -1139,7 +1139,7 @@ export default function OnboardingScreen({ navigation }) {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-var s = StyleSheet.create({
+const s = StyleSheet.create({
   root:     { flex: 1, backgroundColor: CREAM },
   darkRoot: { flex: 1 },
 

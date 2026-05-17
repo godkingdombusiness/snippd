@@ -7,6 +7,9 @@ Format: [version] — YYYY-MM-DD
 ### Changed — food preferences step: typography alignment pass (2026-05-16)
 - `screens/OnboardingScreen.js` — `f4Headline` bumped to 40px/800 weight matching other step headlines (was 28/700); `f4Sub` set to 15px/400 weight light gray matching `sub` style; `f4CardTitle` changed from small-caps gray label to 14px/700 navy matching `fieldLabel`; `pillText` adjusted to `#374151` (gray-700) regular weight for neutral charcoal unselected state.
 
+### Fixed — convert all 80 var declarations to const (2026-05-16)
+- `screens/OnboardingScreen.js` — All 80 `var` declarations converted to `const` (no binding is ever directly reassigned; property-level mutations like `counts[key]=` and `ref.current=` are safe with `const`). Resolves 82 SonarLint S3504 IDE diagnostics. Metro bundle continues to compile cleanly (1907 modules, 0 errors).
+
 ### Changed — household step: select-to-reveal stepper, remove takeout card (2026-05-16)
 - `screens/OnboardingScreen.js` — Added `LayoutAnimation` and `UIManager` to RN imports; enabled `setLayoutAnimationEnabledExperimental` for Android. `HouseholdCard` converted from `<View>` to `<TouchableOpacity>`: when count=0 the whole card is tappable (sets count to 1, i.e. calls `onIncrement`); stepper row (`hStepper`) is conditionally rendered only when `count > 0`; `adjustCount` calls `LayoutAnimation.configureNext(easeInEaseOut)` before state update so the stepper animates in/out. Takeout Frequency card removed entirely from `renderStep3`. Pet Profile card, info banner, Continue button, and privacy footer now sit directly below the household grid.
 
