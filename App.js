@@ -171,6 +171,7 @@ import DemoAdminScreen from './screens/DemoAdminScreen';
 import PersonalizationSummaryScreen from './screens/PersonalizationSummaryScreen';
 import FirstShopPaywallScreen from './screens/FirstShopPaywallScreen';
 import PaymentSuccessRedirectScreen from './screens/PaymentSuccessRedirectScreen';
+import PremiumBetaPaywallScreen from './screens/PremiumBetaPaywallScreen';
 // ── TODAY DECISION FLOW ──────────────────────────────────────────────────────
 import TodaySetupGateScreen from './screens/TodaySetupGateScreen';
 import TodayOptionsRankedScreen from './screens/TodayOptionsRankedScreen';
@@ -683,6 +684,7 @@ function RootNavigator() {
         <Stack.Screen name="PersonalizationSummary"     component={PersonalizationSummaryScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="FirstShopPaywall"           component={FirstShopPaywallScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="PaymentSuccessRedirect"     component={PaymentSuccessRedirectScreen} options={{ gestureEnabled: false }} />
+        <Stack.Screen name="PremiumBetaPaywall"         component={PremiumBetaPaywallScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="PersonalityResult"     component={PersonalityResultScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="SoftPersonalization"   component={SoftPersonalizationScreen} />
         <Stack.Screen name="UnlockBeta"            component={UnlockBetaScreen} />

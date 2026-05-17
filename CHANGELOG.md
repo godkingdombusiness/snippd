@@ -4,6 +4,20 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — PremiumBetaPaywallScreen: high-conversion beta paywall with Stripe checkout (2026-05-17)
+- `screens/PremiumBetaPaywallScreen.js` — Production-ready mobile paywall. White canvas, dark navy typography, no emojis, all vector icons.
+  - **Block 1 Header**: Green-bordered `#E6FFFA` pill badge (EXCLUSIVE BETA ACCESS · `bolt` icon · letterSpacing:1). `fontSize:26 fontWeight:800` headline "Activate Your Optimization Engine". `fontSize:14 color:#64748B` centered tagline.
+  - **Block 2 Value Pillars**: 3 rows inside a shadowed white card — each row: 46px mint circle with solid FA5 icon (`lock`, `chart-line`, `magic`) + bold title + body copy. Thin `#E5E7EB` dividers between rows.
+  - **Block 3 Dual Tier Cards**: Side-by-side `borderWidth:2 borderRadius:16` selectable cards. Left (Founder Tier): amber `#D97706` price, green corner badge, mint selection state. Right (Beta Rate): slate-navy price, gray corner badge, mint selection state. Corner badges absolutely positioned with `borderTopRightRadius:14, borderBottomLeftRadius:10`. `RadioDot` component: hollow gray ring → filled green center on selection.
+  - **Block 4 Trust Badges**: 4 Feather icons (`shield`, `check-circle`, `tag`, `lock`) at equal width with 2-stroke vector rendering. Stripe attestation row with inline `lock` icon and bold "Stripe." Legal billing subtext centered below.
+  - **Block 5 Dynamic CTA**: Fixed-bottom `backgroundColor:#0C9E54 borderRadius:12 paddingVertical:16`. Text swaps: "Claim Lifetime Access & Enter Dashboard" (lifetime) / "Start 3-Day Free Trial & Enter Dashboard" (monthly). Loading spinner while awaiting Stripe session. `marginBottom:24` safe lift.
+  - **Deep link handler**: `Linking.addEventListener('url', ...)` — on `snippd://checkout-complete?status=success` fires `navigation.reset({ index:0, routes:[{name:'MainApp'}] })` to clear onboarding stack and enter the live dashboard.
+  - **Checkout flow**: `supabase.functions.invoke('create-checkout-session', { body: { priceId, successUrl, cancelUrl } })` → opens Stripe-hosted URL via `Linking.openURL`.
+  - Module-scope atom components: `PillarRow`, `RadioDot`, `TierCard`, `TrustBadge` — all with PropTypes. No inner components.
+- `supabase/functions/create-checkout-session/index.ts` — New Deno Edge Function. Validates auth header, resolves plan metadata from `priceId` prefix (`lifetime` → `mode:'payment'`, `tier:'founder'`, `billing_plan:'yearly'`; otherwise `mode:'subscription'`, `tier:'beta_pro'`, `billing_plan:'monthly'` with 3-day trial). Returns `{ url, sessionId }`. Metadata keys match existing `stripe-webhook` contract.
+- **Required Supabase secrets to set**: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_LIFETIME_97`, `STRIPE_PRICE_MONTHLY_499`.
+- **Register screen** in App.js navigator: `<Stack.Screen name="PremiumBetaPaywall" component={PremiumBetaPaywallScreen} />` — registered with `gestureEnabled: false` in the paywall flow block (2026-05-17). Import added to the PAYWALL FLOW import group.
+
 ### Changed — PersonaRevealScreen: full UI overhaul, dynamic data binding, 4-block layout (2026-05-17)
 - **Block 1 — Identity Card**: Screen title changed to "Your Snippd Shopping Persona". Persona card is now full-bleed solid `persona.color` (green, purple, amber, coral per archetype). White 72px circle holds a FontAwesome5 `leaf` icon in the persona color. Name renders in white `fontWeight:'800'`, tagline in `rgba(255,255,255,0.82)` italic, description in `rgba(255,255,255,0.88)`. Trait pills are solid-white capsules with dark persona-color text and filled FA5 icons (`tag`, `medal`, `heart`). "Adjust My Preferences" underlined white link navigates to `Onboarding` screen.
 - **Block 2 — Status Rows**: Replaced monolithic stats card with two independent full-width capsule rows (`borderWidth:1.5, borderColor:'#CBD5E1'`). Left side: icon + label. Right side: bold green value. Budget row: `$${weeklyBudget} / week` (live from params). Stores row: `${storeCount} stores` (live from `preferred_stores.length`).
