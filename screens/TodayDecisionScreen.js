@@ -8,15 +8,32 @@ import { Feather } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
 // ── Design Tokens ─────────────────────────────────────────────────────────────
-const GREEN  = '#0C9E54';
-const NAVY   = '#0A192F';
-const CREAM  = '#FAF8F1';
-const WHITE  = '#FFFFFF';
-const GRAY   = '#6B7280';
-const SLATE  = '#475569';
-const BORDER = '#E5E7EB';
-const MINT   = '#E6FFFA';
-const BLACK  = '#000000';
+const GREEN     = '#0C9E54';
+const NAVY      = '#0A192F';
+const CREAM     = '#FAF8F1';
+const WHITE     = '#FFFFFF';
+const GRAY      = '#6B7280';
+const SLATE     = '#475569';
+const BORDER    = '#E5E7EB';
+const MINT_SOFT = '#F0FDF4';
+const BLACK     = '#000000';
+
+function getFavoriteStore(profile) {
+  const stores = profile && profile.stores;
+  const firstStore = Array.isArray(stores) ? stores[0] : stores;
+  if (typeof firstStore === 'string') return firstStore;
+  if (firstStore && typeof firstStore === 'object') {
+    return firstStore.store_name || firstStore.name || firstStore.label || 'Publix';
+  }
+  return 'Publix';
+}
+
+function getStoreBrandColor(storeName) {
+  const key = String(storeName || '').toLowerCase();
+  if (key.includes('walmart')) return '#0071CE';
+  if (key.includes('aldi')) return '#0B5CAB';
+  return GREEN;
+}
 
 export default function TodayDecisionScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -29,7 +46,9 @@ export default function TodayDecisionScreen({ navigation }) {
     daysLeftInWeek: 4,
     mode: 'plan_tonight',
     couponSavings: 3.50,
-    promoCode: 'SNIPPD20'
+    promoCode: 'SNIPPD20',
+    favoriteStore: 'Publix',
+    storeBrandColor: GREEN
   });
 
   useEffect(() => {
@@ -57,7 +76,7 @@ export default function TodayDecisionScreen({ navigation }) {
 
       const profileResult = await supabase
         .from('profiles')
-        .select('full_name, weekly_budget, household_size, grocery_status, today_goal')
+        .select('full_name, weekly_budget, household_size, grocery_status, today_goal, stores')
         .eq('user_id', user.id)
         .single();
 
@@ -66,6 +85,7 @@ export default function TodayDecisionScreen({ navigation }) {
       setFirstName(name.split(' ')[0] || '');
 
       const budgetMax = Number(profile.weekly_budget) || 250;
+      const favoriteStore = getFavoriteStore(profile);
 
       setProfileData({
         weeklyBudget: budgetMax,
@@ -74,7 +94,9 @@ export default function TodayDecisionScreen({ navigation }) {
         daysLeftInWeek: 4,
         mode: profile.grocery_status === 'not_yet' ? 'live_stacks' : 'plan_tonight',
         couponSavings: profile.today_goal === 'spend_least' ? 5.20 : 3.50, // Scales based on preference profile
-        promoCode: 'SNIPPD20'
+        promoCode: 'SNIPPD20',
+        favoriteStore: favoriteStore,
+        storeBrandColor: getStoreBrandColor(favoriteStore)
       });
 
     } catch (e) {
@@ -124,14 +146,14 @@ export default function TodayDecisionScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Publix Target Deal Stack Card */}
+            {/* Active retailer target deal stack card */}
             <View style={styles.storeCard}>
               <View style={styles.storeHeader}>
                 <View style={styles.storeBrandRow}>
                   <View style={[styles.logoPlaceholder, { backgroundColor: '#E8F5E9' }]}>
-                    <Text style={{ color: GREEN, fontWeight: '800' }}>P</Text>
+                    <Text style={{ color: profileData.storeBrandColor, fontWeight: '800' }}>{profileData.favoriteStore.charAt(0).toUpperCase()}</Text>
                   </View>
-                  <Text style={styles.storeTitle}>Publix</Text>
+                  <Text style={styles.storeTitle}>{profileData.favoriteStore}</Text>
                 </View>
                 <View style={styles.matchesBadge}>
                   <Text style={styles.matchesBadgeText}>12 MATCHES</Text>
@@ -158,7 +180,7 @@ export default function TodayDecisionScreen({ navigation }) {
               </View>
 
               <TouchableOpacity style={styles.storeCta} onPress={() => navigation.navigate('WeeklyDinnerPlan')}>
-                <Text style={styles.storeCtaText}>Open Full Publix Route Stack</Text>
+                <Text style={styles.storeCtaText}>Open Full {profileData.favoriteStore} Route Stack</Text>
                 <Feather name="arrow-right" size={16} color={GREEN} style={{ marginLeft: 6 }} />
               </TouchableOpacity>
             </View>
@@ -209,7 +231,7 @@ export default function TodayDecisionScreen({ navigation }) {
           <Feather name="chevron-right" size={20} color={GREEN} />
         </View>
 
-        {/* CHOICE CARD 1: Cook at Home (Fulfillment: Publix) */}
+        {/* CHOICE CARD 1: Cook at Home (Fulfillment: active retailer) */}
         <View style={styles.triageCard}>
           <View style={[styles.sideIndicator, { backgroundColor: GREEN }]}>
             <Feather name="home" size={20} color={WHITE} />
@@ -222,7 +244,7 @@ export default function TodayDecisionScreen({ navigation }) {
               <View style={styles.imgPlaceholder} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.mealTitle}>Quick Garlic-Herb Chicken & Asparagus</Text>
-                <Text style={styles.mealDesc}>Ingredients ready for pickup at Publix.</Text>
+                <Text style={styles.mealDesc}>Ingredients ready for pickup at {profileData.favoriteStore}.</Text>
               </View>
             </View>
 
@@ -371,7 +393,7 @@ const styles = StyleSheet.create({
   subTitle: { fontSize: 13, color: GRAY, marginTop: 10, marginBottom: 16, lineHeight: 18 },
 
   // Stacks layouts
-  savingsBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E6FFFA', borderRadius: 12, padding: 16, marginBottom: 20 },
+  savingsBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: MINT_SOFT, borderRadius: 12, padding: 16, marginBottom: 20 },
   bannerMainText: { fontSize: 15, fontWeight: '800', color: GREEN },
   bannerSubText: { fontSize: 12, color: SLATE, marginTop: 2 },
   storeCard: { backgroundColor: WHITE, borderRadius: 16, borderWidth: 1.5, borderColor: BORDER, padding: 16, marginBottom: 16 },
@@ -423,7 +445,7 @@ const styles = StyleSheet.create({
   metricLabel: { fontSize: 9, fontWeight: '700', color: GRAY, letterSpacing: 0.5, marginTop: 2 },
   metricDivider: { width: 1, height: 24, backgroundColor: BORDER },
   heroSavingsBadge: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: MINT_SOFT,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,

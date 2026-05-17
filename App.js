@@ -144,6 +144,8 @@ import PersonalityResultScreen from './screens/PersonalityResultScreen';
 import PlanGenerationLoadingScreen from './screens/PlanGenerationLoadingScreen';
 import SmartStartScreen from './screens/SmartStartScreen';
 import TodayDecisionScreen from './screens/TodayDecisionScreen';
+import CookAtHomeTriage from './screens/CookAtHomeTriage';
+import RecipeCartManifest from './screens/RecipeCartManifest';
 import UberEatsHandoffScreen from './screens/UberEatsHandoffScreen';
 import WeeklyPlanStarterScreen from './screens/WeeklyPlanStarterScreen';
 import AddNeedsScreen from './screens/AddNeedsScreen';
@@ -696,6 +698,8 @@ function RootNavigator() {
         <Stack.Screen name="PlanGenerationLoading" component={PlanGenerationLoadingScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="SmartStart"            component={SmartStartScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="TodayDecision"         component={TodayDecisionScreen} />
+        <Stack.Screen name="CookAtHomeTriage"      component={CookAtHomeTriage} />
+        <Stack.Screen name="RecipeCartManifest"    component={RecipeCartManifest} />
         <Stack.Screen name="UberEatsHandoff"       component={UberEatsHandoffScreen} />
         <Stack.Screen name="WeeklyPlanStarter"     component={WeeklyPlanStarterScreen} />
         <Stack.Screen name="AddNeeds"              component={AddNeedsScreen} />
