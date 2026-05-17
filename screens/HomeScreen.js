@@ -584,8 +584,8 @@ export default function HomeScreen({ navigation }) {
               <Feather name="alert-circle" size={18} color={AMBER} />
             </View>
             <View style={styles.setupBannerText}>
-              <Text style={styles.setupBannerTitle}>Finish your profile</Text>
-              <Text style={styles.setupBannerSub}>Add your budget and preferences to get personalized recommendations.</Text>
+              <Text style={styles.setupBannerTitle}>Build profile</Text>
+              <Text style={styles.setupBannerSub}>Your weekly deal engine is warming up. Add grocery budget and preferences to get personalized recommendations.</Text>
             </View>
             <Feather name="chevron-right" size={18} color={GRAY} />
           </TouchableOpacity>
