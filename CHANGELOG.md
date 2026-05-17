@@ -4,6 +4,13 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — SignInScreen.js: 28 IDE diagnostic issues resolved (2026-05-17)
+- Added `import PropTypes from 'prop-types'` (was missing entirely).
+- Added `import { supabase } from '../lib/supabase'` at top level; removed dynamic `require('../lib/supabase')` inside `handleEmail` callback (S2208 / non-top-level import).
+- Removed unused palette constants `W_GREEN` and `CREAM` (S1481).
+- Added `.propTypes` declarations for all 5 module-scope components: `GoogleIcon` (size), `AppleIcon` (size), `StatChip` (value, label, dark), `SocialBtn` (icon, label, onPress, disabled), `FieldInput` (11 props) — resolves 20 S6774 prop-validation warnings.
+- Wrapped `clearError` in `useCallback([], [])` to make it a stable reference; added it to the deps arrays of `handleEmail`, `handleOAuth`, and `handleForgotPassword` — resolves 3 exhaustive-deps warnings.
+
 ### Added — processing intermission screens between milestone steps (2026-05-17)
 - `screens/OnboardingScreen.js` — `processing` state `{ show, title, sub }` + `runProcessing(title, sub, callback)` helper: sets show flag, calls callback after 2500ms. Processing overlay is a full-screen white SafeAreaView with centered large green ActivityIndicator, bold title, and subtitle copy — rendered via early return before `stepRenders`. Three milestones wired: Missions Continue → "Analyzing your goals..." → Household; Household Continue → "Calculating your household profile..." → Budget; Stores Continue → "Scouting deals at your stores..." → Deal Prefs.
 

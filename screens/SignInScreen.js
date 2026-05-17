@@ -33,9 +33,11 @@ import {
   Animated, KeyboardAvoidingView, ScrollView,
   StatusBar, Image,
 } from 'react-native';
+import PropTypes from 'prop-types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { supabase } from '../lib/supabase';
 import { tracker } from '../src/lib/eventTracker';
 import {
   signInWithEmail,
@@ -50,10 +52,8 @@ import {
 const GREEN     = '#0C9E54';
 const GREEN_MID = '#0C6B38';
 const W_BG      = '#0B3B1E';   // welcome screen dark green background
-const W_GREEN   = '#3DBA6F';   // welcome screen feature icon green (lighter, visible on dark)
 const NAVY      = '#172250';
 const MINT      = '#c5ffbc';
-const CREAM     = '#FAF8F1';
 const WHITE     = '#FFFFFF';
 const GRAY      = '#6B7280';
 const BORDER    = '#E5E7EB';
@@ -227,6 +227,43 @@ function MobileHero() {
   );
 }
 
+// ── PropTypes ──────────────────────────────────────────────────────────────────
+
+GoogleIcon.propTypes = {
+  size: PropTypes.number,
+};
+
+AppleIcon.propTypes = {
+  size: PropTypes.number,
+};
+
+StatChip.propTypes = {
+  value: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  dark:  PropTypes.bool,
+};
+
+SocialBtn.propTypes = {
+  icon:     PropTypes.node.isRequired,
+  label:    PropTypes.string.isRequired,
+  onPress:  PropTypes.func,
+  disabled: PropTypes.bool,
+};
+
+FieldInput.propTypes = {
+  label:           PropTypes.string.isRequired,
+  value:           PropTypes.string.isRequired,
+  onChangeText:    PropTypes.func.isRequired,
+  secureTextEntry: PropTypes.bool,
+  keyboardType:    PropTypes.string,
+  autoCapitalize:  PropTypes.string,
+  placeholder:     PropTypes.string,
+  rightEl:         PropTypes.node,
+  onFocus:         PropTypes.func,
+  onBlur:          PropTypes.func,
+  focused:         PropTypes.bool,
+};
+
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 export default function SignInScreen({ navigation, route }) {
   const dims     = useWindowDimensions();
@@ -259,7 +296,7 @@ export default function SignInScreen({ navigation, route }) {
     ]).start();
   }, []);
 
-  function clearError() { setErrorMsg(''); setInfoMsg(''); }
+  const clearError = useCallback(function () { setErrorMsg(''); setInfoMsg(''); }, []);
 
   // Opens the form panel with the requested tab pre-selected
   function goForm(targetTab) {
@@ -309,7 +346,6 @@ export default function SignInScreen({ navigation, route }) {
           return;
         }
         // Write name to profile, then drop into onboarding
-        const { supabase } = require('../lib/supabase');
         const user = signUpData.session.user;
         if (user) {
           await supabase.from('profiles').upsert({
@@ -326,7 +362,7 @@ export default function SignInScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
-  }, [tab, name, email, password, navigation]);
+  }, [tab, name, email, password, navigation, clearError]);
 
   const handleOAuth = useCallback(async function (provider) {
     clearError();
@@ -343,7 +379,7 @@ export default function SignInScreen({ navigation, route }) {
     } finally {
       setOauthLoading(null);
     }
-  }, []);
+  }, [clearError]);
 
   const handleForgotPassword = useCallback(async function () {
     const trimmedEmail = email.trim().toLowerCase();
@@ -361,7 +397,7 @@ export default function SignInScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
-  }, [email]);
+  }, [email, clearError]);
 
   function switchTab(t) { setTab(t); clearError(); }
 
