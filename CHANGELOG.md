@@ -4,6 +4,15 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — processing intermission screens between milestone steps (2026-05-17)
+- `screens/OnboardingScreen.js` — `processing` state `{ show, title, sub }` + `runProcessing(title, sub, callback)` helper: sets show flag, calls callback after 2500ms. Processing overlay is a full-screen white SafeAreaView with centered large green ActivityIndicator, bold title, and subtitle copy — rendered via early return before `stepRenders`. Three milestones wired: Missions Continue → "Analyzing your goals..." → Household; Household Continue → "Calculating your household profile..." → Budget; Stores Continue → "Scouting deals at your stores..." → Deal Prefs.
+
+### Added — automated household budget defaults (2026-05-17)
+- `screens/OnboardingScreen.js` — `getDefaultWeeklyBudget(counts)` helper (module scope) maps total household members to weekly budget: 1→$75, 2→$150, 3→$200, 4→$250, 5+→$325 (all multiples of $25 slider step). Household Continue button auto-populates `weeklyBudget` + `weekly_budget_cents` and triggers `setShowFact(true)` when budget has not yet been manually set. Budget step card shows "Estimated for your household size" chip (mint bg, green text, check-circle icon) when a value is present. Budget remains fully editable.
+
+### Changed — universal solid green selected state across all onboarding cards (2026-05-17)
+- `screens/OnboardingScreen.js` — All selected/active card states now use solid `#0C9E54` background + white text/icons. Updated: MissionCard (`mCardOn` bg green, icon WHITE, label/sub white/80%), HouseholdCard (`hCardOn` bg green, icon/label/sub white, icon wrap translucent), CookTile (`cTileOn` bg green, title/desc white/80%, icon wrap translucent, check circle translucent), Pill (`pillOn` bg green, text white, check bg translucent), StoreCard (`storeCardOn` bg green, label white, check bg translucent), pet toPill (`toPillOn` bg green, text white), meal-freq h3FreqPill (`h3FreqPillOn` bg green, text white). GridTile and OptionTile were already solid green (no change).
+
 ### Fixed — SignInScreen.js: convert var → const, fix array key, add billing_plan (2026-05-17)
 - `screens/SignInScreen.js` — All `var` declarations converted to `const` throughout (palette constants, STATS, DEMO_PROFILE, StyleSheet objects, all function-scope variables in handlers and render functions). `GoogleIcon` color map key changed from array index `i` to `'color-' + i` (resolves S6479). `billing_plan: 'trial'` added to the signup profile upsert so every new account is seeded with the trial plan immediately on creation.
 

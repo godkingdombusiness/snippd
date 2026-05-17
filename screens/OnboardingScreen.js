@@ -321,7 +321,7 @@ function CookTile({ label, desc, icon, selected, onPress }) {
         <FontAwesome5 name={icon} size={20} color={selected ? WHITE : GREEN} solid />
       </View>
       <Text style={[s.cTileTitle, selected && s.cTileTitleOn]}>{label}</Text>
-      <Text style={s.cTileDesc}>{desc}</Text>
+      <Text style={[s.cTileDesc, selected && s.cTileDescOn]}>{desc}</Text>
     </TouchableOpacity>
   );
 }
@@ -342,10 +342,19 @@ function getCookingFact(householdSize, dinnerFreq, cookingStyle) {
 }
 
 function getBudgetFact(size) {
-  if (size >= 5) return 'Feeding a large house averages $350+ every week. We’ll hunt down steep bulk-buy grocery deals to keep your family completely covered.';
-  if (size >= 3) return 'A mid-size family typically averages $230–$330 a week. Keeping things optimized is key—we’ll prioritize family-pack bundle discounts first.';
-  if (size === 2) return 'Most couples average between $130–$180 a week. We’ll focus heavily on matching bulk deals and cross-recipe savings at your favorite stores to hit your goal.';
-  return 'For a single adult, average weekly grocery spending sits around $60–$95. Your target is locked in! Let’s track down store coupons to stretch that budget further.';
+  if (size >= 5) return ‘Feeding a large house averages $350+ every week. We’ll hunt down steep bulk-buy grocery deals to keep your family completely covered.’;
+  if (size >= 3) return ‘A mid-size family typically averages $230–$330 a week. Keeping things optimized is key—we’ll prioritize family-pack bundle discounts first.’;
+  if (size === 2) return ‘Most couples average between $130–$180 a week. We’ll focus heavily on matching bulk deals and cross-recipe savings at your favorite stores to hit your goal.’;
+  return ‘For a single adult, average weekly grocery spending sits around $60–$95. Your target is locked in! Let’s track down store coupons to stretch that budget further.’;
+}
+
+function getDefaultWeeklyBudget(counts) {
+  const total = Object.values(counts).reduce(function (a, b) { return a + b; }, 0);
+  if (total >= 5) return 325;
+  if (total === 4) return 250;
+  if (total === 3) return 200;
+  if (total === 2) return 150;
+  return 75;
 }
 
 function BudgetSlider({ value, onChange, onRelease }) {
@@ -412,11 +421,11 @@ function HouseholdCard({ label, sub, icon, count, onDecrement, onIncrement }) {
       onPress={active ? undefined : onIncrement}
       activeOpacity={active ? 1 : 0.72}
     >
-      <View style={s.hCardIconWrap}>
-        <FontAwesome5 name={icon} size={17} color={GREEN} solid />
+      <View style={[s.hCardIconWrap, active && s.hCardIconWrapOn]}>
+        <FontAwesome5 name={icon} size={17} color={active ? WHITE : GREEN} solid />
       </View>
-      <Text style={s.hCardLabel}>{label}</Text>
-      <Text style={s.hCardSub}>{sub}</Text>
+      <Text style={[s.hCardLabel, active && s.hCardLabelOn]}>{label}</Text>
+      <Text style={[s.hCardSub, active && s.hCardSubOn]}>{sub}</Text>
       {active && (
         <View style={s.hStepper}>
           <TouchableOpacity style={s.hStepBtn} onPress={onDecrement} activeOpacity={0.7}>
@@ -446,8 +455,8 @@ function MissionCard({ label, sub, icon, selected, onPress }) {
         </View>
       </View>
       {/* Icon */}
-      <View style={s.mIconWrap}>
-        <FontAwesome5 name={icon} size={22} color={selected ? GREEN : NAVY} solid />
+      <View style={[s.mIconWrap, selected && s.mIconWrapOn]}>
+        <FontAwesome5 name={icon} size={22} color={selected ? WHITE : NAVY} solid />
       </View>
       {/* Title */}
       <Text style={[s.mLabel, selected && s.mLabelOn]}>{label}</Text>
@@ -465,6 +474,7 @@ export default function OnboardingScreen({ navigation }) {
   const [budgetWarn, setBWarn]       = useState('');
   const [showFact, setShowFact]      = useState(false);
   const [showCookingModal, setShowCookingModal] = useState(false);
+  const [processing, setProcessing]  = useState({ show: false, title: '', sub: '' });
 
   const [data, setData] = useState({
     missions:            [],
@@ -522,6 +532,14 @@ export default function OnboardingScreen({ navigation }) {
 
   function next() { setStep(function (n) { return Math.min(n + 1, TOTAL_STEPS - 1); }); }
   function back() { setStep(function (n) { return Math.max(n - 1, 0); }); }
+
+  function runProcessing(title, sub, callback) {
+    setProcessing({ show: true, title, sub });
+    setTimeout(function () {
+      setProcessing({ show: false, title: '', sub: '' });
+      callback();
+    }, 2500);
+  }
 
   function buildPersonaParams(d, extra) {
     const adults   = (d.householdCounts && d.householdCounts.adults) || 2;
@@ -670,7 +688,11 @@ export default function OnboardingScreen({ navigation }) {
             );
           })}
         </View>
-        <TouchableOpacity style={s.mContinueBtn} onPress={next} activeOpacity={0.88}>
+        <TouchableOpacity
+          style={s.mContinueBtn}
+          onPress={function () { runProcessing('Analyzing your goals...', 'Building your personalized Snippd profile.', next); }}
+          activeOpacity={0.88}
+        >
           <Text style={s.mContinueTxt}>Continue</Text>
           <Feather name="arrow-right" size={18} color={WHITE} style={s.mContinueArrow} />
         </TouchableOpacity>
@@ -728,6 +750,14 @@ export default function OnboardingScreen({ navigation }) {
               <Text style={s.b2Amount}>{sliderVal >= SLIDER_MAX ? '500+' : sliderVal}</Text>
               <Text style={s.b2PerWeek}> / week</Text>
             </View>
+
+            {/* Household recommendation chip */}
+            {!!data.weeklyBudget && (
+              <View style={s.b2RecoChip}>
+                <Feather name="check-circle" size={13} color={GREEN} />
+                <Text style={s.b2RecoTxt}>Estimated for your household size</Text>
+              </View>
+            )}
 
             {/* Slider */}
             <View style={s.b2SliderWrap}>
@@ -851,7 +881,19 @@ export default function OnboardingScreen({ navigation }) {
         </View>
 
         {/* Continue CTA */}
-        <TouchableOpacity style={s.h3ContinueBtn} onPress={next} activeOpacity={0.88}>
+        <TouchableOpacity
+          style={s.h3ContinueBtn}
+          onPress={function () {
+            if (!data.weeklyBudget) {
+              const suggested = getDefaultWeeklyBudget(data.householdCounts);
+              upd('weeklyBudget', String(suggested));
+              upd('weekly_budget_cents', suggested * 100);
+              setShowFact(true);
+            }
+            runProcessing('Calculating your household profile...', 'Estimating the right budget range for your family.', next);
+          }}
+          activeOpacity={0.88}
+        >
           <Text style={s.h3ContinueTxt}>Continue</Text>
           <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
         </TouchableOpacity>
@@ -1050,7 +1092,11 @@ export default function OnboardingScreen({ navigation }) {
             );
           })}
         </View>
-        <TouchableOpacity style={s.f4ContinueBtn} onPress={next} activeOpacity={0.88}>
+        <TouchableOpacity
+          style={s.f4ContinueBtn}
+          onPress={function () { runProcessing('Scouting deals at your stores...', 'Connecting to live savings at your favorite retailers.', next); }}
+          activeOpacity={0.88}
+        >
           <Text style={s.f4ContinueTxt}>Continue</Text>
           <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
         </TouchableOpacity>
@@ -1102,6 +1148,19 @@ export default function OnboardingScreen({ navigation }) {
 
         <BigBtn label="Find Out My Shopping Persona" onPress={finishOnboarding} loading={saving} />
       </ScrollView>
+    );
+  }
+
+  if (processing.show) {
+    return (
+      <SafeAreaView style={s.processingRoot} edges={['top', 'bottom']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={s.processingCenter}>
+          <ActivityIndicator size="large" color={GREEN} style={s.processingSpinner} />
+          <Text style={s.processingTitle}>{processing.title}</Text>
+          <Text style={s.processingSub}>{processing.sub}</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -1298,14 +1357,17 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  hCardOn:      { borderColor: GREEN },
+  hCardOn:         { borderColor: GREEN, backgroundColor: GREEN },
   hCardIconWrap: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
     marginBottom: 8, alignSelf: 'flex-start',
   },
-  hCardLabel:   { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 2 },
-  hCardSub:     { fontSize: 11, color: GRAY, lineHeight: 15, flex: 1 },
+  hCardIconWrapOn: { backgroundColor: 'rgba(255,255,255,0.2)' },
+  hCardLabel:      { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 2 },
+  hCardLabelOn:    { color: WHITE },
+  hCardSub:        { fontSize: 11, color: GRAY, lineHeight: 15, flex: 1 },
+  hCardSubOn:      { color: 'rgba(255,255,255,0.8)' },
   hStepper: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginTop: 10, backgroundColor: '#F3F4F6', borderRadius: 10, padding: 4,
@@ -1339,12 +1401,12 @@ const s = StyleSheet.create({
     borderRadius: 24, borderWidth: 1.5, borderColor: BORDER,
     backgroundColor: WHITE, minWidth: '44%',
   },
-  toPillOn:      { borderColor: GREEN, backgroundColor: '#F0FBF5' },
+  toPillOn:      { borderColor: GREEN, backgroundColor: GREEN },
   toPillTxt:     { fontSize: 13, fontWeight: '500', color: NAVY },
-  toPillTxtOn:   { color: GREEN, fontWeight: '600' },
+  toPillTxtOn:   { color: WHITE, fontWeight: '600' },
   toPillCheck: {
     width: 18, height: 18, borderRadius: 9,
-    backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', marginLeft: 4,
+    backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginLeft: 4,
   },
   h3WhyCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
@@ -1365,9 +1427,9 @@ const s = StyleSheet.create({
   h3SectionLabel: { fontSize: 14, fontWeight: '700', color: NAVY, marginTop: 28, marginBottom: 12 },
   h3FreqRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   h3FreqPill: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 24, borderWidth: 1.5, borderColor: BORDER, backgroundColor: WHITE },
-  h3FreqPillOn: { borderColor: GREEN, backgroundColor: '#F0FBF5' },
+  h3FreqPillOn: { borderColor: GREEN, backgroundColor: GREEN },
   h3FreqTxt:  { fontSize: 13, fontWeight: '500', color: NAVY },
-  h3FreqTxtOn: { color: GREEN, fontWeight: '700' },
+  h3FreqTxtOn: { color: WHITE, fontWeight: '700' },
 
   // ── Step 1 specific layout (white bg, card rows) ──
   step1Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 16 },
@@ -1381,7 +1443,7 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  mCardOn:      { borderColor: GREEN },
+  mCardOn:      { borderColor: GREEN, backgroundColor: GREEN },
   mCheckWrap:   { position: 'absolute', top: 10, right: 10 },
   mCheck: {
     width: 20, height: 20, borderRadius: 10,
@@ -1389,16 +1451,17 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: WHITE,
   },
-  mCheckOn:     { backgroundColor: GREEN, borderColor: GREEN },
+  mCheckOn:     { backgroundColor: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.5)' },
   mIconWrap: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
     marginBottom: 10,
   },
+  mIconWrapOn:  { backgroundColor: 'rgba(255,255,255,0.2)' },
   mLabel:       { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 4 },
-  mLabelOn:     { color: GREEN },
+  mLabelOn:     { color: WHITE },
   mSub:         { fontSize: 11, color: GRAY, lineHeight: 15 },
-  mSubOn:       { color: GREEN },
+  mSubOn:       { color: 'rgba(255,255,255,0.8)' },
   mContinueBtn: {
     backgroundColor: GREEN, borderRadius: 14,
     paddingVertical: 16, flexDirection: 'row',
@@ -1471,10 +1534,10 @@ const s = StyleSheet.create({
   // ── Pills ──
   pillRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   pill:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: WHITE },
-  pillOn:      { borderColor: GREEN, backgroundColor: '#F0FBF5' },
+  pillOn:      { borderColor: GREEN, backgroundColor: GREEN },
   pillText:    { fontSize: 13, fontWeight: '400', color: '#374151' },
-  pillTextOn:  { color: GREEN, fontWeight: '600' },
-  pillCheck:   { width: 18, height: 18, borderRadius: 9, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
+  pillTextOn:  { color: WHITE, fontWeight: '600' },
+  pillCheck:   { width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
 
   // ── Food preferences step (step 4) ──
   f4Headline:    { fontSize: 40, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 44, marginBottom: 10, textAlign: 'left' },
@@ -1489,13 +1552,14 @@ const s = StyleSheet.create({
 
   // ── Cooking step 2-col tiles ──
   cTile:          { flex: 1, backgroundColor: WHITE, borderRadius: 14, borderWidth: 1.5, borderColor: '#E5E7EB', padding: 14, minHeight: 128, position: 'relative' },
-  cTileOn:        { borderColor: GREEN, backgroundColor: '#F0FBF5' },
-  cTileCheck:     { position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: 11, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' },
+  cTileOn:        { borderColor: GREEN, backgroundColor: GREEN },
+  cTileCheck:     { position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
   cTileIconWrap:  { width: 46, height: 46, borderRadius: 23, backgroundColor: MINT, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  cTileIconWrapOn:{ backgroundColor: GREEN },
+  cTileIconWrapOn:{ backgroundColor: 'rgba(255,255,255,0.2)' },
   cTileTitle:     { fontSize: 13, fontWeight: '700', color: NAVY, marginBottom: 4, lineHeight: 18 },
-  cTileTitleOn:   { color: NAVY },
+  cTileTitleOn:   { color: WHITE },
   cTileDesc:      { fontSize: 11, color: GRAY, lineHeight: 15 },
+  cTileDescOn:    { color: 'rgba(255,255,255,0.8)' },
 
   // ── Snippd Fact intercept modal ──
   modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
@@ -1509,11 +1573,11 @@ const s = StyleSheet.create({
   // ── Store grid ──
   storeGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
   storeCard:        { width: '47%', backgroundColor: WHITE, borderRadius: 14, borderWidth: 1.5, borderColor: BORDER, paddingVertical: 18, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 64 },
-  storeCardOn:      { backgroundColor: '#F0FBF5', borderColor: GREEN },
+  storeCardOn:      { backgroundColor: GREEN, borderColor: GREEN },
   storeCardDisabled:{ opacity: 0.38 },
   storeLabel:       { fontSize: 13, fontWeight: '600', color: NAVY, textAlign: 'center' },
-  storeLabelOn:     { color: NAVY },
-  storeCheck:       { position: 'absolute', top: 7, right: 7, width: 20, height: 20, borderRadius: 10, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' },
+  storeLabelOn:     { color: WHITE },
+  storeCheck:       { position: 'absolute', top: 7, right: 7, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
 
   // ── Primary button ──
   bigBtn: {
@@ -1531,4 +1595,19 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
   },
   bigBtnText: { fontSize: 16, fontWeight: '700', color: WHITE },
+
+  // ── Budget recommendation chip ──
+  b2RecoChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: MINT, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    marginBottom: 20,
+  },
+  b2RecoTxt: { fontSize: 12, color: GREEN, fontWeight: '600' },
+
+  // ── Processing intermission screen ──
+  processingRoot:   { flex: 1, backgroundColor: WHITE },
+  processingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
+  processingSpinner:{ marginBottom: 28 },
+  processingTitle:  { fontSize: 20, fontWeight: '700', color: NAVY, textAlign: 'center', marginBottom: 10 },
+  processingSub:    { fontSize: 14, color: GRAY, textAlign: 'center', lineHeight: 21 },
 });
