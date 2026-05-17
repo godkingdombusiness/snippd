@@ -1,17 +1,25 @@
 // screens/PremiumBetaPaywallScreen.js
 // High-conversion beta paywall — Founder Tier ($97 lifetime) vs Beta Rate ($4.99/mo).
-// On CTA press: invokes create-checkout-session edge function → opens Stripe URL.
-// On deep-link return (snippd://checkout-complete?status=success): resets nav to MainApp.
+// CTA: opens hosted Stripe payment link directly via Linking.openURL.
+// Deep-link return (snippd://checkout-complete?status=success): resets nav to MainApp.
+// Promo code SNIPPDDEMO: demo-only bypass — marks profile active and enters MainApp.
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  StatusBar, Linking, ActivityIndicator, Platform,
+  StatusBar, Linking, ActivityIndicator, Platform, TextInput,
 } from 'react-native';
 import PropTypes from 'prop-types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+
+// ── Stripe payment links (hosted, no secret key needed client-side) ────────────
+const STRIPE_FOUNDER  = process.env.EXPO_PUBLIC_STRIPE_FOUNDER  ?? 'https://buy.stripe.com/snippd-founder';
+const STRIPE_BETA_PRO = process.env.EXPO_PUBLIC_STRIPE_BETA_PRO ?? 'https://buy.stripe.com/snippd-beta-pro';
+
+// ── Demo bypass ───────────────────────────────────────────────────────────────
+const DEMO_CODE = 'SNIPPDDEMO';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const GREEN       = '#0C9E54';
@@ -24,6 +32,7 @@ const MINT_SOFT   = '#F6FDF9';
 const BADGE_BG    = '#E6FFFA';
 const AMBER       = '#D97706';
 const BORDER      = '#E5E7EB';
+const ERROR_RED   = '#DC2626';
 
 // ── Static content ────────────────────────────────────────────────────────────
 const VALUE_PILLARS = [
@@ -45,30 +54,30 @@ const VALUE_PILLARS = [
 ];
 
 const TRUST_BADGES = [
-  { icon: 'shield',        label: 'Secure\nCheckout'       },
-  { icon: 'check-circle',  label: 'Cancel\nAnytime'        },
-  { icon: 'tag',           label: 'Transparent\nPricing'   },
-  { icon: 'lock',          label: 'Your Data\nIs Private'  },
+  { icon: 'shield',        label: 'Secure\nCheckout'      },
+  { icon: 'check-circle',  label: 'Cancel\nAnytime'       },
+  { icon: 'tag',           label: 'Transparent\nPricing'  },
+  { icon: 'lock',          label: 'Your Data\nIs Private' },
 ];
 
 const PLANS = {
   lifetime: {
-    priceId:    'price_lifetime_founder_97',
-    badgeText:  'FOUNDER TIER',
-    badgeColor: GREEN,
-    priceMain:  '$97',
+    stripeUrl:   STRIPE_FOUNDER,
+    badgeText:   'FOUNDER TIER',
+    badgeColor:  GREEN,
+    priceMain:   '$97',
     priceSuffix: '/ lifetime',
-    priceColor: AMBER,
+    priceColor:  AMBER,
     body: 'Pay once, free forever. Limited to the first 2,000 founding members.',
     ctaText: 'Claim Lifetime Access & Enter Dashboard',
   },
   monthly: {
-    priceId:    'price_monthly_beta_499',
-    badgeText:  'BETA RATE',
-    badgeColor: SLATE,
-    priceMain:  '$4.99',
+    stripeUrl:   STRIPE_BETA_PRO,
+    badgeText:   'BETA RATE',
+    badgeColor:  SLATE,
+    priceMain:   '$4.99',
     priceSuffix: '/ month',
-    priceColor: DARK_NAVY,
+    priceColor:  DARK_NAVY,
     body: 'Lock in our lowest subscription rate during beta testing only. Includes a 3-day free trial. Limited to 200 testers.',
     ctaText: 'Start 3-Day Free Trial & Enter Dashboard',
   },
@@ -116,24 +125,18 @@ function TierCard({ planKey, plan, selected, onSelect }) {
       onPress={() => onSelect(planKey)}
       activeOpacity={0.85}
     >
-      {/* Corner badge */}
       <View style={[s.cornerBadge, { backgroundColor: plan.badgeColor }]}>
         <Text style={s.cornerBadgeText}>{plan.badgeText}</Text>
       </View>
 
-      {/* Price */}
       <Text style={[s.tierPrice, { color: plan.priceColor }]}>
         {plan.priceMain}
         <Text style={s.tierPriceSuffix}> {plan.priceSuffix}</Text>
       </Text>
 
-      {/* Divider */}
       <View style={s.tierDivider} />
-
-      {/* Body copy */}
       <Text style={s.tierBody}>{plan.body}</Text>
 
-      {/* Radio indicator */}
       <View style={s.tierRadioWrap}>
         <RadioDot selected={active} />
       </View>
@@ -162,8 +165,12 @@ TrustBadge.propTypes = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PremiumBetaPaywallScreen({ navigation }) {
-  const [selected, setSelected] = useState('lifetime');
-  const [loading,  setLoading]  = useState(false);
+  const [selected,     setSelected]     = useState('lifetime');
+  const [loading,      setLoading]      = useState(false);
+  const [promoCode,    setPromoCode]    = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError,   setPromoError]   = useState('');
+  const [promoSuccess, setPromoSuccess] = useState(false);
 
   // Deep-link listener — fires when Stripe redirects back to the app
   const handleDeepLink = useCallback(({ url }) => {
@@ -178,23 +185,45 @@ export default function PremiumBetaPaywallScreen({ navigation }) {
     return () => sub.remove();
   }, [handleDeepLink]);
 
+  // Primary CTA — opens hosted Stripe payment link
   const handleCta = async () => {
     setLoading(true);
     try {
-      const plan = PLANS[selected];
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: {
-          priceId:    plan.priceId,
-          successUrl: 'snippd://checkout-complete?status=success',
-          cancelUrl:  'snippd://checkout-complete?status=cancel',
-        },
-      });
-      if (error) throw error;
-      if (data?.url) await Linking.openURL(data.url);
+      const url = PLANS[selected].stripeUrl;
+      await Linking.openURL(url);
     } catch (err) {
-      console.warn('[Paywall] checkout error', err);
+      console.warn('[Paywall] Stripe link error', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Demo-only promo bypass — SNIPPDDEMO marks the profile active and enters the app
+  const handlePromo = async () => {
+    setPromoError('');
+    if (promoCode.trim().toUpperCase() !== DEMO_CODE) {
+      setPromoError('Invalid promo code.');
+      return;
+    }
+    setPromoLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Direct write intentional — demo-only bypass, not a user-facing business flow
+        await supabase
+          .from('profiles')
+          .update({ subscription_status: 'active', billing_plan: 'demo' })
+          .eq('user_id', session.user.id);
+      }
+      setPromoSuccess(true);
+      setTimeout(() => {
+        navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
+      }, 700);
+    } catch (err) {
+      console.warn('[Paywall] promo error', err);
+      setPromoError('Something went wrong. Try again.');
+    } finally {
+      setPromoLoading(false);
     }
   };
 
@@ -207,6 +236,7 @@ export default function PremiumBetaPaywallScreen({ navigation }) {
       <ScrollView
         contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* ── 1. Header ────────────────────────────────────────────────── */}
         <View style={s.badgeWrap}>
@@ -254,7 +284,6 @@ export default function PremiumBetaPaywallScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Trust row divider lines */}
         <View style={s.trustDivider} />
 
         {/* Stripe attestation */}
@@ -266,13 +295,52 @@ export default function PremiumBetaPaywallScreen({ navigation }) {
           </Text>
         </View>
 
-        {/* Billing subtext */}
         <Text style={s.billingNote}>
           You can manage your subscription and billing preferences at any time inside your account settings.
         </Text>
+
+        {/* ── 5. Promo Code ────────────────────────────────────────────── */}
+        <View style={s.promoDivider} />
+        <Text style={s.promoLabel}>Have a promo code?</Text>
+
+        <View style={s.promoRow}>
+          <TextInput
+            style={[s.promoInput, promoSuccess && s.promoInputSuccess, promoError && s.promoInputError]}
+            placeholder="Enter code"
+            placeholderTextColor={SLATE}
+            value={promoCode}
+            onChangeText={(t) => { setPromoCode(t); setPromoError(''); }}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            editable={!promoSuccess}
+          />
+          <TouchableOpacity
+            style={[s.promoBtn, promoSuccess && s.promoBtnSuccess]}
+            onPress={handlePromo}
+            disabled={promoLoading || promoSuccess || promoCode.trim().length === 0}
+            activeOpacity={0.8}
+          >
+            {promoLoading ? (
+              <ActivityIndicator color={WHITE} size="small" />
+            ) : (
+              <Text style={s.promoBtnText}>
+                {promoSuccess ? 'Applied' : 'Apply'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {promoError ? (
+          <Text style={s.promoError}>{promoError}</Text>
+        ) : null}
+
+        {promoSuccess ? (
+          <Text style={s.promoSuccessText}>Code accepted. Entering dashboard...</Text>
+        ) : null}
+
       </ScrollView>
 
-      {/* ── 5. Fixed CTA Button ──────────────────────────────────────────── */}
+      {/* ── 6. Fixed CTA Button ──────────────────────────────────────────── */}
       <View style={s.ctaWrap}>
         <TouchableOpacity
           style={s.ctaBtn}
@@ -304,7 +372,7 @@ const s = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 28,
-    paddingBottom: 24,
+    paddingBottom: 32,
     maxWidth: 540,
     alignSelf: 'center',
     width: '100%',
@@ -356,7 +424,7 @@ const s = StyleSheet.create({
   pillarText:  { flex: 1 },
   pillarTitle: { fontSize: 15, fontWeight: '700', color: DARK_NAVY, marginBottom: 4 },
   pillarBody:  { fontSize: 13, color: SLATE_DARK, lineHeight: 19 },
-  pillarDivider: { height: 1, backgroundColor: BORDER, marginHorizontal: 0 },
+  pillarDivider: { height: 1, backgroundColor: BORDER },
 
   // ── Tier Cards ────────────────────────────────────────────────────────────
   tierGrid: { flexDirection: 'row', gap: 12, marginBottom: 28 },
@@ -375,11 +443,11 @@ const s = StyleSheet.create({
   },
   cornerBadgeText: { fontSize: 9, fontWeight: '800', color: WHITE, letterSpacing: 0.6 },
 
-  tierPrice: { fontSize: 20, fontWeight: '800', marginTop: 30, letterSpacing: -0.3 },
+  tierPrice:       { fontSize: 20, fontWeight: '800', marginTop: 30, letterSpacing: -0.3 },
   tierPriceSuffix: { fontSize: 13, fontWeight: '500', color: SLATE },
-  tierDivider: { height: 1, backgroundColor: BORDER, marginVertical: 10 },
-  tierBody:    { fontSize: 12, color: SLATE_DARK, lineHeight: 18, marginBottom: 14 },
-  tierRadioWrap: { alignItems: 'center', marginTop: 4 },
+  tierDivider:     { height: 1, backgroundColor: BORDER, marginVertical: 10 },
+  tierBody:        { fontSize: 12, color: SLATE_DARK, lineHeight: 18, marginBottom: 14 },
+  tierRadioWrap:   { alignItems: 'center', marginTop: 4 },
 
   radioOuter: {
     width: 22, height: 22, borderRadius: 11,
@@ -412,8 +480,40 @@ const s = StyleSheet.create({
   // ── Billing note ──────────────────────────────────────────────────────────
   billingNote: {
     fontSize: 12, color: SLATE, textAlign: 'center',
-    lineHeight: 18, paddingHorizontal: 8,
+    lineHeight: 18, paddingHorizontal: 8, marginBottom: 4,
   },
+
+  // ── Promo code ────────────────────────────────────────────────────────────
+  promoDivider: { height: 1, backgroundColor: BORDER, marginTop: 20, marginBottom: 16 },
+  promoLabel:   { fontSize: 13, fontWeight: '600', color: SLATE_DARK, marginBottom: 10 },
+  promoRow:     { flexDirection: 'row', gap: 10, marginBottom: 6 },
+  promoInput: {
+    flex: 1,
+    height: 46,
+    borderWidth: 1.5,
+    borderColor: SLATE_LIGHT,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: DARK_NAVY,
+    backgroundColor: WHITE,
+    letterSpacing: 1,
+  },
+  promoInputSuccess: { borderColor: GREEN, backgroundColor: MINT_SOFT },
+  promoInputError:   { borderColor: ERROR_RED },
+  promoBtn: {
+    height: 46,
+    paddingHorizontal: 20,
+    backgroundColor: DARK_NAVY,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 76,
+  },
+  promoBtnSuccess: { backgroundColor: GREEN },
+  promoBtnText:    { fontSize: 14, fontWeight: '700', color: WHITE },
+  promoError:       { fontSize: 12, color: ERROR_RED, marginTop: 2 },
+  promoSuccessText: { fontSize: 12, color: GREEN, fontWeight: '600', marginTop: 2 },
 
   // ── CTA ───────────────────────────────────────────────────────────────────
   ctaWrap: {

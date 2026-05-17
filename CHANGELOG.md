@@ -4,6 +4,11 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — PremiumBetaPaywallScreen: payment link routing + SNIPPDDEMO promo bypass (2026-05-17)
+- `screens/PremiumBetaPaywallScreen.js` — Replaced edge function checkout with direct `Linking.openURL` to hosted Stripe payment links (`EXPO_PUBLIC_STRIPE_FOUNDER` / `EXPO_PUBLIC_STRIPE_BETA_PRO`). No secret key needed client-side. Deep-link handler (`snippd://checkout-complete?status=success`) still resets nav to `MainApp`.
+- Added promo code section below billing note: `TextInput` + "Apply" button row. Code `SNIPPDDEMO` writes `subscription_status: 'active', billing_plan: 'demo'` to `profiles` and navigates to `MainApp` after 700ms. Invalid code shows inline red error. Success state turns input mint-green and button green with "Applied" text. All other users continue through the normal Stripe payment flow.
+- Added `TextInput` to React Native imports; added `keyboardShouldPersistTaps="handled"` to `ScrollView`.
+
 ### Added — PremiumBetaPaywallScreen: high-conversion beta paywall with Stripe checkout (2026-05-17)
 - `screens/PremiumBetaPaywallScreen.js` — Production-ready mobile paywall. White canvas, dark navy typography, no emojis, all vector icons.
   - **Block 1 Header**: Green-bordered `#E6FFFA` pill badge (EXCLUSIVE BETA ACCESS · `bolt` icon · letterSpacing:1). `fontSize:26 fontWeight:800` headline "Activate Your Optimization Engine". `fontSize:14 color:#64748B` centered tagline.
