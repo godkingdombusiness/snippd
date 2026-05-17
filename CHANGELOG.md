@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — Babel parse error: curly apostrophes in getBudgetFact strings (2026-05-17)
+- `screens/OnboardingScreen.js` — Four string literals in `getBudgetFact` used Unicode right-single-quotation-mark (U+2019) from copy-paste, causing `SyntaxError: Unexpected character` at line 345. Converted all four to double-quoted string literals so apostrophes are valid ASCII.
+
 ### Fixed — SignInScreen.js: 28 IDE diagnostic issues resolved (2026-05-17)
 - Added `import PropTypes from 'prop-types'` (was missing entirely).
 - Added `import { supabase } from '../lib/supabase'` at top level; removed dynamic `require('../lib/supabase')` inside `handleEmail` callback (S2208 / non-top-level import).
