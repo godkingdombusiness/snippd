@@ -456,6 +456,14 @@ function HouseholdCard({ label, sub, icon, count, onDecrement, onIncrement }) {
   );
 }
 
+function SnippdLogo() {
+  return (
+    <View style={s.obLogoWrap}>
+      <Text style={s.obLogoText}>snippd</Text>
+    </View>
+  );
+}
+
 function MissionCard({ label, sub, icon, selected, disabled, onPress }) {
   return (
     <TouchableOpacity
@@ -760,6 +768,7 @@ export default function OnboardingScreen({ navigation }) {
 
     return (
       <ScrollView contentContainerStyle={s.step1Scroll} showsVerticalScrollIndicator={false}>
+        <SnippdLogo />
         <Text style={s.step1Headline}>What matters most{'\n'}to you?</Text>
         <Text style={s.step1Sub}>Select your top 3.</Text>
 
@@ -830,6 +839,7 @@ export default function OnboardingScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <SnippdLogo />
           {/* Headline */}
           <Text style={s.b2Headline}>What is your weekly{'\n'}grocery budget?</Text>
           <Text style={s.b2Sub}>Set a weekly target so Snippd can help you plan smarter, save more, and stay on track.</Text>
@@ -917,6 +927,7 @@ export default function OnboardingScreen({ navigation }) {
   function renderStep3() {
     return (
       <ScrollView contentContainerStyle={s.h3Scroll} showsVerticalScrollIndicator={false}>
+        <SnippdLogo />
         <Text style={s.h3Headline}>Tell us about{'\n'}your household</Text>
         <Text style={s.h3Sub}>We'll use this to personalize meal sizes, deal suggestions, and your weekly plan.</Text>
 
@@ -1019,6 +1030,7 @@ export default function OnboardingScreen({ navigation }) {
 
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <SnippdLogo />
         <Text style={s.f4Headline}>What's your{'\n'}eating style?</Text>
         <Text style={s.f4Sub}>Choose up to 3 that match your household. This powers your personalized deal stack.</Text>
 
@@ -1060,6 +1072,7 @@ export default function OnboardingScreen({ navigation }) {
     };
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <SnippdLogo />
         <Text style={s.f4Headline}>What's your cooking{'\n'}& meal style?</Text>
         <Text style={s.f4Sub}>Pick all that match your typical week. No wrong answers.</Text>
 
@@ -1135,6 +1148,7 @@ export default function OnboardingScreen({ navigation }) {
     const atLimit = data.preferred_stores.length >= 3;
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <SnippdLogo />
         <Text style={s.headline}>Choose your{'\n'}favorite stores</Text>
         <Text style={s.sub}>Pick up to 3 stores you shop at regularly — I'll track deals at each one.</Text>
         <View style={s.storeGrid}>
@@ -1166,6 +1180,7 @@ export default function OnboardingScreen({ navigation }) {
   function renderStep7() {
     return (
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <SnippdLogo />
         <Text style={s.headline}>Customize your{'\n'}Snippd experience</Text>
         <Text style={s.sub}>
           Choose how you want Snippd to find deals and how often you want meal ideas.
@@ -1268,6 +1283,10 @@ OnboardingScreen.propTypes = {
 const s = StyleSheet.create({
   root:     { flex: 1, backgroundColor: CREAM },
   darkRoot: { flex: 1 },
+
+  // ── Shared step logo ──
+  obLogoWrap: { alignItems: 'center', paddingTop: 20, paddingBottom: 4 },
+  obLogoText: { fontSize: 24, fontWeight: '800', color: GREEN, letterSpacing: -0.5 },
 
   // ── Dark hero (step 0) content ──
   heroScroll: {

@@ -4,6 +4,22 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — OnboardingScreen: snippd logo added to all 7 steps (2026-05-17)
+- `screens/OnboardingScreen.js` — Added module-scope `SnippdLogo` component (`fontSize:24 fontWeight:800 color:GREEN letterSpacing:-0.5`) with `obLogoWrap` / `obLogoText` styles. Injected `<SnippdLogo />` as the first child of every step's `ScrollView` (steps 1–7). Hero screen (step 0) unchanged — it has its own branding.
+
+### Changed — TodaySetupGateScreen: restored as questionnaire with logo, behavioral multi-select, smart routing (2026-05-17)
+- `screens/TodaySetupGateScreen.js` — Full rewrite back to questionnaire form. Cream (`#FAF8F1`) canvas, dark slate typography, green active states.
+- **Logo header**: `snippd` green wordmark centered in top bar with Skip link on the right.
+- **Field 1**: Weekly food budget numeric input (`weeklyGroceryBudget`) with dollar prefix. Pre-fills from profile.
+- **Field 2**: Household size stepper (`householdSize`) — pre-fills from profile.
+- **Field 3**: Tonight eaters stepper (`tonightEatersCount`) — capped at householdSize. Drives portion/per-person cost math downstream.
+- **Field 4**: Shopping status pills (`shoppingStatus`: yes | not_yet | partially) — shows green route-hint card explaining which dashboard they'll land on.
+- **Field 5**: Time before dinner 2-col pill grid (`timeWindow`) — filters recipe active-time downstream.
+- **Field 6**: Pantry preference pills (`checkPantryFirst`).
+- **Field 7**: Behavioral profile multi-select tag cloud (`behaviorProfile[]`) — 8 tags with FA5 icons (spend_least, high_protein, lower_calorie, kid_friendly, fastest, healthier, comfort, batch_freeze). Multi-select, no limit.
+- **Smart routing**: `shoppingStatus === 'not_yet'` → `mode:'live_stacks'`; yes/partially → `mode:'plan_tonight'`. Both navigate to `TodayOptionsRanked` with full context object.
+- **Context payload**: `weeklyBudgetCents`, `remainingBudgetCents`, `weeklyGroceryBudget`, `householdSize`, `tonightEatersCount`, `shoppingStatus`, `timeWindow`, `checkPantryFirst`, `behaviorProfile`, `mode`.
+
 ### Changed — Onboarding Step 1: enforce 3-selection cap on "What matters most to you?" (2026-05-17)
 - `screens/OnboardingScreen.js` — Subtitle changed from "Choose everything that applies." to "Select your top 3." Added `toggleMission` function that blocks additions once 3 missions are selected (deselection always allowed). Added counter chip (reuses `archLimitChip` / `archLimitChipFull` styles): mint-green below limit, amber + "Max reached" at 3. `MissionCard` gains `disabled` prop — unselected cards render at 35% opacity (`mCardDisabled: { opacity: 0.35 }`) with `onPress={undefined}` when limit is reached. `mCardOn` style comment typo fixed (extra space, cosmetic only).
 
