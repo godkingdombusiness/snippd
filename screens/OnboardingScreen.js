@@ -342,10 +342,10 @@ function getCookingFact(householdSize, dinnerFreq, cookingStyle) {
 }
 
 function getBudgetFact(size) {
-  if (size >= 5) return ‘Feeding a large house averages $350+ every week. We’ll hunt down steep bulk-buy grocery deals to keep your family completely covered.’;
-  if (size >= 3) return ‘A mid-size family typically averages $230–$330 a week. Keeping things optimized is key—we’ll prioritize family-pack bundle discounts first.’;
-  if (size === 2) return ‘Most couples average between $130–$180 a week. We’ll focus heavily on matching bulk deals and cross-recipe savings at your favorite stores to hit your goal.’;
-  return ‘For a single adult, average weekly grocery spending sits around $60–$95. Your target is locked in! Let’s track down store coupons to stretch that budget further.’;
+  if (size >= 5) return "Feeding a large house averages $350+ every week. We’ll hunt down steep bulk-buy grocery deals to keep your family completely covered.";
+  if (size >= 3) return "A mid-size family typically averages $230–$330 a week. Keeping things optimized is key—we’ll prioritize family-pack bundle discounts first.";
+  if (size === 2) return "Most couples average between $130–$180 a week. We’ll focus heavily on matching bulk deals and cross-recipe savings at your favorite stores to hit your goal.";
+  return "For a single adult, average weekly grocery spending sits around $60–$95. Your target is locked in! Let’s track down store coupons to stretch that budget further.";
 }
 
 function getDefaultWeeklyBudget(counts) {
