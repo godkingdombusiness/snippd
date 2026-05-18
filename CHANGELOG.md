@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — CookAtHomeTriage: visual alignment with design system (2026-05-18)
+- `screens/CookAtHomeTriage.js` — Rebuilt to match system-wide design language: cream background (#FAF8F1), bordered back button (arrow-left, 40×40, borderRadius 10), standard navBar structure. Replaced oversized icons (74px/46px) with 48×12 mint-background icon tiles (24px). Reduced budget banner icon to 40×40 rounded square. Standardized buttons to borderRadius 14/paddingVertical 16/fontSize 15/fontWeight 800 (was pill-shaped 32/64px/19). Fixed NAVY to #172250, reduced pathTitle to 20px/800 weight, pathBody to 14px, letterSpacing -0.3/-0.4 throughout.
+
 ### Changed - Onboarding buttons and intermission facts (2026-05-18)
 - `screens/OnboardingScreen.js` - Standardized Continue-style buttons across onboarding and replaced dense intermission copy with rotating short Snippd fact bubbles.
 - `screens/PlanGenerationLoadingScreen.js` - Shortened loading facts to 8-word brand statements and rendered them in a rounded mint fact block.

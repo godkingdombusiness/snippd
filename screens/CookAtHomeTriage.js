@@ -6,15 +6,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
-// ── Global Design Token Matrix ─────────────────────────────────────────────
-const GREEN     = '#0C9E54';
-const NAVY      = '#0A192F';
-const CREAM     = '#FAF8F1';
-const WHITE     = '#FFFFFF';
-const GRAY      = '#6B7280';
-const SLATE     = '#475569';
-const BORDER    = '#E5E7EB';
-const MINT_SOFT = '#F0FDF4';
+const GREEN  = '#0C9E54';
+const NAVY   = '#172250';
+const CREAM  = '#FAF8F1';
+const WHITE  = '#FFFFFF';
+const GRAY   = '#6B7280';
+const SLATE  = '#475569';
+const BORDER = '#E5E7EB';
+const MINT   = '#E8F5E9';
 
 const DEFAULT_PROFILE_DATA = {
   remainingBudget: 163.00,
@@ -42,33 +41,33 @@ export default function CookAtHomeTriage({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+      <StatusBar barStyle="dark-content" backgroundColor={CREAM} />
+
+      <View style={styles.navBar}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={22} color={NAVY} />
+        </TouchableOpacity>
+        <Text style={styles.navTitle}>Cook at Home</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.72}>
-            <Feather name="chevron-left" size={34} color={GREEN} />
-          </TouchableOpacity>
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.title}>Cook at Home</Text>
-            <Text style={styles.subtitle}>Let's maximize your meal savings</Text>
-          </View>
-          <View style={styles.headerSpacer} />
-        </View>
+        <Text style={styles.headline}>Let's maximize your meal savings</Text>
 
         <View style={styles.budgetBanner}>
           <View style={styles.budgetIconWrap}>
-            <Feather name="dollar-sign" size={34} color={WHITE} />
+            <Feather name="dollar-sign" size={20} color={WHITE} />
           </View>
           <Text style={styles.budgetText}>
-            Optimizing your <Text style={styles.greenText}>$8.42</Text> meal choice against your remaining{' '}
+            Optimizing your <Text style={styles.greenText}>$8.42</Text> meal against your{' '}
             <Text style={styles.greenText}>${Number(activeProfile.remainingBudget).toFixed(2)}</Text> balance.
           </Text>
         </View>
 
         <View style={styles.pathCard}>
           <View style={styles.pathTopRow}>
-            <View style={styles.largeIconWrap}>
-              <Feather name="camera" size={46} color={GREEN} />
+            <View style={styles.iconWrap}>
+              <Feather name="camera" size={24} color={GREEN} />
             </View>
             <View style={styles.pathBadge}>
               <Text style={styles.pathBadgeText}>ZERO WASTE</Text>
@@ -76,18 +75,18 @@ export default function CookAtHomeTriage({ navigation, route }) {
           </View>
           <Text style={styles.pathTitle}>Scan Your Pantry First</Text>
           <Text style={styles.pathBody}>
-            Take 10 seconds to scan your kitchen. Snippd will instantly subtract items you already own from this meal's cost and rewrite the recipe around your exact inventory.
+            Take 10 seconds to scan your kitchen. Snippd will subtract items you already own from this meal's cost and rewrite the recipe around your exact inventory.
           </Text>
           <TouchableOpacity style={styles.primaryButton} onPress={handlePantryScan} activeOpacity={0.86}>
             <Text style={styles.primaryButtonText}>Start 10-Sec Pantry Scan</Text>
-            <Feather name="arrow-right" size={24} color={WHITE} style={{ marginLeft: 10 }} />
+            <Feather name="arrow-right" size={18} color={WHITE} style={{ marginLeft: 8 }} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.pathCard}>
           <View style={styles.pathTopRow}>
-            <View style={styles.largeIconWrap}>
-              <Feather name="shopping-bag" size={46} color={activeProfile.storeBrandColor || GREEN} />
+            <View style={styles.iconWrap}>
+              <Feather name="shopping-bag" size={24} color={activeProfile.storeBrandColor || GREEN} />
             </View>
             <View style={styles.pathBadgeSoft}>
               <Text style={styles.pathBadgeSoftText}>NO DELIVERY FEES</Text>
@@ -95,110 +94,154 @@ export default function CookAtHomeTriage({ navigation, route }) {
           </View>
           <Text style={styles.pathTitle}>{activeProfile.favoriteStore} Curbside Pickup</Text>
           <Text style={styles.pathBody}>
-            Skip Instacart's high delivery markups. Generate a clean recipe manifestation sheet and itemized shopping list loaded with our live digital coupon stacks for easy in-store grab or free curbside pickup scheduling.
+            Skip Instacart's high delivery markups. Generate a shopping list loaded with live digital coupon stacks for easy in-store grab or free curbside pickup.
           </Text>
           <TouchableOpacity style={styles.outlineButton} onPress={handleManifest} activeOpacity={0.86}>
             <Text style={styles.outlineButtonText}>Generate Shopping List & Clip Coupons</Text>
-            <Feather name="arrow-right" size={23} color={GREEN} style={{ marginLeft: 10 }} />
+            <Feather name="arrow-right" size={18} color={GREEN} style={{ marginLeft: 8 }} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.guardrailRow}>
           <View style={styles.guardrailIcon}>
-            <Feather name="check" size={24} color={WHITE} />
+            <Feather name="check" size={16} color={WHITE} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.guardrailTitle}>We protect your budget.</Text>
             <Text style={styles.guardrailText}>Every choice is optimized for maximum savings.</Text>
           </View>
         </View>
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: WHITE },
-  scroll: { paddingHorizontal: 20, paddingBottom: 32 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, marginBottom: 24 },
-  backBtn: { width: 42, height: 42, justifyContent: 'center' },
-  headerTextWrap: { flex: 1, alignItems: 'center' },
-  headerSpacer: { width: 42 },
-  title: { fontSize: 26, fontWeight: '900', color: NAVY, letterSpacing: 0 },
-  subtitle: { fontSize: 15, color: SLATE, marginTop: 4, fontWeight: '500' },
+  safeArea: { flex: 1, backgroundColor: CREAM },
+  navBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  navTitle: { fontSize: 17, fontWeight: '700', color: NAVY },
+  scroll: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 32 },
+  headline: { fontSize: 22, fontWeight: '800', color: NAVY, letterSpacing: -0.4, marginBottom: 16 },
   budgetBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: MINT_SOFT,
-    borderRadius: 18,
+    backgroundColor: MINT,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#BBF7D0',
-    padding: 18,
-    marginBottom: 22,
+    padding: 14,
+    marginBottom: 18,
+    gap: 12,
   },
   budgetIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: GREEN,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 18,
+    flexShrink: 0,
   },
-  budgetText: { flex: 1, fontSize: 20, lineHeight: 31, color: NAVY, fontWeight: '600' },
-  greenText: { color: GREEN, fontWeight: '900' },
+  budgetText: { flex: 1, fontSize: 14, lineHeight: 22, color: NAVY, fontWeight: '600' },
+  greenText: { color: GREEN, fontWeight: '800' },
   pathCard: {
     backgroundColor: WHITE,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: BORDER,
-    padding: 22,
-    marginBottom: 22,
+    padding: 18,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  pathTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-  largeIconWrap: { width: 74, height: 74, alignItems: 'center', justifyContent: 'center' },
-  pathBadge: { backgroundColor: '#F3F4F6', borderRadius: 18, paddingHorizontal: 18, paddingVertical: 12 },
-  pathBadgeText: { color: NAVY, fontSize: 13, fontWeight: '900' },
-  pathBadgeSoft: { backgroundColor: '#DCFCE7', borderRadius: 18, paddingHorizontal: 18, paddingVertical: 12 },
-  pathBadgeSoftText: { color: GREEN, fontSize: 13, fontWeight: '900' },
-  pathTitle: { fontSize: 25, lineHeight: 31, color: NAVY, fontWeight: '900', marginBottom: 16 },
-  pathBody: { fontSize: 17, lineHeight: 27, color: SLATE, fontWeight: '500', marginBottom: 28 },
+  pathTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: MINT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pathBadge: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  pathBadgeText: { color: NAVY, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
+  pathBadgeSoft: {
+    backgroundColor: '#DCFCE7',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  pathBadgeSoftText: { color: GREEN, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
+  pathTitle: { fontSize: 20, lineHeight: 26, color: NAVY, fontWeight: '800', marginBottom: 10, letterSpacing: -0.3 },
+  pathBody: { fontSize: 14, lineHeight: 22, color: SLATE, fontWeight: '500', marginBottom: 18 },
   primaryButton: {
-    minHeight: 64,
-    borderRadius: 32,
+    borderRadius: 14,
     backgroundColor: GREEN,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    shadowColor: GREEN,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  primaryButtonText: { color: WHITE, fontSize: 19, fontWeight: '900', textAlign: 'center' },
+  primaryButtonText: { color: WHITE, fontSize: 15, fontWeight: '800' },
   outlineButton: {
-    minHeight: 64,
-    borderRadius: 32,
+    borderRadius: 14,
     backgroundColor: WHITE,
     borderWidth: 2,
     borderColor: GREEN,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
+    paddingVertical: 15,
+    paddingHorizontal: 16,
   },
-  outlineButtonText: { color: GREEN, fontSize: 17, fontWeight: '900', textAlign: 'center' },
-  guardrailRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 },
+  outlineButtonText: { color: GREEN, fontSize: 15, fontWeight: '800' },
+  guardrailRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   guardrailIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: GREEN,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  guardrailTitle: { fontSize: 16, fontWeight: '800', color: NAVY },
-  guardrailText: { fontSize: 14, color: SLATE, marginTop: 2 },
+  guardrailTitle: { fontSize: 14, fontWeight: '800', color: NAVY },
+  guardrailText: { fontSize: 13, color: SLATE, marginTop: 2 },
 });
