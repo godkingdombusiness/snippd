@@ -24,7 +24,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
 const GREEN  = '#0C9E54';
@@ -61,7 +61,7 @@ const DEMO_PROFILE = {
 // ── Static data (module scope to avoid re-creation on render) ─────────────────
 
 const MISSIONS = [
-  { id: 'pure_savings',        label: 'Save Money',     sub: 'Find deals, coupons, and stack savings.',          icon: 'dollar-sign' },
+  { id: 'pure_savings',        label: 'Save Money',     sub: 'Find deals, coupons, and stack savings.',          icon: 'sack-percent', iconSet: 'material' },
   { id: 'meal_planning',       label: 'Plan My Meals',  sub: 'Shop smarter with weekly meal planning.',           icon: 'calendar-alt' },
   { id: 'athletic_fuel',       label: 'Eat Healthier',  sub: 'High-protein & nutrition-focused choices.',         icon: 'heart' },
   { id: 'clinical_guardrails', label: 'Manage Health',  sub: 'Dietary needs, allergens & health goals.',          icon: 'shield-alt' },
@@ -459,12 +459,17 @@ function HouseholdCard({ label, sub, icon, count, onDecrement, onIncrement }) {
 function SnippdLogo() {
   return (
     <View style={s.obLogoWrap}>
-      <Text style={s.obLogoText}>snippd</Text>
+      <Image
+        source={require('../assets/Snippd-logo-green-large.png')}
+        style={s.obLogoImg}
+        resizeMode="contain"
+      />
     </View>
   );
 }
 
-function MissionCard({ label, sub, icon, selected, disabled, onPress }) {
+function MissionCard({ label, sub, icon, iconSet, selected, disabled, onPress }) {
+  const iconColor = selected ? WHITE : NAVY;
   return (
     <TouchableOpacity
       style={[s.mCard, selected && s.mCardOn, disabled && s.mCardDisabled]}
@@ -479,7 +484,10 @@ function MissionCard({ label, sub, icon, selected, disabled, onPress }) {
       </View>
       {/* Icon */}
       <View style={[s.mIconWrap, selected && s.mIconWrapOn]}>
-        <FontAwesome5 name={icon} size={22} color={selected ? WHITE : NAVY} solid />
+        {iconSet === 'material'
+          ? <MaterialCommunityIcons name={icon} size={24} color={iconColor} />
+          : <FontAwesome5 name={icon} size={21} color={iconColor} solid />
+        }
       </View>
       {/* Title */}
       <Text style={[s.mLabel, selected && s.mLabelOn]}>{label}</Text>
@@ -551,6 +559,7 @@ MissionCard.propTypes = {
   label:    PropTypes.string.isRequired,
   sub:      PropTypes.string.isRequired,
   icon:     PropTypes.string.isRequired,
+  iconSet:  PropTypes.string,
   selected: PropTypes.bool,
   disabled: PropTypes.bool,
   onPress:  PropTypes.func.isRequired,
@@ -558,8 +567,9 @@ MissionCard.propTypes = {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function OnboardingScreen({ navigation }) {
-  const [step, setStep]              = useState(0);
+export default function OnboardingScreen({ navigation, route }) {
+  const initialStep = Math.min(CONTENT_STEPS, Math.max(0, Number(route?.params?.startStep ?? 1)));
+  const [step, setStep]              = useState(initialStep);
   const [saving, setSaving]          = useState(false);
   const [budgetWarn, setBudgetWarn] = useState('');
   const [showFact, setShowFact]      = useState(false);
@@ -787,6 +797,7 @@ export default function OnboardingScreen({ navigation }) {
                 label={m.label}
                 sub={m.sub}
                 icon={m.icon}
+                iconSet={m.iconSet}
                 selected={selected}
                 disabled={atLimit && !selected}
                 onPress={() => toggleMission(m.id)}
@@ -1228,6 +1239,9 @@ export default function OnboardingScreen({ navigation }) {
           <ActivityIndicator size="large" color={GREEN} style={s.processingSpinner} />
           <Text style={s.processingTitle}>{processing.title}</Text>
           <Text style={s.processingSub}>{processing.sub}</Text>
+          <Text style={s.processingFact}>
+            Without a system, families can quietly lose $1,500-$2,000 a year to duplicate buys, unused food, delivery fees, and missed store savings. Snippd is built to catch that before the money leaves.
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -1276,6 +1290,9 @@ export default function OnboardingScreen({ navigation }) {
 
 OnboardingScreen.propTypes = {
   navigation: PropTypes.shape({ navigate: PropTypes.func.isRequired }).isRequired,
+  route: PropTypes.shape({
+    params: PropTypes.shape({ startStep: PropTypes.number }),
+  }),
 };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -1285,8 +1302,9 @@ const s = StyleSheet.create({
   darkRoot: { flex: 1 },
 
   // ── Shared step logo ──
-  obLogoWrap: { alignItems: 'center', paddingTop: 20, paddingBottom: 4 },
-  obLogoText: { fontSize: 24, fontWeight: '800', color: GREEN, letterSpacing: -0.5 },
+  obLogoWrap: { alignItems: 'center', paddingTop: 6, paddingBottom: 0 },
+  obLogoImg:  { width: 232, height: 82 },
+  obLogoText: { fontSize: 24, fontWeight: '800', color: GREEN, letterSpacing: 0 },
 
   // ── Dark hero (step 0) content ──
   heroScroll: {
@@ -1332,7 +1350,7 @@ const s = StyleSheet.create({
   // ── Progress header ──
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 14, gap: 12,
+    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 8, gap: 12,
   },
   backCircle: {
     width: 40, height: 40, borderRadius: 20,
@@ -1344,11 +1362,11 @@ const s = StyleSheet.create({
   seg:            { flex: 1, height: 4, borderRadius: 2, backgroundColor: BORDER },
   segDone:        { backgroundColor: GREEN },
   stepLabel:      { fontSize: 11, color: GRAY, marginTop: 5, fontWeight: '500' },
-  headerWordmark: { fontSize: 18, fontWeight: '800', color: GREEN, letterSpacing: 0.3 },
+  headerWordmark: { fontSize: 16, fontWeight: '800', color: GREEN, letterSpacing: 0 },
 
   // ── Step 2: budget ──
   b2Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 0 },
-  b2Headline:  { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 10, textAlign: 'center' },
+  b2Headline:  { fontSize: 34, fontWeight: '800', color: NAVY, letterSpacing: 0, lineHeight: 39, marginBottom: 8, textAlign: 'center' },
   b2Sub:       { fontSize: 14, color: GRAY, lineHeight: 21, textAlign: 'center', marginBottom: 24, paddingHorizontal: 8 },
   b2Card: {
     backgroundColor: WHITE, borderRadius: 20,
@@ -1424,7 +1442,7 @@ const s = StyleSheet.create({
 
   // ── Step 3: household ──
   h3Scroll:    { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 0 },
-  h3Headline:  { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 8, textAlign: 'center' },
+  h3Headline:  { fontSize: 34, fontWeight: '800', color: NAVY, letterSpacing: 0, lineHeight: 39, marginBottom: 8, textAlign: 'center' },
   h3Sub:       { fontSize: 14, color: GRAY, lineHeight: 21, textAlign: 'center', marginBottom: 24, paddingHorizontal: 8 },
   hGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
   hCard: {
@@ -1509,14 +1527,14 @@ const s = StyleSheet.create({
   h3FreqTxtOn: { color: WHITE, fontWeight: '700' },
 
   // ── Step 1 specific layout (white bg, card rows) ──
-  step1Scroll:    { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 16 },
-  step1Headline:  { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 10, textAlign: 'center' },
-  step1Sub:       { fontSize: 13, color: '#9CA3AF', lineHeight: 20, fontWeight: '400', marginBottom: 28, textAlign: 'center' },
-  mList:          { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
+  step1Scroll:    { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 4 },
+  step1Headline:  { fontSize: 34, fontWeight: '800', color: NAVY, letterSpacing: 0, lineHeight: 39, marginBottom: 8, textAlign: 'center' },
+  step1Sub:       { fontSize: 12, color: '#9CA3AF', lineHeight: 18, fontWeight: '500', marginBottom: 18, textAlign: 'center' },
+  mList:          { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
   mCard: {
     width: '47.5%', backgroundColor: WHITE,
     borderRadius: 16, borderWidth: 1.5, borderColor: '#E5E7EB',
-    padding: 14, minHeight: 130, position: 'relative',
+    padding: 12, minHeight: 118, position: 'relative',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
@@ -1531,7 +1549,7 @@ const s = StyleSheet.create({
   },
   mCheckOn:     { backgroundColor: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.5)' },
   mIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
     marginBottom: 10,
   },
@@ -1551,7 +1569,7 @@ const s = StyleSheet.create({
 
   // ── Content layout ──
   scroll:     { paddingHorizontal: 24, paddingBottom: 56, paddingTop: 4 },
-  headline:   { fontSize: 44, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 48, marginBottom: 10, textAlign: 'center' },
+  headline:   { fontSize: 34, fontWeight: '800', color: NAVY, letterSpacing: 0, lineHeight: 39, marginBottom: 8, textAlign: 'center' },
   sub:        { fontSize: 16, color: GRAY, lineHeight: 24, fontWeight: '300', marginBottom: 28 },
   fieldLabel: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12 },
   hint:       { fontSize: 13, color: GRAY, textAlign: 'center', marginTop: 8, marginBottom: 24, lineHeight: 18 },
@@ -1618,7 +1636,7 @@ const s = StyleSheet.create({
   pillCheck:   { width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
 
   // ── Food preferences step (step 4) ──
-  f4Headline:    { fontSize: 40, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 44, marginBottom: 10, textAlign: 'left' },
+  f4Headline:    { fontSize: 32, fontWeight: '800', color: NAVY, letterSpacing: 0, lineHeight: 37, marginBottom: 8, textAlign: 'left' },
   f4Sub:         { fontSize: 15, color: GRAY, lineHeight: 23, fontWeight: '400', marginBottom: 24 },
   f4Card:        { backgroundColor: WHITE, borderRadius: 18, padding: 18, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   f4CardTitle:   { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 14 },
@@ -1705,4 +1723,5 @@ const s = StyleSheet.create({
   processingSpinner:{ marginBottom: 28 },
   processingTitle:  { fontSize: 20, fontWeight: '700', color: NAVY, textAlign: 'center', marginBottom: 10 },
   processingSub:    { fontSize: 14, color: GRAY, textAlign: 'center', lineHeight: 21 },
+  processingFact:   { fontSize: 13, color: NAVY, textAlign: 'center', lineHeight: 20, marginTop: 22, fontWeight: '600' },
 });

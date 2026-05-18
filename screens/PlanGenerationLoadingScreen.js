@@ -25,6 +25,15 @@ const LOADING_STEPS = [
   'Your plan is ready.',
 ];
 
+const MONEY_FACTS = [
+  'Without a weekly system, small grocery leaks can add up to $1,500+ a year in duplicate buys, unused food, and missed discounts.',
+  'Families often overspend most when dinner decisions happen late. Snippd plans the cheaper path before stress turns into takeout.',
+  'A few missed coupons, BOGOs, and store-brand swaps each week can quietly become hundreds of dollars lost every year.',
+  'The goal is not just saving on one trip. It is building a repeatable guardrail around every food decision.',
+  'Every optimized cart protects money you already earned before it disappears into impulse spending.',
+  'Your first system is ready.',
+];
+
 export default function PlanGenerationLoadingScreen({ navigation }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [done, setDone] = useState(false);
@@ -55,6 +64,10 @@ export default function PlanGenerationLoadingScreen({ navigation }) {
 
         <Text style={styles.headline}>Building your plan...</Text>
         <Text style={styles.sub}>This takes about 15 seconds. I'll get it right.</Text>
+        <View style={styles.factCard}>
+          <Text style={styles.factLabel}>Why this matters</Text>
+          <Text style={styles.factText}>{MONEY_FACTS[currentStep] || MONEY_FACTS[0]}</Text>
+        </View>
 
         <View style={styles.checklist}>
           {LOADING_STEPS.map((item, idx) => {
@@ -121,9 +134,29 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
-  sub: { fontSize: 14, color: GRAY, textAlign: 'center', marginBottom: 36, lineHeight: 21 },
+  sub: { fontSize: 14, color: GRAY, textAlign: 'center', marginBottom: 16, lineHeight: 21 },
 
-  checklist: { width: '100%', gap: 14 },
+  factCard: {
+    width: '100%',
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 14,
+    marginBottom: 24,
+  },
+  factLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: GREEN,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  factText: { fontSize: 13, color: NAVY, textAlign: 'center', lineHeight: 19, fontWeight: '600' },
+
+  checklist: { width: '100%', gap: 12 },
   checkItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 
   checkIcon: {

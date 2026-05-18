@@ -617,7 +617,7 @@ function RootNavigator() {
           tracker.setDefaultSessionId(session.access_token);
           resolveUserStatus(session.user.id).then(route => {
             setInitialRoute(route);
-            resetToScreen(route);
+            resetToScreen(route, route === 'Onboarding' ? { startStep: 1 } : undefined);
           });
         }
         if (event === 'SIGNED_OUT') {

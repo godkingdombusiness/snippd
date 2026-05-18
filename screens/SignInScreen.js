@@ -342,7 +342,7 @@ export default function SignInScreen({ navigation, route }) {
             billing_plan: 'trial',
           }, { onConflict: 'user_id' });
         }
-        navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+        navigation.reset({ index: 0, routes: [{ name: 'Onboarding', params: { startStep: 1 } }] });
         return;
       }
     } catch (err) {
