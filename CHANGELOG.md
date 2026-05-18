@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed - Persona reveal Today CTA routing (2026-05-18)
+- `screens/PersonaRevealScreen.js` - Changed the "See What's For Today" CTA to reset into `MainApp` on the `HomeTab` / `Home` screen.
+
 ### Changed - Persona reveal savings highlight (2026-05-18)
 - `screens/PersonaRevealScreen.js` - Replaced the generic persona badge with the user's calculated shopping persona and persona-specific solid icon.
 - `screens/PersonaRevealScreen.js` - Updated monthly and yearly estimated savings cards to solid Snippd green with white text and removed lower-priority alert/filter checklist copy.

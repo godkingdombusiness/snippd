@@ -297,7 +297,15 @@ export default function PersonaRevealScreen({ route, navigation }) {
         {/* ── CTA ──────────────────────────────────────────────────────── */}
         <TouchableOpacity
           style={styles.ctaBtn}
-          onPress={() => navigation.navigate('TodayDecision')}
+          onPress={() => navigation.reset({
+            index: 0,
+            routes: [
+              {
+                name: 'MainApp',
+                params: { screen: 'HomeTab', params: { screen: 'Home' } },
+              },
+            ],
+          })}
           activeOpacity={0.88}
         >
           <Text style={styles.ctaBtnText}>See What's For Today</Text>
@@ -311,7 +319,10 @@ export default function PersonaRevealScreen({ route, navigation }) {
 
 PersonaRevealScreen.propTypes = {
   route:      PropTypes.shape({ params: PropTypes.object }),
-  navigation: PropTypes.shape({ navigate: PropTypes.func.isRequired }).isRequired,
+  navigation: PropTypes.shape({
+    navigate: PropTypes.func.isRequired,
+    reset:    PropTypes.func.isRequired,
+  }).isRequired,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
