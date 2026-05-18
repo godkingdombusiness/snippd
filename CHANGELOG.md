@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed - Home dashboard JSX bundling (2026-05-18)
+- `screens/HomeScreen.js` - Moved the premium dashboard render block out of the simulator CTA and restored valid JSX fragment closure for web bundling.
+
 ### Changed - Premium Home dashboard data mapping (2026-05-18)
 - `screens/HomeScreen.js` - Rebuilt the visible Home dashboard around the premium header, budget simulator, featured weekly stack, and local store stack table.
 - `screens/HomeScreen.js` - Mapped profile name/budget/spend, clipped coupon value, featured deal pricing/categories, and zip-filtered store checkout rows into the new dashboard with defensive fallbacks.

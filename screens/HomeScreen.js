@@ -643,51 +643,6 @@ function BudgetSimulatorCard(props) {
         onPress={function () { onNavigate && onNavigate(best); }}
         activeOpacity={0.85}
       >
-
-        <DashboardHeader
-          firstName={userName}
-          weeklyBudgetCents={weeklyBudgetCents}
-          remainingCents={remainingCents}
-          clippedSavingsCents={clippedSavingsCents}
-        />
-
-        {showSetupBanner && (
-          <TouchableOpacity
-            style={styles.setupBanner}
-            onPress={function () { navigation.navigate('TodaySetupGate'); }}
-            activeOpacity={0.85}
-          >
-            <View style={styles.setupBannerIconWrap}>
-              <Feather name="alert-circle" size={18} color={AMBER} />
-            </View>
-            <View style={styles.setupBannerText}>
-              <Text style={styles.setupBannerTitle}>Build profile</Text>
-              <Text style={styles.setupBannerSub}>Add your grocery budget and preferences to sharpen these dashboard numbers.</Text>
-            </View>
-            <Feather name="chevron-right" size={18} color={GRAY} />
-          </TouchableOpacity>
-        )}
-
-        {layoutAlerts.map(function (alert) {
-          return (
-            <View key={alert.type} style={styles.layoutAlert}>
-              <Feather name="info" size={13} color={BLUE} />
-              <Text style={styles.layoutAlertText}>{alert.message}</Text>
-            </View>
-          );
-        })}
-
-        <PremiumBudgetSimulator
-          remainingCents={remainingCents}
-          onNavigate={handleSimulatorNavigate}
-        />
-
-        <FeaturedDealCard deal={featuredDeal} />
-
-        <StoreStacksTable rows={storeStacks} />
-
-        {false && (
-          <>
         <Text style={styles.simCtaText}>Build Dinner Cart</Text>
         <Feather name="arrow-right" size={16} color={WHITE} style={{ marginLeft: 6 }} />
       </TouchableOpacity>
@@ -1180,6 +1135,50 @@ export default function HomeScreen({ navigation }) {
       >
 
         {/* ── Header ── */}
+        <DashboardHeader
+          firstName={userName}
+          weeklyBudgetCents={weeklyBudgetCents}
+          remainingCents={remainingCents}
+          clippedSavingsCents={clippedSavingsCents}
+        />
+
+        {showSetupBanner && (
+          <TouchableOpacity
+            style={styles.setupBanner}
+            onPress={function () { navigation.navigate('TodaySetupGate'); }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.setupBannerIconWrap}>
+              <Feather name="alert-circle" size={18} color={AMBER} />
+            </View>
+            <View style={styles.setupBannerText}>
+              <Text style={styles.setupBannerTitle}>Build profile</Text>
+              <Text style={styles.setupBannerSub}>Add your grocery budget and preferences to sharpen these dashboard numbers.</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={GRAY} />
+          </TouchableOpacity>
+        )}
+
+        {layoutAlerts.map(function (alert) {
+          return (
+            <View key={alert.type} style={styles.layoutAlert}>
+              <Feather name="info" size={13} color={BLUE} />
+              <Text style={styles.layoutAlertText}>{alert.message}</Text>
+            </View>
+          );
+        })}
+
+        <PremiumBudgetSimulator
+          remainingCents={remainingCents}
+          onNavigate={handleSimulatorNavigate}
+        />
+
+        <FeaturedDealCard deal={featuredDeal} />
+
+        <StoreStacksTable rows={storeStacks} />
+
+        {false && (
+          <>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerLogo}>snippd</Text>
