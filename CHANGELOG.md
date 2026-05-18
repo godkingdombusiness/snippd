@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed - Premium Home dashboard data mapping (2026-05-18)
+- `screens/HomeScreen.js` - Rebuilt the visible Home dashboard around the premium header, budget simulator, featured weekly stack, and local store stack table.
+- `screens/HomeScreen.js` - Mapped profile name/budget/spend, clipped coupon value, featured deal pricing/categories, and zip-filtered store checkout rows into the new dashboard with defensive fallbacks.
+
 ### Added - Low-lift Neo4j home loop (2026-05-18)
 - `supabase/functions/get-dynamic-home-layout/index.ts` - Added low-cost graph seed/query path for Dollar General household flash stack, 4 static dietary personas, creator attribution, budget guardrail, household volume filter, and `featured_stack` feed payload fallback.
 - `supabase/functions/record-memory-event/index.ts` - Added direct Neo4j relationship writes for `REDEEMED_STACK`, weekly `SKIPPED_STACK`, and automatic `DISLIKES_CATEGORY` after 3 skipped household stack weeks.

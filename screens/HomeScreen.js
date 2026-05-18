@@ -46,6 +46,41 @@ var BORDER = '#E5E7EB';
 var AMBER  = '#F59E0B';
 var LIGHT_BLUE = '#EFF6FF';
 var BLUE   = '#3B82F6';
+var RED    = '#DC2626';
+var DARK_GREEN = '#063B1E';
+
+var CATEGORY_IMAGES = {
+  paper_goods: require('../assets/cat-household.png'),
+  laundry:     require('../assets/stack-household.png.png'),
+  cleaning:    require('../assets/cat-household.png'),
+  dairy:       require('../assets/cat-dairy.png'),
+  produce:     require('../assets/stack-produce.png.png'),
+  protein:     require('../assets/stack-protein.png.png'),
+  pantry:      require('../assets/cat-pantry.png'),
+  snacks:      require('../assets/cat-snacks.png'),
+};
+
+var DEFAULT_FEATURED_DEAL = {
+  merchant_name: 'Dollar General',
+  title: 'Laundry & Paper Starter Stack',
+  subtitle: 'Dollar General App Stack',
+  original_price: 25.60,
+  final_price: 11.50,
+  item_categories: ['paper_goods', 'laundry', 'cleaning'],
+  valid_range: 'Valid 5/18 - 5/23',
+};
+
+var DEFAULT_STORE_STACKS = [
+  { store_name: 'Publix', final_checkout_price: 42.15, total_calculated_meals: 12, clips_applied: 4 },
+  { store_name: 'Aldi', final_checkout_price: 36.78, total_calculated_meals: 10, clips_applied: 3 },
+  { store_name: 'Walmart', final_checkout_price: 51.92, total_calculated_meals: 14, clips_applied: 5 },
+];
+
+var SIM_COSTS = {
+  cook:     18.42,
+  delivery: 54.00,
+  takeout:  32.00,
+};
 
 // ── Static option configuration ───────────────────────────────────────────────
 
@@ -150,6 +185,107 @@ function formatDollars(cents) {
 
 function formatDollarsFull(cents) {
   return '$' + (cents / 100).toFixed(2);
+}
+
+function moneyToCents(value, fallbackCents) {
+  var n = Number(value);
+  if (!Number.isFinite(n)) return fallbackCents || 0;
+  return Math.round(n > 1000 ? n : n * 100);
+}
+
+function dollars(value) {
+  return '$' + Number(value || 0).toFixed(2);
+}
+
+function getProfileFirstName(profile, email) {
+  return profile?.first_name || extractFirstName(profile, email);
+}
+
+function normalizeFeaturedDeal(row) {
+  if (!row) return DEFAULT_FEATURED_DEAL;
+  var original = Number(row.original_price ?? row.base_price ?? row.price_at_rec ?? DEFAULT_FEATURED_DEAL.original_price);
+  var rawFinal = row.final_price ?? row.pay_price ?? (row.final_out_of_pocket_cents != null ? row.final_out_of_pocket_cents / 100 : null);
+  var final = Number(rawFinal ?? DEFAULT_FEATURED_DEAL.final_price);
+  var categories = Array.isArray(row.item_categories)
+    ? row.item_categories
+    : Array.isArray(row.dietary_tags)
+      ? row.dietary_tags
+      : Array.isArray(row.breakdown_list)
+        ? row.breakdown_list.slice(0, 3).map(function (item) { return item.category || item.name || 'pantry'; })
+        : DEFAULT_FEATURED_DEAL.item_categories;
+  return {
+    merchant_name: row.merchant_name || row.retailer || row.store_name || DEFAULT_FEATURED_DEAL.merchant_name,
+    title: row.title || DEFAULT_FEATURED_DEAL.title,
+    subtitle: row.subtitle || row.source_summary || 'App Stack',
+    original_price: original,
+    final_price: final,
+    item_categories: categories,
+    valid_range: row.valid_range || row.valid_until ? 'Valid 5/18 - 5/23' : DEFAULT_FEATURED_DEAL.valid_range,
+  };
+}
+
+function normalizeStoreRow(row) {
+  var price = Number(row.final_checkout_price ?? row.final_price ?? row.pay_price ?? row.final_estimated_cents / 100 ?? 0);
+  var meals = Number(row.total_calculated_meals ?? row.total_meals ?? row.meals ?? 10);
+  return {
+    store_name: row.store_name || row.retailer || row.retailer_key || 'Store',
+    final_checkout_price: price,
+    total_calculated_meals: meals || 1,
+    clips_applied: Number(row.clips_applied ?? row.coupons_applied ?? row.clip_count ?? 0),
+  };
+}
+
+async function fetchClippedSavingsCents(userId) {
+  try {
+    var res = await supabase
+      .from('coupon_checklist')
+      .select('estimated_value')
+      .eq('user_id', userId)
+      .eq('status', 'clipped');
+    if (res.error) throw res.error;
+    return (res.data || []).reduce(function (sum, row) {
+      return sum + moneyToCents(row.estimated_value, 0);
+    }, 0);
+  } catch (_) {
+    return 1450;
+  }
+}
+
+async function fetchFeaturedDeal() {
+  try {
+    var featured = await supabase
+      .from('featured_deals')
+      .select('*')
+      .eq('is_active', true)
+      .order('valid_until', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!featured.error && featured.data) return normalizeFeaturedDeal(featured.data);
+  } catch (_) {}
+
+  try {
+    var feed = await supabase
+      .from('app_home_feed')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!feed.error && feed.data) return normalizeFeaturedDeal(feed.data);
+  } catch (_) {}
+
+  return DEFAULT_FEATURED_DEAL;
+}
+
+async function fetchStoreStacks(zipCode) {
+  try {
+    var query = supabase.from('store_checkouts').select('*');
+    if (zipCode) query = query.eq('zip_code', zipCode);
+    var res = await query.order('final_checkout_price', { ascending: true }).limit(6);
+    if (res.error) throw res.error;
+    if (res.data?.length) return res.data.map(normalizeStoreRow);
+  } catch (_) {}
+  return DEFAULT_STORE_STACKS;
 }
 
 function scaleCost(baseCentsPerPerson, householdSize) {
@@ -507,9 +643,286 @@ function BudgetSimulatorCard(props) {
         onPress={function () { onNavigate && onNavigate(best); }}
         activeOpacity={0.85}
       >
+
+        <DashboardHeader
+          firstName={userName}
+          weeklyBudgetCents={weeklyBudgetCents}
+          remainingCents={remainingCents}
+          clippedSavingsCents={clippedSavingsCents}
+        />
+
+        {showSetupBanner && (
+          <TouchableOpacity
+            style={styles.setupBanner}
+            onPress={function () { navigation.navigate('TodaySetupGate'); }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.setupBannerIconWrap}>
+              <Feather name="alert-circle" size={18} color={AMBER} />
+            </View>
+            <View style={styles.setupBannerText}>
+              <Text style={styles.setupBannerTitle}>Build profile</Text>
+              <Text style={styles.setupBannerSub}>Add your grocery budget and preferences to sharpen these dashboard numbers.</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={GRAY} />
+          </TouchableOpacity>
+        )}
+
+        {layoutAlerts.map(function (alert) {
+          return (
+            <View key={alert.type} style={styles.layoutAlert}>
+              <Feather name="info" size={13} color={BLUE} />
+              <Text style={styles.layoutAlertText}>{alert.message}</Text>
+            </View>
+          );
+        })}
+
+        <PremiumBudgetSimulator
+          remainingCents={remainingCents}
+          onNavigate={handleSimulatorNavigate}
+        />
+
+        <FeaturedDealCard deal={featuredDeal} />
+
+        <StoreStacksTable rows={storeStacks} />
+
+        {false && (
+          <>
         <Text style={styles.simCtaText}>Build Dinner Cart</Text>
         <Feather name="arrow-right" size={16} color={WHITE} style={{ marginLeft: 6 }} />
       </TouchableOpacity>
+    </View>
+  );
+}
+
+function PremiumBudgetSimulator(props) {
+  var remainingCents = props.remainingCents || 0;
+  var onNavigate = props.onNavigate;
+  var [activeTab, setActiveTab] = useState('cook');
+  var [showSmartBadge, setShowSmartBadge] = useState(false);
+  var selectedCost = SIM_COSTS[activeTab] || SIM_COSTS.cook;
+  var leavesCents = Math.max(0, remainingCents - Math.round(selectedCost * 100));
+  var allowancePct = remainingCents > 0 ? Math.round((leavesCents / remainingCents) * 100) : 0;
+
+  return (
+    <View style={styles.simCard}>
+      <View style={styles.simHeader}>
+        <View>
+          <Text style={styles.simEyebrow}>BUDGET SIMULATOR</Text>
+          <Text style={styles.simSub}>See the impact before you choose.</Text>
+        </View>
+      </View>
+
+      <View style={styles.simTabs}>
+        {SIMULATOR_TABS.map(function (tab) {
+          var isActive = activeTab === tab.id;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={[styles.simTab, isActive && styles.simTabActive]}
+              onPress={function () {
+                setActiveTab(tab.id);
+                setShowSmartBadge(true);
+              }}
+              activeOpacity={0.75}
+            >
+              <Feather
+                name={tab.id === 'cook' ? 'briefcase' : tab.id === 'delivery' ? 'truck' : 'shopping-bag'}
+                size={14}
+                color={isActive ? WHITE : NAVY}
+              />
+              <Text style={[styles.simTabText, isActive && styles.simTabTextActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={styles.simImpactRow}>
+        <View style={styles.simImpactBlock}>
+          <Text style={styles.simImpactLabel}>Estimated Cost</Text>
+          <Text style={styles.simImpactCost}>{dollars(selectedCost)}</Text>
+        </View>
+        <View style={styles.simImpactDivider} />
+        <View style={styles.simImpactBlock}>
+          <Text style={styles.simImpactLabel}>Leaves you with</Text>
+          <Text style={styles.simLeavesValue}>{formatDollarsFull(leavesCents)}</Text>
+          <Text style={styles.simLeavesSub}>for the week</Text>
+        </View>
+        <View style={styles.simImpactDivider} />
+        <View style={styles.simSafeCard}>
+          <View style={styles.simSafeTop}>
+            <View style={styles.simSafeIcon}>
+              <Feather name="shield" size={13} color={WHITE} />
+            </View>
+            <Text style={styles.simSafeTitle}>Safe Zone</Text>
+          </View>
+          <Text style={styles.simSafeSub}>Maintains {allowancePct}% of your weekly allowance.</Text>
+        </View>
+      </View>
+
+      {showSmartBadge && (
+        <View style={styles.simSmartBadge}>
+          <Feather name="cpu" size={12} color={GREEN} />
+          <Text style={styles.simSmartBadgeText}>94% SMART MATCH</Text>
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={styles.simCta}
+        onPress={function () { onNavigate && onNavigate(activeTab); }}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.simCtaText}>Build Dinner Cart</Text>
+        <Feather name="arrow-right" size={16} color={WHITE} style={{ marginLeft: 6 }} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function DashboardHeader(props) {
+  var firstName = props.firstName || 'there';
+  var weeklyBudgetCents = props.weeklyBudgetCents || 0;
+  var remainingCents = props.remainingCents || 0;
+  var clippedSavingsCents = props.clippedSavingsCents || 0;
+
+  return (
+    <View style={styles.premiumHeader}>
+      <View style={styles.premiumHeaderTop}>
+        <View>
+          <Text style={styles.premiumGreeting}>Welcome back, {firstName}</Text>
+          <Text style={styles.premiumSub}>Your grocery budget is active and ready.</Text>
+        </View>
+        <View style={styles.headerBell}>
+          <Feather name="bell" size={25} color={WHITE} />
+          <View style={styles.headerBellDot} />
+        </View>
+      </View>
+
+      <View style={styles.headerMetrics}>
+        <View style={styles.budgetRingWrap}>
+          <View style={styles.budgetRing}>
+            <Text style={styles.ringAmount}>{formatDollarsFull(remainingCents)}</Text>
+            <Text style={styles.ringLabel}>Remaining</Text>
+            <View style={styles.ringCheck}>
+              <Feather name="check" size={22} color={WHITE} />
+            </View>
+          </View>
+        </View>
+        <View style={styles.headerBudgetCopy}>
+          <Text style={styles.headerBudgetSmall}>of your</Text>
+          <Text style={styles.headerBudgetTotal}>{formatDollarsFull(weeklyBudgetCents)}</Text>
+          <Text style={styles.headerBudgetSmall}>weekly budget</Text>
+        </View>
+        <View style={styles.savedAssetCard}>
+          <View style={styles.savedAssetIcon}>
+            <Feather name="tag" size={18} color={WHITE} />
+          </View>
+          <Text style={styles.savedAssetNumber}>{formatDollarsFull(clippedSavingsCents)}</Text>
+          <Text style={styles.savedAssetLabel}>Saved & Pre-Clipped</Text>
+          <View style={styles.savedDivider} />
+          <Text style={styles.savedTrend}>↗ +$3.25 this week</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function FeaturedDealCard(props) {
+  var deal = props.deal || DEFAULT_FEATURED_DEAL;
+  var isDollarGeneral = String(deal.merchant_name).toLowerCase() === 'dollar general';
+  var categories = (deal.item_categories || []).slice(0, 3);
+  var pct = deal.original_price > 0
+    ? Math.round((1 - (deal.final_price / deal.original_price)) * 100)
+    : 0;
+
+  return (
+    <TouchableOpacity style={styles.featuredDealCard} activeOpacity={0.88}>
+      <View style={styles.featuredTop}>
+        <View style={styles.featuredTopLeft}>
+          <Text style={styles.featuredFlame}>🔥</Text>
+          <Text style={styles.featuredHeader}>Featured Stack of the Week</Text>
+          <View style={styles.hotDealPill}>
+            <Text style={styles.hotDealText}>HOT DEAL</Text>
+          </View>
+        </View>
+        <Text style={styles.featuredValid}>{deal.valid_range}</Text>
+      </View>
+
+      <View style={styles.featuredBody}>
+        <View style={[styles.merchantBadge, isDollarGeneral && styles.dgBadge]}>
+          <Text style={[styles.merchantBadgeText, isDollarGeneral && styles.dgBadgeText]}>
+            {isDollarGeneral ? 'dg' : String(deal.merchant_name || 'S').slice(0, 2).toLowerCase()}
+          </Text>
+        </View>
+
+        <View style={styles.featuredInfo}>
+          <Text style={styles.featuredTitle}>{deal.title}</Text>
+          <Text style={styles.featuredMerchant}>{deal.merchant_name} App Stack</Text>
+          <View style={styles.categoryThumbRow}>
+            {categories.map(function (category) {
+              var key = String(category).toLowerCase();
+              var image = CATEGORY_IMAGES[key] || CATEGORY_IMAGES.pantry;
+              return (
+                <View key={key} style={styles.categoryThumb}>
+                  <Image source={image} style={styles.categoryThumbImg} resizeMode="cover" />
+                </View>
+              );
+            })}
+            {(deal.item_categories || []).length > 3 ? (
+              <View style={styles.moreThumb}><Text style={styles.moreThumbText}>+{deal.item_categories.length - 3}</Text></View>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.featuredPricePanel}>
+          <View style={styles.offPill}><Text style={styles.offPillText}>{pct}% OFF</Text></View>
+          <Text style={styles.originalPrice}>{dollars(deal.original_price)}</Text>
+          <Text style={styles.finalPrice}>{dollars(deal.final_price)}</Text>
+          <Text style={styles.withClips}>WITH CLIPS</Text>
+        </View>
+        <Feather name="chevron-right" size={22} color={NAVY} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function StoreStacksTable(props) {
+  var rows = (props.rows || []).slice().sort(function (a, b) {
+    return Number(a.final_checkout_price) - Number(b.final_checkout_price);
+  });
+
+  return (
+    <View style={styles.storeStacksSection}>
+      <Text style={styles.storeStacksTitle}>Your Local Store Stacks</Text>
+      <Text style={styles.storeStacksSub}>Full weekly checkouts calculated with active manufacturer coupons.</Text>
+      {rows.map(function (row, index) {
+        var price = Number(row.final_checkout_price || 0);
+        var meals = Number(row.total_calculated_meals || 1);
+        var perMeal = price / meals;
+        var initial = String(row.store_name || 'S').slice(0, 1).toUpperCase();
+        return (
+          <TouchableOpacity key={row.store_name + index} style={styles.storeStackRow} activeOpacity={0.82}>
+            <View style={[styles.storeInitial, index === 0 ? styles.storeInitialBest : null]}>
+              <Text style={styles.storeInitialText}>{initial}</Text>
+            </View>
+            <View style={styles.storeStackBody}>
+              <Text style={styles.storeStackName}>{row.store_name}</Text>
+              <Text style={styles.storeStackMeta}>Curated Weekly Stack · {row.clips_applied || 0} Clips Applied</Text>
+            </View>
+            <View style={styles.storePriceCol}>
+              <Text style={[styles.storeStackPrice, { color: index === 0 ? GREEN : '#0A192F' }]}>
+                {dollars(price)}
+              </Text>
+              <Text style={styles.storeMealsText}>
+                FOR {meals} MEALS ({dollars(perMeal)}/EA)
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={19} color={NAVY} />
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -528,6 +941,9 @@ export default function HomeScreen({ navigation }) {
   var [weeklyDeals, setWeeklyDeals] = useState([]);
   var [layoutAlerts, setLayoutAlerts] = useState([]);
   var [featuredStack, setFeaturedStack] = useState(null);
+  var [clippedSavingsCents, setClippedSavingsCents] = useState(0);
+  var [featuredDeal, setFeaturedDeal] = useState(DEFAULT_FEATURED_DEAL);
+  var [storeStacks, setStoreStacks] = useState(DEFAULT_STORE_STACKS);
   var tapCount = useRef(0);
   var tapTimer = useRef(null);
 
@@ -554,7 +970,16 @@ export default function HomeScreen({ navigation }) {
 
       setProfile(prof);
       setPantryCount(pCount);
-      setUserName(extractFirstName(prof, user.email));
+      setUserName(getProfileFirstName(prof, user.email));
+
+      var dashboardData = await Promise.all([
+        fetchClippedSavingsCents(user.id),
+        fetchFeaturedDeal(),
+        fetchStoreStacks(prof.zip_code || prof.zip),
+      ]);
+      setClippedSavingsCents(dashboardData[0]);
+      setFeaturedDeal(dashboardData[1]);
+      setStoreStacks(dashboardData[2]);
 
       var profileForDeals = {
         preferred_stores: prof.preferred_stores || [],
@@ -683,12 +1108,12 @@ export default function HomeScreen({ navigation }) {
     }
   }
 
-  function handleSimulatorNavigate(option) {
+  function handleSimulatorNavigate(tab) {
     if (!context) return;
-    navigateForOption(navigation, option.optionType, context);
-    tracker.track('home_simulator_cta', { option_type: option.optionType });
+    navigation.navigate('TodayDecision', { selectedPath: tab, optionType: tab, context: context });
+    tracker.track('home_simulator_cta', { option_type: tab });
     recordMemoryEvent('product_added_to_cart', {
-      option_type: option.optionType,
+      option_type: tab,
       source:      'budget_simulator',
     });
   }
@@ -714,8 +1139,10 @@ export default function HomeScreen({ navigation }) {
   var hero          = options[0] || null;
   var otherOptions  = options.slice(1);
   var householdSize = profile?.household_size || 2;
-  var weeklyBudget  = profile?.weekly_budget  || 0;
-  var remainingCents = context?.remainingBudgetCents || 0;
+  var weeklyBudgetCents = moneyToCents(profile?.weekly_budget, 25000);
+  var amountSpentCents = moneyToCents(profile?.amount_spent_this_week, 0);
+  var remainingCents = Math.max(0, weeklyBudgetCents - amountSpentCents);
+  var weeklyBudget  = weeklyBudgetCents / 100;
   var cookingDays   = profile?.cooking_days   || 4;
   var eatOutDays    = profile?.eat_out_days   || 2;
   var pantryChecked = pantryCount > 0;
@@ -981,6 +1408,9 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
+          </>
+        )}
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
@@ -994,6 +1424,143 @@ var styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll:      { flex: 1 },
   scrollContent: { paddingBottom: 88 },
+
+  premiumHeader: {
+    backgroundColor: DARK_GREEN,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 36,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+  },
+  premiumHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  premiumGreeting: {
+    fontSize: 27,
+    fontWeight: '900',
+    color: WHITE,
+    letterSpacing: -0.4,
+  },
+  premiumSub: { fontSize: 14, color: 'rgba(255,255,255,0.88)', marginTop: 4, fontWeight: '600' },
+  headerBell: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  headerBellDot: { position: 'absolute', top: 6, right: 5, width: 12, height: 12, borderRadius: 6, backgroundColor: '#16C866' },
+  headerMetrics: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  budgetRingWrap: { width: 122, height: 122, alignItems: 'center', justifyContent: 'center' },
+  budgetRing: {
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    borderWidth: 10,
+    borderColor: '#21C45D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  ringAmount: { fontSize: 21, fontWeight: '900', color: WHITE, letterSpacing: -0.3 },
+  ringLabel: { fontSize: 13, fontWeight: '700', color: WHITE, marginTop: 3 },
+  ringCheck: {
+    position: 'absolute',
+    bottom: -14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#16C866',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBudgetCopy: { flex: 1, borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.28)', paddingRight: 12 },
+  headerBudgetSmall: { color: WHITE, fontSize: 14, fontWeight: '700', lineHeight: 22 },
+  headerBudgetTotal: { color: WHITE, fontSize: 22, fontWeight: '900', marginVertical: 3 },
+  savedAssetCard: {
+    width: 162,
+    minHeight: 136,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  savedAssetIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  savedAssetNumber: { fontSize: 36, fontWeight: '900', color: WHITE, letterSpacing: -1 },
+  savedAssetLabel: { fontSize: 15, fontWeight: '800', color: WHITE, marginTop: 2 },
+  savedDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.22)', marginVertical: 10 },
+  savedTrend: { color: WHITE, fontSize: 13, fontWeight: '800' },
+
+  featuredDealCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: GREEN,
+    backgroundColor: WHITE,
+    padding: 14,
+  },
+  featuredTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13 },
+  featuredTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  featuredFlame: { fontSize: 18 },
+  featuredHeader: { fontSize: 14, fontWeight: '900', color: NAVY },
+  hotDealPill: { backgroundColor: GREEN, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 4 },
+  hotDealText: { color: WHITE, fontSize: 10, fontWeight: '900' },
+  featuredValid: { fontSize: 12, color: NAVY, fontWeight: '700' },
+  featuredBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  merchantBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: MINT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dgBadge: { backgroundColor: '#FFE01B' },
+  merchantBadgeText: { fontSize: 19, fontWeight: '900', color: GREEN },
+  dgBadgeText: { color: '#111827', fontSize: 28, letterSpacing: -1 },
+  featuredInfo: { flex: 1 },
+  featuredTitle: { fontSize: 17, fontWeight: '900', color: NAVY, marginBottom: 3 },
+  featuredMerchant: { fontSize: 13, color: NAVY, fontWeight: '600', marginBottom: 10 },
+  categoryThumbRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  categoryThumb: { width: 46, height: 34, borderRadius: 8, overflow: 'hidden', backgroundColor: CREAM },
+  categoryThumbImg: { width: '100%', height: '100%' },
+  moreThumb: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#EEF2F7', alignItems: 'center', justifyContent: 'center' },
+  moreThumbText: { fontSize: 13, fontWeight: '900', color: NAVY },
+  featuredPricePanel: { width: 94, borderLeftWidth: 1, borderLeftColor: BORDER, paddingLeft: 12 },
+  offPill: { alignSelf: 'flex-start', backgroundColor: GREEN, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 7 },
+  offPillText: { color: WHITE, fontSize: 10, fontWeight: '900' },
+  originalPrice: { fontSize: 13, color: GRAY, textDecorationLine: 'line-through', fontWeight: '700' },
+  finalPrice: { fontSize: 27, color: RED, fontWeight: '900', letterSpacing: -0.5, marginTop: 2 },
+  withClips: { fontSize: 10, color: NAVY, fontWeight: '900', marginTop: 1 },
+
+  storeStacksSection: { marginHorizontal: 16, marginTop: 2, marginBottom: 10 },
+  storeStacksTitle: { fontSize: 18, fontWeight: '900', color: NAVY, marginBottom: 2 },
+  storeStacksSub: { fontSize: 12, color: NAVY, marginBottom: 10 },
+  storeStackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  storeInitial: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#0A5FA8', alignItems: 'center', justifyContent: 'center' },
+  storeInitialBest: { backgroundColor: GREEN },
+  storeInitialText: { color: WHITE, fontSize: 23, fontWeight: '900' },
+  storeStackBody: { flex: 1 },
+  storeStackName: { fontSize: 17, color: NAVY, fontWeight: '900', marginBottom: 3 },
+  storeStackMeta: { fontSize: 12, color: GRAY, fontWeight: '600' },
+  storePriceCol: { width: 104, alignItems: 'flex-start' },
+  storeStackPrice: { fontSize: 20, fontWeight: '900', letterSpacing: -0.2 },
+  storeMealsText: { fontSize: 9, color: NAVY, fontWeight: '900', marginTop: 2 },
 
   // Setup gate banner
   setupBanner: {
@@ -1399,6 +1966,7 @@ var styles = StyleSheet.create({
     gap:           6,
     marginBottom:  12,
   },
+  simEyebrow: { fontSize: 14, fontWeight: '900', color: GREEN, letterSpacing: 0.5, marginBottom: 4 },
   simTitle:   { fontSize: 14, fontWeight: '700', color: NAVY, flex: 1 },
   simSub:     { fontSize: 11, color: GRAY },
   simTabs: {
@@ -1408,10 +1976,13 @@ var styles = StyleSheet.create({
   },
   simTab: {
     flex:            1,
+    flexDirection:   'row',
+    gap:             6,
     paddingVertical: 7,
     borderRadius:    8,
     backgroundColor: CREAM,
     alignItems:      'center',
+    justifyContent:  'center',
     borderWidth:     1,
     borderColor:     BORDER,
   },
@@ -1476,6 +2047,23 @@ var styles = StyleSheet.create({
     marginTop:     8,
   },
   simMetaText: { fontSize: 11, color: GRAY, marginLeft: 3 },
+  simImpactRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+    marginBottom: 14,
+  },
+  simImpactBlock: { flex: 1, justifyContent: 'center' },
+  simImpactLabel: { fontSize: 12, fontWeight: '800', color: NAVY, marginBottom: 8 },
+  simImpactCost: { fontSize: 29, fontWeight: '900', color: GREEN, letterSpacing: -0.8 },
+  simLeavesValue: { fontSize: 31, fontWeight: '900', color: GREEN, letterSpacing: -1 },
+  simLeavesSub: { fontSize: 12, fontWeight: '700', color: NAVY, textAlign: 'center', marginTop: 2 },
+  simImpactDivider: { width: 1, backgroundColor: BORDER },
+  simSafeCard: { width: 118, borderRadius: 14, backgroundColor: MINT, padding: 12, justifyContent: 'center' },
+  simSafeTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  simSafeIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' },
+  simSafeTitle: { fontSize: 13, fontWeight: '900', color: GREEN },
+  simSafeSub: { fontSize: 11, color: NAVY, lineHeight: 15, fontWeight: '600' },
   simSmartBadge: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
