@@ -711,8 +711,8 @@ const welcome = StyleSheet.create({
   // Compact mobile welcome stack: all core actions should fit without scrolling.
   scroll: {
     flexGrow: 1,
-    paddingTop: 20,
-    paddingBottom: 18,
+    paddingTop: 14,
+    paddingBottom: 16,
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
@@ -720,7 +720,7 @@ const welcome = StyleSheet.create({
 
   // Top zone — alignSelf stretch overrides parent alignItems:center, fills full width
   topGroup:  { alignItems: 'center', paddingHorizontal: 24, alignSelf: 'stretch' },
-  logoImg:   { width: 218, height: 78, marginBottom: 8 },
+  logoImg:   { width: 204, height: 72, marginBottom: 8 },
   headline: {
     fontSize: 31, fontWeight: '700', color: WHITE,
     textAlign: 'center', letterSpacing: 0,
@@ -734,8 +734,16 @@ const welcome = StyleSheet.create({
   },
 
   // Middle zone — isolated full-width container, no padding, bag centers on exact screen axis
-  heroWrap: { width: '100%', paddingHorizontal: 0, alignItems: 'center', marginVertical: 8 },
-  heroImg:  { width: '66%', height: 250, maxHeight: '42%' },
+  heroWrap: {
+    flex: 1,
+    width: '100%',
+    minHeight: 230,
+    paddingHorizontal: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 2,
+  },
+  heroImg:  { width: '76%', height: 310, maxHeight: '100%', transform: [{ translateX: -8 }] },
 
   // Bottom zone — alignSelf stretch restores full-width button layout
   ctaGroup: { gap: 9, paddingHorizontal: 24, alignSelf: 'stretch' },
@@ -752,8 +760,13 @@ const welcome = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   demoBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '600' },
-  signInLink:    { alignItems: 'center', paddingVertical: 5 },
-  signInLinkTxt: { fontSize: 14, color: WHITE, fontWeight: '500', textDecorationLine: 'underline' },
+  signInLink: {
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
+    paddingVertical: 13, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  signInLinkTxt: { fontSize: 15, color: WHITE, fontWeight: '600' },
 });
 
 // ── Form styles ────────────────────────────────────────────────────────────────
