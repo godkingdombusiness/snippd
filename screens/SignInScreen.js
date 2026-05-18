@@ -745,7 +745,7 @@ const welcome = StyleSheet.create({
     justifyContent: 'center',
     marginVertical: 0,
   },
-  heroImg:  { width: '74%', height: 284, maxHeight: '100%', transform: [{ translateX: -8 }] },
+  heroImg:  { width: '74%', height: 284, maxHeight: '100%', transform: [{ translateX: -14 }] },
 
   // Bottom zone — alignSelf stretch restores full-width button layout
   ctaGroup: { gap: 8, paddingHorizontal: 20, alignSelf: 'stretch' },
