@@ -350,6 +350,10 @@ export default function TodayOptionsRankedScreen(props) {
     if (navigation && navigation.canGoBack()) navigation.goBack();
   }
 
+  function handleHome() {
+    navigation.navigate('MainApp');
+  }
+
   var contextPills = buildContextPills(context);
 
   if (loading) {
@@ -367,15 +371,22 @@ export default function TodayOptionsRankedScreen(props) {
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={CREAM} />
 
+      {/* Nav bar — back on left, home on right */}
+      <View style={styles.navBar}>
+        <TouchableOpacity style={styles.navBtn} onPress={handleBack} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color={NAVY} />
+        </TouchableOpacity>
+        <Text style={styles.navTitle}>What's the plan?</Text>
+        <TouchableOpacity style={styles.navBtn} onPress={handleHome} activeOpacity={0.7}>
+          <Feather name="home" size={20} color={NAVY} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={20} color={NAVY} />
-        </TouchableOpacity>
-
         {/* Context pills — show what the ranking was based on */}
         <ScrollView
           horizontal
@@ -424,14 +435,30 @@ var styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14, color: GRAY },
 
-  scroll:        { flex: 1 },
-  scrollContent: { paddingBottom: 24 },
-
-  backBtn: {
-    alignSelf:     'flex-start',
-    padding:       14,
-    paddingBottom: 6,
+  navBar: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    paddingHorizontal: 16,
+    paddingVertical:   10,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    backgroundColor:   CREAM,
   },
+  navBtn: {
+    width:           40,
+    height:          40,
+    alignItems:      'center',
+    justifyContent:  'center',
+    borderRadius:    10,
+    backgroundColor: WHITE,
+    borderWidth:     1,
+    borderColor:     BORDER,
+  },
+  navTitle: { fontSize: 15, fontWeight: '700', color: NAVY },
+
+  scroll:        { flex: 1 },
+  scrollContent: { paddingBottom: 24, paddingTop: 12 },
 
   contextRow:        { flexGrow: 0, marginBottom: 12 },
   contextRowContent: { paddingHorizontal: 14, gap: 6 },

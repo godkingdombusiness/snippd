@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — TodayOptionsRankedScreen: add home button to nav bar (2026-05-18)
+- `screens/TodayOptionsRankedScreen.js` — Replaced bare back button with a proper nav bar (back left, "What's the plan?" title center, home icon right). Home button navigates to `MainApp`. Nav bar sits outside the ScrollView so it stays fixed.
+
 ### Fixed — TodayOptionsRankedScreen: correct data flow from gate to engine (2026-05-18)
 - `screens/TodayOptionsRankedScreen.js` — `buildEngineContext()` now resolves both field naming conventions: `timeWindow`→`cookingTimeMin`, `shoppingStatus`→pantry count, `checkPantryFirst`→pantry preference, `behaviorProfile[]`→`foodGoals[]`+`preferenceStyle`, `tonightEatersCount`→`peopleEatingToday`. All previously defaulted to fallback values because field names didn't match what the gate sent.
 - Switched from `rankOptions()` to `generateTodayOptions()` so cost estimates (per `estimateCosts()`) are included — cost display now uses actual `tonightEatersCount` instead of the screen's own hardcoded table.
