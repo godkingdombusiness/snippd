@@ -414,7 +414,7 @@ export default function SignInScreen({ navigation, route }) {
               style={welcome.logoImg}
               resizeMode="contain"
             />
-            <Text style={welcome.headline}>{'Welcome to\nSnippd'}</Text>
+            <Text style={welcome.headline}>Welcome to Snippd</Text>
             <Text style={welcome.sub}>
               Smarter grocery planning,{'\n'}less waste, more time for you.
             </Text>
@@ -708,52 +708,52 @@ const left = StyleSheet.create({
 const welcome = StyleSheet.create({
   root:  { flex: 1 },
 
-  // flex-start: top group anchors top, hero sinks via marginTop auto
+  // Compact mobile welcome stack: all core actions should fit without scrolling.
   scroll: {
     flexGrow: 1,
-    paddingTop: 32,
-    paddingBottom: 28,
-    justifyContent: 'flex-start',
+    paddingTop: 20,
+    paddingBottom: 18,
+    justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
   },
 
   // Top zone — alignSelf stretch overrides parent alignItems:center, fills full width
   topGroup:  { alignItems: 'center', paddingHorizontal: 24, alignSelf: 'stretch' },
-  logoImg:   { width: 290, height: 104, marginBottom: 18 },
+  logoImg:   { width: 218, height: 78, marginBottom: 8 },
   headline: {
-    fontSize: 38, fontWeight: '700', color: WHITE,
-    textAlign: 'center', letterSpacing: -0.5,
-    lineHeight: 46, marginBottom: 12,
+    fontSize: 31, fontWeight: '700', color: WHITE,
+    textAlign: 'center', letterSpacing: 0,
+    lineHeight: 37, marginBottom: 8,
     alignSelf: 'stretch',
   },
   sub: {
-    fontSize: 15, color: 'rgba(255,255,255,0.80)',
+    fontSize: 14, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', fontWeight: '400',
-    lineHeight: 23, paddingHorizontal: 8, alignSelf: 'stretch',
+    lineHeight: 20, paddingHorizontal: 8, alignSelf: 'stretch',
   },
 
   // Middle zone — isolated full-width container, no padding, bag centers on exact screen axis
-  heroWrap: { width: '100%', paddingHorizontal: 0, alignItems: 'center', marginTop: 'auto', marginBottom: 16 },
-  heroImg:  { width: '74%', height: 410 },
+  heroWrap: { width: '100%', paddingHorizontal: 0, alignItems: 'center', marginVertical: 8 },
+  heroImg:  { width: '66%', height: 250, maxHeight: '42%' },
 
   // Bottom zone — alignSelf stretch restores full-width button layout
-  ctaGroup: { gap: 12, paddingHorizontal: 24, alignSelf: 'stretch' },
+  ctaGroup: { gap: 9, paddingHorizontal: 24, alignSelf: 'stretch' },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: WHITE,
-    paddingVertical: 16, borderRadius: 12,
+    paddingVertical: 14, borderRadius: 12,
   },
   primaryBtnTxt: { color: '#1B3A2D', fontSize: 16, fontWeight: '600' },
   demoBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
-    paddingVertical: 16, borderRadius: 12,
+    paddingVertical: 13, borderRadius: 12,
     backgroundColor: 'transparent',
   },
   demoBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '600' },
-  signInLink:    { alignItems: 'center', paddingVertical: 8 },
-  signInLinkTxt: { fontSize: 15, color: WHITE, fontWeight: '500', textDecorationLine: 'underline' },
+  signInLink:    { alignItems: 'center', paddingVertical: 5 },
+  signInLinkTxt: { fontSize: 14, color: WHITE, fontWeight: '500', textDecorationLine: 'underline' },
 });
 
 // ── Form styles ────────────────────────────────────────────────────────────────
