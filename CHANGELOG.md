@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed - Persona reveal savings highlight (2026-05-18)
+- `screens/PersonaRevealScreen.js` - Replaced the generic persona badge with the user's calculated shopping persona and persona-specific solid icon.
+- `screens/PersonaRevealScreen.js` - Updated monthly and yearly estimated savings cards to solid Snippd green with white text and removed lower-priority alert/filter checklist copy.
+
 ### Added — HomeScreen: Neo4j behavioral intelligence integration (2026-05-18)
 - `screens/HomeScreen.js` — Wired `get-dynamic-home-layout` edge function on mount; alerts (budget pressure, allergen flags, store accuracy) surface as inline blue banners above the stats row.
 - Added `recordMemoryEvent()` helper — fire-and-forget JWT-authenticated call to `record-memory-event` edge function. Hero tap logs `product_added_to_cart`. Mini-option tap logs `deal_viewed` + a skipped-hero `deal_viewed{skipped:true}` when the top option was bypassed.

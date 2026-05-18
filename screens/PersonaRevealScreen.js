@@ -30,6 +30,7 @@ const PERSONAS = {
     description: "You're health-conscious and precise. I'll find the cleanest products at the best prices and filter out everything on your avoid list automatically.",
     traits: ['Label Reader', 'Quality-First', 'Health-Conscious'],
     color: GREEN,
+    icon: 'heartbeat',
   },
   performance_athlete: {
     name: 'The Performance Athlete',
@@ -37,6 +38,7 @@ const PERSONAS = {
     description: "You train hard and eat with intention. I'll stack deals on your proteins, track your macros budget, and alert you when your performance staples go on sale.",
     traits: ['Macro-Tracker', 'Protein Hunter', 'Prep Master'],
     color: GREEN,
+    icon: 'dumbbell',
   },
   family_cfo: {
     name: 'The Family CFO',
@@ -44,6 +46,7 @@ const PERSONAS = {
     description: "You're the one making sure everyone is fed, happy, and on budget. I'll optimize for variety, bulk deals, and make sure nothing goes to waste.",
     traits: ['Household Optimizer', 'Bulk Buyer', 'Variety Seeker'],
     color: AMBER,
+    icon: 'users',
   },
   savings_hunter: {
     name: 'The Savings Hunter',
@@ -51,6 +54,7 @@ const PERSONAS = {
     description: "Maximum recovery, minimum spend. I'll stack every coupon, every sale, and every rebate available so your cart always hits the floor price.",
     traits: ['Deal Stacker', 'Budget-First', 'Brand-Flexible'],
     color: CORAL,
+    icon: 'piggy-bank',
   },
   meal_planner: {
     name: 'The Meal Planner',
@@ -58,6 +62,7 @@ const PERSONAS = {
     description: "You cook from scratch and prep ahead. I'll sync deals to your weekly menu, flag your fresh ingredients on sale, and build your shopping list automatically.",
     traits: ['Batch Cooker', 'Recipe Follower', 'Fresh Buyer'],
     color: '#0891B2',
+    icon: 'calendar-check',
   },
   convenience_seeker: {
     name: 'The Speed Shopper',
@@ -65,6 +70,7 @@ const PERSONAS = {
     description: "Time is your scarcest resource. I'll find the best deals on ready-made and convenience items, and make sure delivery and pickup options are always stacked.",
     traits: ['Time Optimizer', 'Convenience Buyer', 'Multi-Store'],
     color: '#0284C7',
+    icon: 'stopwatch',
   },
   smart_stacker: {
     name: 'The Smart Stacker',
@@ -72,6 +78,7 @@ const PERSONAS = {
     description: "You're strategic and flexible. I'll layer every applicable deal — sale, loyalty, coupon, rebate — so your cart is always optimized before checkout.",
     traits: ['Multi-Store', 'Comparison Buyer', 'Coupon Stacker'],
     color: GREEN,
+    icon: 'layer-group',
   },
 };
 
@@ -113,8 +120,6 @@ const TRAIT_ICONS = ['tag', 'medal', 'heart'];
 const CHECKLIST = [
   'Tailored deal stacks match your specific needs.',
   'Weekly plans focus only on your exact goals.',
-  'Price drop alerts tracked on your priority items.',
-  'Auto-filtering blocks everything on your avoid list.',
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,8 +158,8 @@ export default function PersonaRevealScreen({ route, navigation }) {
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <View style={styles.aiBadgeWrap}>
             <View style={styles.aiBadge}>
-              <Feather name="cpu" size={12} color={GREEN} />
-              <Text style={styles.aiBadgeText}>AI Persona Generated</Text>
+              <FontAwesome5 name={persona.icon} size={12} color={GREEN} solid />
+              <Text style={styles.aiBadgeText}>{persona.name}</Text>
             </View>
           </View>
           <Text style={styles.screenTitle}>Your Snippd Shopping Persona</Text>
@@ -168,9 +173,9 @@ export default function PersonaRevealScreen({ route, navigation }) {
             { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
           ]}
         >
-          {/* White circle + leaf icon */}
+          {/* White circle + persona icon */}
           <View style={styles.leafCircle}>
-            <FontAwesome5 name="leaf" size={26} color={persona.color} solid />
+            <FontAwesome5 name={persona.icon} size={26} color={persona.color} solid />
           </View>
 
           <Text style={styles.personaName}>{persona.name}</Text>
@@ -239,7 +244,7 @@ export default function PersonaRevealScreen({ route, navigation }) {
 
           <View style={styles.savingsGrid}>
             {/* Monthly savings card */}
-            <View style={[styles.savingsCard, { borderColor: persona.color }]}>
+            <View style={styles.savingsCard}>
               <View style={styles.savingsIconCircle}>
                 <FontAwesome5 name="dollar-sign" size={18} color={GREEN} solid />
               </View>
@@ -248,21 +253,21 @@ export default function PersonaRevealScreen({ route, navigation }) {
                 <Text style={styles.savingsPer}> /mo</Text>
               </Text>
               <Text style={styles.savingsSub}>
-                Estimated value derived based on your unique profile analysis.
+                Estimated monthly savings if you use Snippd.
               </Text>
             </View>
 
             {/* Yearly savings card */}
-            <View style={[styles.savingsCard, styles.savingsCardAmber]}>
-              <View style={styles.savingsIconCircleAmber}>
-                <FontAwesome5 name="chart-bar" size={18} color={AMBER} solid />
+            <View style={styles.savingsCard}>
+              <View style={styles.savingsIconCircle}>
+                <FontAwesome5 name="chart-bar" size={18} color={GREEN} solid />
               </View>
-              <Text style={[styles.savingsValue, styles.savingsValueAmber]}>
+              <Text style={styles.savingsValue}>
                 ${yearlySavings.toLocaleString()}
                 <Text style={styles.savingsPer}> /yr</Text>
               </Text>
               <Text style={styles.savingsSub}>
-                Equivalent to 2 months of free groceries.
+                Estimated yearly savings if you use Snippd.
               </Text>
             </View>
           </View>
@@ -405,28 +410,24 @@ const styles = StyleSheet.create({
   },
   savingsGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   savingsCard: {
-    flex: 1, backgroundColor: WHITE, borderRadius: 16,
-    borderWidth: 2, borderColor: GREEN,
+    flex: 1, backgroundColor: GREEN, borderRadius: 16,
     padding: 16, alignItems: 'center',
+    ...Platform.select({
+      web:     { boxShadow: '0 8px 24px rgba(12,158,84,0.22)' },
+      default: { shadowColor: GREEN, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 12, elevation: 5 },
+    }),
   },
-  savingsCardAmber: { borderColor: '#FDE68A' },
   savingsIconCircle: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: MINT, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 12,
-  },
-  savingsIconCircleAmber: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
   },
   savingsValue: {
-    fontSize: 26, fontWeight: '900', color: GREEN,
+    fontSize: 26, fontWeight: '900', color: WHITE,
     letterSpacing: -0.5, textAlign: 'center', marginBottom: 6,
   },
-  savingsValueAmber: { color: AMBER },
-  savingsPer: { fontSize: 13, fontWeight: '500', color: GRAY },
-  savingsSub: { fontSize: 11, color: GRAY, lineHeight: 16, textAlign: 'center' },
+  savingsPer: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.78)' },
+  savingsSub: { fontSize: 11, color: 'rgba(255,255,255,0.86)', lineHeight: 16, textAlign: 'center', fontWeight: '600' },
 
   // ── Game Plan card ────────────────────────────────────────────────────────
   gamePlanCard: {
