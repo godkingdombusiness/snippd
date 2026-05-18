@@ -375,6 +375,126 @@ function InsightCard(props) {
   );
 }
 
+// ── Budget Simulator ──────────────────────────────────────────────────────────
+// Groups the 6 decision-engine options into 3 tabs. Scores and factor
+// breakdowns come from the real rankOptions() output — no mock values.
+
+var SIMULATOR_TABS = [
+  { id: 'cook',     label: 'Cook Stack', types: ['cook_from_pantry', 'quick_grocery_run', 'grocery_pickup'] },
+  { id: 'delivery', label: 'Delivery',   types: ['uber_eats_pickup', 'uber_eats_delivery'] },
+  { id: 'takeout',  label: 'Takeout',    types: ['eat_out_smart'] },
+];
+
+function BudgetSimulatorCard(props) {
+  var allOptions    = props.options      || [];
+  var householdSize = props.householdSize || 2;
+  var onNavigate    = props.onNavigate;
+  var [activeTab, setActiveTab] = useState('cook');
+
+  var activeGroup  = SIMULATOR_TABS.find(function (t) { return t.id === activeTab; });
+  var best = allOptions.find(function (o) {
+    return activeGroup && activeGroup.types.includes(o.optionType);
+  });
+
+  if (!best) return null;
+
+  var f            = best.factors || {};
+  var matchPct     = best.totalScore;
+  var budgetFitPct = Math.round((f.budget_fit       || 0) / 25 * 100);
+  var timeFitPct   = Math.round((f.time_fit         || 0) / 20 * 100);
+  var prefFitPct   = Math.round((f.preference_score || 0) / 10 * 100);
+  var meta         = OPTION_META[best.optionType]      || OPTION_META.cook_from_pantry;
+  var costCents    = scaleCost(PER_PERSON_CENTS[best.optionType] || 0, householdSize);
+  var timeLabel    = MINI_TIME_LABELS[best.optionType] || '';
+  var matchColor   = matchPct >= 75 ? GREEN : matchPct >= 55 ? BLUE : AMBER;
+
+  return (
+    <View style={styles.simCard}>
+      <View style={styles.simHeader}>
+        <Feather name="bar-chart-2" size={16} color={GREEN} />
+        <Text style={styles.simTitle}>Budget Simulator</Text>
+        <Text style={styles.simSub}>Your profile · {householdSize} people</Text>
+      </View>
+
+      <View style={styles.simTabs}>
+        {SIMULATOR_TABS.map(function (tab) {
+          var isActive = activeTab === tab.id;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={[styles.simTab, isActive && styles.simTabActive]}
+              onPress={function () { setActiveTab(tab.id); }}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.simTabText, isActive && styles.simTabTextActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={styles.simBody}>
+        <View style={styles.simMatchCol}>
+          <View style={[styles.simMatchRing, { borderColor: matchColor }]}>
+            <Text style={[styles.simMatchPct, { color: matchColor }]}>{matchPct}%</Text>
+          </View>
+          <Text style={styles.simMatchLabel}>Smart{'\n'}Match</Text>
+        </View>
+
+        <View style={styles.simInfoCol}>
+          <View style={styles.simOptionRow}>
+            <View style={[styles.simOptionIcon, { backgroundColor: meta.iconColor + '18' }]}>
+              <Feather name={meta.icon} size={13} color={meta.iconColor} />
+            </View>
+            <Text style={styles.simOptionName} numberOfLines={1}>{meta.label}</Text>
+          </View>
+
+          <View style={styles.simFactorRow}>
+            <Text style={styles.simFactorLabel}>Budget</Text>
+            <View style={styles.simBar}>
+              <View style={[styles.simBarFill, { width: budgetFitPct + '%', backgroundColor: GREEN }]} />
+            </View>
+            <Text style={styles.simFactorVal}>{budgetFitPct}%</Text>
+          </View>
+          <View style={styles.simFactorRow}>
+            <Text style={styles.simFactorLabel}>Time</Text>
+            <View style={styles.simBar}>
+              <View style={[styles.simBarFill, { width: timeFitPct + '%', backgroundColor: BLUE }]} />
+            </View>
+            <Text style={styles.simFactorVal}>{timeFitPct}%</Text>
+          </View>
+          <View style={styles.simFactorRow}>
+            <Text style={styles.simFactorLabel}>Preference</Text>
+            <View style={styles.simBar}>
+              <View style={[styles.simBarFill, { width: prefFitPct + '%', backgroundColor: AMBER }]} />
+            </View>
+            <Text style={styles.simFactorVal}>{prefFitPct}%</Text>
+          </View>
+
+          <View style={styles.simMeta}>
+            <Feather name="dollar-sign" size={11} color={GRAY} />
+            <Text style={styles.simMetaText}>
+              {costCents === 0 ? 'Free (pantry)' : formatDollars(costCents) + ' est.'}
+            </Text>
+            <Feather name="clock" size={11} color={GRAY} style={{ marginLeft: 10 }} />
+            <Text style={styles.simMetaText}>{timeLabel}</Text>
+          </View>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={styles.simCta}
+        onPress={function () { onNavigate && onNavigate(best); }}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.simCtaText}>Build Dinner Cart</Text>
+        <Feather name="arrow-right" size={16} color={WHITE} style={{ marginLeft: 6 }} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function HomeScreen({ navigation }) {
@@ -387,6 +507,7 @@ export default function HomeScreen({ navigation }) {
   var [context,    setContext]    = useState(null);
   var [notifCount, setNotifCount] = useState(3);
   var [weeklyDeals, setWeeklyDeals] = useState([]);
+  var [layoutAlerts, setLayoutAlerts] = useState([]);
   var tapCount = useRef(0);
   var tapTimer = useRef(null);
 
@@ -430,6 +551,21 @@ export default function HomeScreen({ navigation }) {
       setOptions(ranked);
 
       tracker.track('home_viewed', { user_id: user.id });
+
+      // Fetch dynamic home layout from graph memory layer (non-blocking).
+      // Alerts drive UI hints (budget pressure, allergen flags, etc.).
+      try {
+        var sessionRes  = await supabase.auth.getSession();
+        var accessToken = sessionRes?.data?.session?.access_token;
+        if (accessToken) {
+          var layoutRes = await supabase.functions.invoke('get-dynamic-home-layout', {
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          if (layoutRes?.data?.alerts && Array.isArray(layoutRes.data.alerts)) {
+            setLayoutAlerts(layoutRes.data.alerts);
+          }
+        }
+      } catch (_) {}
     } catch (e) {
       // Non-blocking — show defaults
       var defaultCtx = buildContextFromProfile({}, 0);
@@ -447,6 +583,20 @@ export default function HomeScreen({ navigation }) {
     loadAll();
   }
 
+  // Fire-and-forget behavioral write to record-memory-event edge function.
+  // Increments interaction counts on Neo4j relationship nodes.
+  async function recordMemoryEvent(eventType, metadata) {
+    try {
+      var s     = await supabase.auth.getSession();
+      var token = s?.data?.session?.access_token;
+      if (!token) return;
+      supabase.functions.invoke('record-memory-event', {
+        body:    { event_type: eventType, metadata: metadata || {} },
+        headers: { Authorization: 'Bearer ' + token },
+      });
+    } catch (_) {}
+  }
+
   function handleSeeAll() {
     if (context) {
       navigation.navigate('TodayOptionsRanked', { context: context });
@@ -459,12 +609,40 @@ export default function HomeScreen({ navigation }) {
     if (!options[0] || !context) return;
     navigateForOption(navigation, options[0].optionType, context);
     tracker.track('home_hero_tapped', { option_type: options[0].optionType });
+    // Write INTERACTED_WITH relationship to Neo4j via memory event
+    recordMemoryEvent('product_added_to_cart', {
+      option_type: options[0].optionType,
+      source:      'home_hero',
+    });
   }
 
   function handleMiniPress(option) {
     if (!context) return;
     navigateForOption(navigation, option.optionType, context);
     tracker.track('home_mini_option_tapped', { option_type: option.optionType });
+    // Viewing an alternative records deal_viewed on the chosen path
+    recordMemoryEvent('deal_viewed', {
+      option_type: option.optionType,
+      source:      'home_mini',
+    });
+    // Log SKIPPED_CHANCE: hero option was available but user chose something else
+    if (options[0] && options[0].optionType !== option.optionType) {
+      recordMemoryEvent('deal_viewed', {
+        option_type: options[0].optionType,
+        source:      'skipped_hero',
+        skipped:     true,
+      });
+    }
+  }
+
+  function handleSimulatorNavigate(option) {
+    if (!context) return;
+    navigateForOption(navigation, option.optionType, context);
+    tracker.track('home_simulator_cta', { option_type: option.optionType });
+    recordMemoryEvent('product_added_to_cart', {
+      option_type: option.optionType,
+      source:      'budget_simulator',
+    });
   }
 
   function handleInsightPress() {
@@ -591,6 +769,16 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         )}
 
+        {/* ── Graph memory alerts (budget pressure, allergen flags, etc.) ── */}
+        {layoutAlerts.map(function (alert) {
+          return (
+            <View key={alert.type} style={styles.layoutAlert}>
+              <Feather name="info" size={13} color={BLUE} />
+              <Text style={styles.layoutAlertText}>{alert.message}</Text>
+            </View>
+          );
+        })}
+
         {/* ── Context Stats ── */}
         <ScrollView
           horizontal
@@ -681,6 +869,15 @@ export default function HomeScreen({ navigation }) {
               })}
             </ScrollView>
           </View>
+        )}
+
+        {/* ── Budget Simulator ── */}
+        {options.length > 0 && (
+          <BudgetSimulatorCard
+            options={options}
+            householdSize={householdSize}
+            onNavigate={handleSimulatorNavigate}
+          />
         )}
 
         {/* ── Smart Insight ── */}
@@ -1115,4 +1312,133 @@ var styles = StyleSheet.create({
   dealLoyaltyText:  { fontSize: 11, fontWeight: '600', color: AMBER },
   dealExpires:      { fontSize: 11, color: GRAY },
   dealPrice:        { fontSize: 16, fontWeight: '800', color: GREEN, flexShrink: 0 },
+
+  // Layout alerts (from get-dynamic-home-layout — budget pressure, allergen, etc.)
+  layoutAlert: {
+    flexDirection:    'row',
+    alignItems:       'center',
+    gap:              8,
+    marginHorizontal: 16,
+    marginBottom:     8,
+    backgroundColor:  LIGHT_BLUE,
+    borderRadius:     10,
+    borderWidth:      1,
+    borderColor:      BLUE + '33',
+    paddingHorizontal: 12,
+    paddingVertical:   9,
+  },
+  layoutAlertText: { flex: 1, fontSize: 12, color: BLUE, fontWeight: '600', lineHeight: 17 },
+
+  // Budget Simulator card
+  simCard: {
+    marginHorizontal: 16,
+    marginBottom:     12,
+    backgroundColor:  WHITE,
+    borderRadius:     18,
+    borderWidth:      1,
+    borderColor:      BORDER,
+    padding:          16,
+    shadowColor:      '#000',
+    shadowOffset:     { width: 0, height: 2 },
+    shadowOpacity:    0.06,
+    shadowRadius:     8,
+    elevation:        2,
+  },
+  simHeader: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           6,
+    marginBottom:  12,
+  },
+  simTitle:   { fontSize: 14, fontWeight: '700', color: NAVY, flex: 1 },
+  simSub:     { fontSize: 11, color: GRAY },
+  simTabs: {
+    flexDirection: 'row',
+    gap:           6,
+    marginBottom:  14,
+  },
+  simTab: {
+    flex:            1,
+    paddingVertical: 7,
+    borderRadius:    8,
+    backgroundColor: CREAM,
+    alignItems:      'center',
+    borderWidth:     1,
+    borderColor:     BORDER,
+  },
+  simTabActive:     { backgroundColor: GREEN, borderColor: GREEN },
+  simTabText:       { fontSize: 12, fontWeight: '600', color: GRAY },
+  simTabTextActive: { color: WHITE },
+  simBody: {
+    flexDirection: 'row',
+    gap:           14,
+    marginBottom:  14,
+  },
+  simMatchCol: {
+    alignItems:     'center',
+    justifyContent: 'flex-start',
+    gap:            4,
+    width:          70,
+  },
+  simMatchRing: {
+    width:           64,
+    height:          64,
+    borderRadius:    32,
+    borderWidth:     3,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  simMatchPct:   { fontSize: 15, fontWeight: '900' },
+  simMatchLabel: { fontSize: 10, color: GRAY, fontWeight: '600', textAlign: 'center', lineHeight: 14 },
+  simInfoCol:    { flex: 1 },
+  simOptionRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           6,
+    marginBottom:  10,
+  },
+  simOptionIcon: {
+    width:           26,
+    height:          26,
+    borderRadius:    6,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  simOptionName: { fontSize: 13, fontWeight: '700', color: NAVY, flex: 1 },
+  simFactorRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           6,
+    marginBottom:  5,
+  },
+  simFactorLabel: { fontSize: 10, color: GRAY, width: 62 },
+  simBar: {
+    flex:            1,
+    height:          5,
+    backgroundColor: BORDER,
+    borderRadius:    3,
+    overflow:        'hidden',
+  },
+  simBarFill:   { height: 5, borderRadius: 3 },
+  simFactorVal: { fontSize: 10, fontWeight: '700', color: NAVY, width: 30, textAlign: 'right' },
+  simMeta: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    marginTop:     8,
+  },
+  simMetaText: { fontSize: 11, color: GRAY, marginLeft: 3 },
+  simCta: {
+    backgroundColor: GREEN,
+    borderRadius:    12,
+    paddingVertical: 12,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    shadowColor:     GREEN,
+    shadowOffset:    { width: 0, height: 4 },
+    shadowOpacity:   0.28,
+    shadowRadius:    10,
+    elevation:       4,
+  },
+  simCtaText: { fontSize: 14, fontWeight: '800', color: WHITE },
 });

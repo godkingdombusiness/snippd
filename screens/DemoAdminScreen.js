@@ -160,6 +160,13 @@ function DemoAdminScreen(props) {
       <StatusBar barStyle="dark-content" backgroundColor={CREAM} />
 
       <View style={styles.navBar}>
+        <TouchableOpacity
+          style={styles.homeBtn}
+          onPress={function () { navigation.navigate('MainApp'); }}
+          activeOpacity={0.7}
+        >
+          <Feather name="home" size={20} color={NAVY} />
+        </TouchableOpacity>
         <Text style={styles.navTitle}>Demo Navigator</Text>
         <View style={styles.buildBadge}>
           <Text style={styles.buildBadgeText}>Internal</Text>
@@ -263,6 +270,16 @@ var styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
     backgroundColor: WHITE,
+  },
+  homeBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: CREAM,
+    borderWidth: 1,
+    borderColor: BORDER,
   },
   navTitle: { fontSize: 18, fontWeight: '800', color: NAVY },
   buildBadge: {

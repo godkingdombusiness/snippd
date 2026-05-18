@@ -4,6 +4,15 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added — HomeScreen: Neo4j behavioral intelligence integration (2026-05-18)
+- `screens/HomeScreen.js` — Wired `get-dynamic-home-layout` edge function on mount; alerts (budget pressure, allergen flags, store accuracy) surface as inline blue banners above the stats row.
+- Added `recordMemoryEvent()` helper — fire-and-forget JWT-authenticated call to `record-memory-event` edge function. Hero tap logs `product_added_to_cart`. Mini-option tap logs `deal_viewed` + a skipped-hero `deal_viewed{skipped:true}` when the top option was bypassed.
+- Added `BudgetSimulatorCard` — tabbed component (Cook Stack / Delivery / Takeout) that shows the best decision-engine option per group with a Smart Match % ring, budget/time/preference factor bars, cost estimate, and "Build Dinner Cart" CTA. All values derived from real `rankOptions()` scores — no hardcoded or randomised values.
+- `handleSimulatorNavigate` logs `product_added_to_cart` with `source: 'budget_simulator'` to Neo4j on CTA press.
+
+### Changed — DemoAdminScreen: add home button to nav bar (2026-05-18)
+- `screens/DemoAdminScreen.js` — Added bordered home icon button (left side of navBar) that navigates to `MainApp`.
+
 ### Changed — TodayOptionsRankedScreen: nav bar style consistency (2026-05-18)
 - `screens/TodayOptionsRankedScreen.js` — Removed border-bottom and redundant backgroundColor from navBar. Fixed navTitle fontSize 15 → 17. Now matches CookAtHomeTriage and ContextualCookingScreen exactly.
 
