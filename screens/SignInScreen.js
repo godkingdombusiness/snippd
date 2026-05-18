@@ -402,11 +402,7 @@ export default function SignInScreen({ navigation, route }) {
         style={welcome.root}
       >
         <StatusBar barStyle="light-content" />
-        <ScrollView
-          contentContainerStyle={welcome.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={welcome.screen}>
           {/* TOP GROUP — logo + headline + subtitle */}
           <View style={welcome.topGroup}>
             <Image
@@ -458,7 +454,7 @@ export default function SignInScreen({ navigation, route }) {
               </Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </LinearGradient>
     );
   }
@@ -710,11 +706,11 @@ const left = StyleSheet.create({
 const welcome = StyleSheet.create({
   root:  { flex: 1 },
 
-  // Compact mobile welcome stack: all core actions should fit without scrolling.
-  scroll: {
-    flexGrow: 1,
-    paddingTop: 12,
-    paddingBottom: 12,
+  // Fixed mobile welcome stack: all core actions fit without scrolling.
+  screen: {
+    flex: 1,
+    paddingTop: 10,
+    paddingBottom: 10,
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
@@ -722,11 +718,11 @@ const welcome = StyleSheet.create({
 
   // Top zone — alignSelf stretch overrides parent alignItems:center, fills full width
   topGroup:  { alignItems: 'center', paddingHorizontal: 24, alignSelf: 'stretch' },
-  logoImg:   { width: 232, height: 82, marginBottom: 4 },
+  logoImg:   { width: 250, height: 88, marginBottom: 2 },
   headline: {
-    fontSize: 30, fontWeight: '700', color: WHITE,
+    fontSize: 28, fontWeight: '700', color: WHITE,
     textAlign: 'center', letterSpacing: 0,
-    lineHeight: 35, marginBottom: 6,
+    lineHeight: 32, marginBottom: 5,
     alignSelf: 'stretch',
   },
   sub: {
@@ -739,13 +735,13 @@ const welcome = StyleSheet.create({
   heroWrap: {
     flex: 1,
     width: '100%',
-    minHeight: 210,
+    minHeight: 170,
     paddingHorizontal: 0,
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 0,
   },
-  heroImg:  { width: '74%', height: 284, maxHeight: '100%', transform: [{ translateX: -14 }] },
+  heroImg:  { width: '72%', height: '100%', maxHeight: 260, transform: [{ translateX: -14 }] },
 
   // Bottom zone — alignSelf stretch restores full-width button layout
   ctaGroup: { gap: 8, paddingHorizontal: 20, alignSelf: 'stretch' },
