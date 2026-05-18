@@ -4,6 +4,10 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed - Onboarding buttons and intermission facts (2026-05-18)
+- `screens/OnboardingScreen.js` - Standardized Continue-style buttons across onboarding and replaced dense intermission copy with rotating short Snippd fact bubbles.
+- `screens/PlanGenerationLoadingScreen.js` - Shortened loading facts to 8-word brand statements and rendered them in a rounded mint fact block.
+
 ### Changed — TodayOptionsRankedScreen: full visual rebuild as 3-card decision hub (2026-05-17)
 - `screens/TodayOptionsRankedScreen.js` — Complete rewrite into "What's the plan for tonight?" 3-card layout.
 - **WalletBanner**: Green card showing remaining vs. weekly grocery budget, derived from `context.remainingBudgetCents` / `context.weeklyBudgetCents`.

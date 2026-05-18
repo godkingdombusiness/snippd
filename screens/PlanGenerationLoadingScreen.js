@@ -26,12 +26,12 @@ const LOADING_STEPS = [
 ];
 
 const MONEY_FACTS = [
-  'Without a weekly system, small grocery leaks can add up to $1,500+ a year in duplicate buys, unused food, and missed discounts.',
-  'Families often overspend most when dinner decisions happen late. Snippd plans the cheaper path before stress turns into takeout.',
-  'A few missed coupons, BOGOs, and store-brand swaps each week can quietly become hundreds of dollars lost every year.',
-  'The goal is not just saving on one trip. It is building a repeatable guardrail around every food decision.',
-  'Every optimized cart protects money you already earned before it disappears into impulse spending.',
-  'Your first system is ready.',
+  'Late dinner decisions quietly drain weekly food budgets.',
+  'Missed coupons can become hundreds lost each year.',
+  'Duplicate pantry buys are budget leaks in disguise.',
+  'Delivery fees can swallow a week of savings.',
+  'A simple plan keeps impulse spending on pause.',
+  'Your first smart food system is ready today.',
 ];
 
 export default function PlanGenerationLoadingScreen({ navigation }) {
@@ -137,12 +137,15 @@ const styles = StyleSheet.create({
   sub: { fontSize: 14, color: GRAY, textAlign: 'center', marginBottom: 16, lineHeight: 21 },
 
   factCard: {
-    width: '100%',
-    backgroundColor: WHITE,
-    borderRadius: 16,
+    width: 214,
+    minHeight: 214,
+    backgroundColor: MINT,
+    borderRadius: 107,
     borderWidth: 1,
-    borderColor: BORDER,
-    padding: 14,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 24,
   },
   factLabel: {
@@ -151,10 +154,10 @@ const styles = StyleSheet.create({
     color: GREEN,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 6,
+    marginBottom: 8,
     textAlign: 'center',
   },
-  factText: { fontSize: 13, color: NAVY, textAlign: 'center', lineHeight: 19, fontWeight: '600' },
+  factText: { fontSize: 18, color: NAVY, textAlign: 'center', lineHeight: 24, fontWeight: '800' },
 
   checklist: { width: '100%', gap: 12 },
   checkItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },

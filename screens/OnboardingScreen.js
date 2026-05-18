@@ -41,6 +41,14 @@ const CONTENT_STEPS = 7;  // steps 1–7 show progress
 
 // ── Demo profile (no Supabase writes) ────────────────────────────────────────
 
+const INTERMISSION_FACTS = [
+  'Late dinner decisions quietly drain weekly food budgets.',
+  'Missed coupons can become hundreds lost each year.',
+  'Duplicate pantry buys are budget leaks in disguise.',
+  'Delivery fees can swallow a week of savings.',
+  'A simple plan keeps impulse spending on pause.',
+];
+
 const DEMO_PROFILE = {
   isDemoMode:                     true,
   missions:                       ['pure_savings', 'meal_planning', 'clinical_guardrails'],
@@ -574,7 +582,8 @@ export default function OnboardingScreen({ navigation, route }) {
   const [budgetWarn, setBudgetWarn] = useState('');
   const [showFact, setShowFact]      = useState(false);
   const [showCookingModal, setShowCookingModal] = useState(false);
-  const [processing, setProcessing]  = useState({ show: false, title: '', sub: '' });
+  const [processing, setProcessing]  = useState({ show: false, title: '', sub: '', fact: '' });
+  const processingFactIndex = useRef(0);
 
   const [data, setData] = useState({
     missions:            [],
@@ -628,9 +637,11 @@ export default function OnboardingScreen({ navigation, route }) {
   function back() { setStep((n) => Math.max(n - 1, 0)); }
 
   function runProcessing(title, sub, callback) {
-    setProcessing({ show: true, title, sub });
+    const fact = INTERMISSION_FACTS[processingFactIndex.current % INTERMISSION_FACTS.length];
+    processingFactIndex.current += 1;
+    setProcessing({ show: true, title, sub, fact });
     setTimeout(() => {
-      setProcessing({ show: false, title: '', sub: '' });
+      setProcessing({ show: false, title: '', sub: '', fact: '' });
       callback();
     }, 2500);
   }
@@ -923,7 +934,7 @@ export default function OnboardingScreen({ navigation, route }) {
           {/* Continue */}
           <TouchableOpacity style={s.b2ContinueBtn} onPress={next} activeOpacity={0.88}>
             <Text style={s.b2ContinueTxt}>Continue</Text>
-            <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+            <Feather name="arrow-right" size={18} color={WHITE} style={s.continueArrow} />
           </TouchableOpacity>
 
           {/* I'm not sure yet */}
@@ -1014,7 +1025,7 @@ export default function OnboardingScreen({ navigation, route }) {
           activeOpacity={0.88}
         >
           <Text style={s.h3ContinueTxt}>Continue</Text>
-          <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+          <Feather name="arrow-right" size={18} color={WHITE} style={s.continueArrow} />
         </TouchableOpacity>
 
         {/* Privacy */}
@@ -1069,7 +1080,7 @@ export default function OnboardingScreen({ navigation, route }) {
 
         <TouchableOpacity style={s.f4ContinueBtn} onPress={next} activeOpacity={0.88}>
           <Text style={s.f4ContinueTxt}>Continue</Text>
-          <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+          <Feather name="arrow-right" size={18} color={WHITE} style={s.continueArrow} />
         </TouchableOpacity>
       </ScrollView>
     );
@@ -1149,7 +1160,7 @@ export default function OnboardingScreen({ navigation, route }) {
           activeOpacity={0.88}
         >
           <Text style={s.f4ContinueTxt}>Continue</Text>
-          <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+          <Feather name="arrow-right" size={18} color={WHITE} style={s.continueArrow} />
         </TouchableOpacity>
       </ScrollView>
     );
@@ -1182,7 +1193,7 @@ export default function OnboardingScreen({ navigation, route }) {
           activeOpacity={0.88}
         >
           <Text style={s.f4ContinueTxt}>Continue</Text>
-          <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+          <Feather name="arrow-right" size={18} color={WHITE} style={s.continueArrow} />
         </TouchableOpacity>
       </ScrollView>
     );
@@ -1239,9 +1250,10 @@ export default function OnboardingScreen({ navigation, route }) {
           <ActivityIndicator size="large" color={GREEN} style={s.processingSpinner} />
           <Text style={s.processingTitle}>{processing.title}</Text>
           <Text style={s.processingSub}>{processing.sub}</Text>
-          <Text style={s.processingFact}>
-            Without a system, families can quietly lose $1,500-$2,000 a year to duplicate buys, unused food, delivery fees, and missed store savings. Snippd is built to catch that before the money leaves.
-          </Text>
+          <View style={s.processingFactBubble}>
+            <Text style={s.processingFactLabel}>Snippd fact</Text>
+            <Text style={s.processingFact}>{processing.fact}</Text>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -1279,7 +1291,7 @@ export default function OnboardingScreen({ navigation, route }) {
               activeOpacity={0.88}
             >
               <Text style={s.modalBtnTxt}>Got it, let's go</Text>
-              <Feather name="arrow-right" size={18} color={WHITE} style={{ position: 'absolute', right: 24 }} />
+              <Feather name="arrow-right" size={18} color={WHITE} style={s.continueArrow} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1414,12 +1426,12 @@ const s = StyleSheet.create({
   b2FactTxt:   { fontSize: 13, color: '#78350F', lineHeight: 19 },
   b2ContinueBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: GREEN, borderRadius: 30,
-    paddingVertical: 18, marginBottom: 16, position: 'relative',
+    backgroundColor: GREEN, borderRadius: 14,
+    paddingVertical: 16, marginTop: 8, marginBottom: 20, position: 'relative',
     shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+    shadowOpacity: 0.24, shadowRadius: 10, elevation: 4,
   },
-  b2ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
+  b2ContinueTxt: { fontSize: 16, fontWeight: '800', color: WHITE },
   b2SkipWrap:    { alignItems: 'center', paddingVertical: 4 },
   b2SkipTxt:     { fontSize: 15, color: GREEN, fontWeight: '600' },
 
@@ -1510,13 +1522,13 @@ const s = StyleSheet.create({
   h3WhyTitle: { fontSize: 13, fontWeight: '700', color: NAVY },
   h3WhySub:   { fontSize: 13, color: GRAY, lineHeight: 19, flex: 1 },
   h3ContinueBtn: {
-    backgroundColor: GREEN, borderRadius: 30,
-    paddingVertical: 18, alignItems: 'center', marginBottom: 14,
+    backgroundColor: GREEN, borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center', marginTop: 8, marginBottom: 20,
     flexDirection: 'row', justifyContent: 'center', position: 'relative',
     shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+    shadowOpacity: 0.24, shadowRadius: 10, elevation: 4,
   },
-  h3ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
+  h3ContinueTxt: { fontSize: 16, fontWeight: '800', color: WHITE },
   h3Privacy:     { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
   h3PrivacyTxt:  { fontSize: 11, color: GRAY },
   h3SectionLabel: { fontSize: 14, fontWeight: '700', color: NAVY, marginTop: 28, marginBottom: 12 },
@@ -1562,9 +1574,11 @@ const s = StyleSheet.create({
     backgroundColor: GREEN, borderRadius: 14,
     paddingVertical: 16, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
-    position: 'relative',
+    position: 'relative', marginTop: 8, marginBottom: 20,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.24, shadowRadius: 10, elevation: 4,
   },
-  mContinueTxt:   { fontSize: 16, fontWeight: '600', color: WHITE },
+  mContinueTxt:   { fontSize: 16, fontWeight: '800', color: WHITE },
   mContinueArrow: { position: 'absolute', right: 20 },
 
   // ── Content layout ──
@@ -1643,8 +1657,14 @@ const s = StyleSheet.create({
   f4Grid:        { flexDirection: 'row', flexWrap: 'wrap', margin: -4 },
   f4GridCell:    { width: '50%', padding: 4 },
   f4GridPill:    { flex: 1 },
-  f4ContinueBtn: { backgroundColor: GREEN, borderRadius: 14, paddingVertical: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 8, marginBottom: 24, position: 'relative' },
-  f4ContinueTxt: { fontSize: 17, fontWeight: '700', color: WHITE },
+  f4ContinueBtn: {
+    backgroundColor: GREEN, borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
+    marginTop: 8, marginBottom: 20, position: 'relative',
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.24, shadowRadius: 10, elevation: 4,
+  },
+  f4ContinueTxt: { fontSize: 16, fontWeight: '800', color: WHITE },
 
   // ── Archetype cards (food personality step) ──
   archCard:          { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, borderRadius: 14, borderWidth: 1.5, borderColor: BORDER, padding: 16, marginBottom: 12, gap: 14 },
@@ -1680,8 +1700,14 @@ const s = StyleSheet.create({
   modalEmoji:    { fontSize: 32, marginBottom: 10 },
   modalLabel:    { fontSize: 11, fontWeight: '700', color: GREEN, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 },
   modalBody:     { fontSize: 15, color: '#374151', lineHeight: 25, marginBottom: 28 },
-  modalBtn:      { backgroundColor: GREEN, borderRadius: 14, paddingVertical: 17, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', position: 'relative' },
-  modalBtnTxt:   { fontSize: 16, fontWeight: '700', color: WHITE },
+  modalBtn: {
+    backgroundColor: GREEN, borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
+    position: 'relative',
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.24, shadowRadius: 10, elevation: 4,
+  },
+  modalBtnTxt:   { fontSize: 16, fontWeight: '800', color: WHITE },
 
   // ── Store grid ──
   storeGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
@@ -1694,20 +1720,21 @@ const s = StyleSheet.create({
 
   // ── Primary button ──
   bigBtn: {
-    borderRadius: 14, paddingVertical: 18,
+    borderRadius: 14, paddingVertical: 16,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16, marginTop: 4,
+    marginBottom: 20, marginTop: 8,
   },
   bigBtnFill: {
     backgroundColor: GREEN,
     shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+    shadowOpacity: 0.24, shadowRadius: 10, elevation: 4,
   },
   bigBtnOutline: {
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
   },
-  bigBtnText: { fontSize: 16, fontWeight: '700', color: WHITE },
+  bigBtnText: { fontSize: 16, fontWeight: '800', color: WHITE },
+  continueArrow: { position: 'absolute', right: 20 },
 
   // ── Budget recommendation chip ──
   b2RecoChip: {
@@ -1719,9 +1746,19 @@ const s = StyleSheet.create({
 
   // ── Processing intermission screen ──
   processingRoot:   { flex: 1, backgroundColor: WHITE },
-  processingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  processingSpinner:{ marginBottom: 28 },
+  processingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  processingSpinner:{ marginBottom: 24 },
   processingTitle:  { fontSize: 20, fontWeight: '700', color: NAVY, textAlign: 'center', marginBottom: 10 },
   processingSub:    { fontSize: 14, color: GRAY, textAlign: 'center', lineHeight: 21 },
-  processingFact:   { fontSize: 13, color: NAVY, textAlign: 'center', lineHeight: 20, marginTop: 22, fontWeight: '600' },
+  processingFactBubble: {
+    width: 214, minHeight: 214, borderRadius: 107,
+    backgroundColor: MINT, borderWidth: 1, borderColor: '#A7F3D0',
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 24, marginTop: 24,
+  },
+  processingFactLabel: {
+    fontSize: 10, fontWeight: '900', color: GREEN,
+    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+  },
+  processingFact:   { fontSize: 18, color: NAVY, textAlign: 'center', lineHeight: 24, fontWeight: '800' },
 });
