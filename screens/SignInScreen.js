@@ -453,7 +453,9 @@ export default function SignInScreen({ navigation, route }) {
               style={welcome.signInLink}
               activeOpacity={0.7}
             >
-              <Text style={welcome.signInLinkTxt}>Sign in</Text>
+              <Text style={welcome.signInCopy}>
+                Already have an account? <Text style={welcome.signInLinkTxt}>Sign in</Text>
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -711,8 +713,8 @@ const welcome = StyleSheet.create({
   // Compact mobile welcome stack: all core actions should fit without scrolling.
   scroll: {
     flexGrow: 1,
-    paddingTop: 14,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
@@ -720,53 +722,52 @@ const welcome = StyleSheet.create({
 
   // Top zone — alignSelf stretch overrides parent alignItems:center, fills full width
   topGroup:  { alignItems: 'center', paddingHorizontal: 24, alignSelf: 'stretch' },
-  logoImg:   { width: 204, height: 72, marginBottom: 8 },
+  logoImg:   { width: 232, height: 82, marginBottom: 4 },
   headline: {
-    fontSize: 31, fontWeight: '700', color: WHITE,
+    fontSize: 30, fontWeight: '700', color: WHITE,
     textAlign: 'center', letterSpacing: 0,
-    lineHeight: 37, marginBottom: 8,
+    lineHeight: 35, marginBottom: 6,
     alignSelf: 'stretch',
   },
   sub: {
-    fontSize: 14, color: 'rgba(255,255,255,0.80)',
+    fontSize: 13, color: 'rgba(255,255,255,0.80)',
     textAlign: 'center', fontWeight: '400',
-    lineHeight: 20, paddingHorizontal: 8, alignSelf: 'stretch',
+    lineHeight: 19, paddingHorizontal: 8, alignSelf: 'stretch',
   },
 
   // Middle zone — isolated full-width container, no padding, bag centers on exact screen axis
   heroWrap: {
     flex: 1,
     width: '100%',
-    minHeight: 230,
+    minHeight: 210,
     paddingHorizontal: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 2,
+    marginVertical: 0,
   },
-  heroImg:  { width: '76%', height: 310, maxHeight: '100%', transform: [{ translateX: -8 }] },
+  heroImg:  { width: '74%', height: 284, maxHeight: '100%', transform: [{ translateX: -8 }] },
 
   // Bottom zone — alignSelf stretch restores full-width button layout
-  ctaGroup: { gap: 9, paddingHorizontal: 24, alignSelf: 'stretch' },
+  ctaGroup: { gap: 8, paddingHorizontal: 20, alignSelf: 'stretch' },
   primaryBtn: {
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: WHITE,
-    paddingVertical: 14, borderRadius: 12,
+    paddingVertical: 13, borderRadius: 12,
   },
   primaryBtnTxt: { color: '#1B3A2D', fontSize: 16, fontWeight: '600' },
   demoBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
-    paddingVertical: 13, borderRadius: 12,
+    paddingVertical: 12, borderRadius: 12,
     backgroundColor: 'transparent',
   },
   demoBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '600' },
   signInLink: {
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
-    paddingVertical: 13, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingVertical: 4,
   },
-  signInLinkTxt: { fontSize: 15, color: WHITE, fontWeight: '600' },
+  signInCopy: { fontSize: 13, color: 'rgba(255,255,255,0.72)', fontWeight: '500' },
+  signInLinkTxt: { color: WHITE, fontWeight: '700', textDecorationLine: 'underline' },
 });
 
 // ── Form styles ────────────────────────────────────────────────────────────────
