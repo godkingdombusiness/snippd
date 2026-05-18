@@ -205,24 +205,6 @@ function LeftPanel() {
   );
 }
 
-function MobileHero() {
-  return (
-    <View style={hero.wrap}>
-      <View style={hero.brandRow}>
-        <Text style={hero.wordmark}>snipp<Text style={{ color: GREEN }}>d</Text></Text>
-        <View style={hero.securePill}>
-          <Feather name="shield" size={12} color={GREEN} />
-          <Text style={hero.securePillText}>Secure</Text>
-        </View>
-      </View>
-      <Text style={hero.headline}>Budget-smart meals start here.</Text>
-      <Text style={hero.sub}>
-        Create your profile once. Snippd handles the meal, store, and savings math.
-      </Text>
-    </View>
-  );
-}
-
 // ── PropTypes ──────────────────────────────────────────────────────────────────
 
 GoogleIcon.propTypes = {
@@ -493,8 +475,6 @@ export default function SignInScreen({ navigation, route }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {!isTablet && <MobileHero />}
-
           <Animated.View
             style={[
               form.card,
@@ -516,7 +496,7 @@ export default function SignInScreen({ navigation, route }) {
 
             {/* Header */}
             <View style={form.header}>
-              <Text style={form.eyebrow}>{tab === 'signin' ? 'Welcome back' : 'Start in under a minute'}</Text>
+              {tab === 'signin' && <Text style={form.eyebrow}>Welcome back</Text>}
               <Text style={form.title}>
                 {tab === 'signin'
                   ? <Text>Sign in</Text>
@@ -532,7 +512,7 @@ export default function SignInScreen({ navigation, route }) {
             </View>
 
             {/* Tab toggle */}
-            <View style={form.tabToggle}>
+            {isTablet && <View style={form.tabToggle}>
               <TouchableOpacity
                 style={[form.tabBtn, tab === 'signin' && form.tabBtnActive]}
                 onPress={function () { switchTab('signin'); }}
@@ -545,7 +525,7 @@ export default function SignInScreen({ navigation, route }) {
               >
                 <Text style={[form.tabBtnTxt, tab === 'signup' && form.tabBtnTxtActive]}>Create Account</Text>
               </TouchableOpacity>
-            </View>
+            </View>}
 
             {/* Social auth */}
             <View style={form.socialGroup}>
@@ -657,12 +637,12 @@ export default function SignInScreen({ navigation, route }) {
                 : 'Plan smarter. Save more. Stress less.'}
             </Text>
 
-            <Text style={form.bottomLink}>
+            {isTablet && <Text style={form.bottomLink}>
               {tab === 'signin'
                 ? <Text>No account yet?<Text style={form.bottomLinkA} onPress={function () { switchTab('signup'); }}> Start your free trial</Text></Text>
                 : <Text>Already have an account?<Text style={form.bottomLinkA} onPress={function () { switchTab('signin'); }}> Sign In</Text></Text>
               }
-            </Text>
+            </Text>}
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -724,22 +704,6 @@ const left = StyleSheet.create({
   divider: { width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.18)', marginHorizontal: 16 },
 });
 
-// ── Mobile hero styles ─────────────────────────────────────────────────────────
-const hero = StyleSheet.create({
-  wrap: { paddingBottom: 14 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  wordmark: { fontFamily: 'Sublima-ExtraBold', fontSize: 25, color: NAVY, letterSpacing: 0 },
-  securePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#F3FBF6', borderRadius: 999,
-    paddingHorizontal: 9, paddingVertical: 5,
-    borderWidth: 1, borderColor: '#D8F3DC',
-  },
-  securePillText: { fontSize: 10, fontWeight: '800', color: GREEN },
-  headline: { fontSize: 20, fontWeight: '900', color: NAVY, letterSpacing: 0, lineHeight: 25, marginBottom: 6 },
-  sub: { fontSize: 12, color: GRAY, lineHeight: 18, maxWidth: 310 },
-});
-
 // ── Welcome landing styles ─────────────────────────────────────────────────────
 const welcome = StyleSheet.create({
   root:  { flex: 1 },
@@ -795,21 +759,21 @@ const welcome = StyleSheet.create({
 // ── Form styles ────────────────────────────────────────────────────────────────
 const form = StyleSheet.create({
   scroll:       { flexGrow: 1, justifyContent: 'center', padding: 48 },
-  scrollPhone:  { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
+  scrollPhone:  { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 18, justifyContent: 'flex-start' },
   card:         { width: '100%' },
   cardTablet:   { maxWidth: 420, alignSelf: 'center' },
 
-  backBtn:    { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 },
+  backBtn:    { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 },
   backBtnTxt: { fontSize: 13, color: NAVY, fontWeight: '700' },
 
-  header:     { marginBottom: 16 },
+  header:     { marginBottom: 14 },
   eyebrow:    { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.8, color: GREEN, marginBottom: 7 },
   title: {
-    fontFamily: 'Sublima-ExtraBold', fontSize: 29,
-    color: NAVY, letterSpacing: 0, lineHeight: 33, marginBottom: 5,
+    fontFamily: 'Sublima-ExtraBold', fontSize: 28,
+    color: NAVY, letterSpacing: 0, lineHeight: 32, marginBottom: 4,
   },
   titleAccent:   { fontFamily: 'Sublima-ExtraLight', color: GREEN },
-  headerSub:     { fontSize: 13, color: GRAY, fontWeight: '500' },
+  headerSub:     { fontSize: 12, color: GRAY, fontWeight: '500' },
   headerSubLink: { color: GREEN, fontWeight: '800' },
 
   tabToggle: {
@@ -826,29 +790,29 @@ const form = StyleSheet.create({
   tabBtnTxt:       { fontSize: 12, fontWeight: '600', color: GRAY },
   tabBtnTxtActive: { color: GREEN, fontWeight: '800' },
 
-  socialGroup: { gap: 10, marginBottom: 16 },
+  socialGroup: { gap: 10, marginBottom: 14 },
   socialBtn: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 18,
+    paddingVertical: 11, paddingHorizontal: 18,
     borderWidth: 1, borderColor: BORDER, borderRadius: 14,
     backgroundColor: GLASS, gap: 14,
   },
   socialIcon:  { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
   socialLabel: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '500', color: NAVY },
 
-  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   dividerLine: { flex: 1, height: 1, backgroundColor: BORDER },
   dividerTxt:  { fontSize: 10, fontWeight: '600', color: GRAY, letterSpacing: 1, textTransform: 'uppercase' },
 
-  fieldGroup: { gap: 9, marginBottom: 8 },
+  fieldGroup: { gap: 8, marginBottom: 8 },
   fieldWrap:  {},
-  fieldLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: GRAY, marginBottom: 6 },
+  fieldLabel: { fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, color: GRAY, marginBottom: 5 },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
     borderWidth: 1, borderColor: BORDER, borderRadius: 14,
     backgroundColor: WHITE, paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
-    minHeight: 48,
+    paddingVertical: Platform.OS === 'ios' ? 11 : 7,
+    minHeight: 46,
   },
   inputWrapFocused: { borderColor: GREEN, backgroundColor: '#FEFFFE' },
   input: { flex: 1, fontSize: 15, color: NAVY, fontWeight: '400' },
@@ -859,7 +823,7 @@ const form = StyleSheet.create({
 
   trialNote: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    marginBottom: 12, backgroundColor: MINT_BG, borderRadius: 14, padding: 11,
+    marginBottom: 10, backgroundColor: MINT_BG, borderRadius: 14, padding: 10,
     borderWidth: 1, borderColor: '#D8F3DC',
   },
   trialNoteText: { flex: 1, fontSize: 11, color: NAVY, lineHeight: 17 },
@@ -869,14 +833,14 @@ const form = StyleSheet.create({
 
   submitBtn: {
     backgroundColor: GREEN, borderRadius: 14,
-    paddingVertical: 15, alignItems: 'center', marginTop: 10,
+    paddingVertical: 14, alignItems: 'center', marginTop: 8,
     shadowColor: GREEN, shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.24, shadowRadius: 10, elevation: 5,
   },
   submitBtnDisabled: { opacity: 0.6 },
   submitBtnTxt:      { color: WHITE, fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
 
-  trustCopy:   { fontSize: 11, color: GRAY, textAlign: 'center', marginTop: 14, lineHeight: 16, paddingHorizontal: 10 },
+  trustCopy:   { fontSize: 10, color: GRAY, textAlign: 'center', marginTop: 12, lineHeight: 15, paddingHorizontal: 10 },
   bottomLink:  { fontSize: 12, color: GRAY, textAlign: 'center', marginTop: 10 },
   bottomLinkA: { color: GREEN, fontWeight: '800' },
 });
