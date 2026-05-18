@@ -56,6 +56,13 @@ function asNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function weekKey(date = new Date()) {
+  const start = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const day = Math.floor((date.getTime() - start.getTime()) / 86400000);
+  const week = Math.floor((day + start.getUTCDay()) / 7) + 1;
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
 function applyEventToProfile(profile: Profile, event: Record<string, unknown>): Profile {
   const next = { ...profile };
   const eventType = String(event.event_type);
@@ -168,6 +175,47 @@ async function writeNeo4j(event: Record<string, unknown>) {
       SET r.count = coalesce(r.count, 0) + CASE WHEN $event_type = 'product_scanned' THEN 1 ELSE 0 END,
           r.last_seen_at = datetime()
     )
+    WITH u, e
+    CALL {
+      WITH u
+      WITH u, coalesce($deal_id, $entity_id, $metadata.stack_id) AS stackId
+      WHERE $event_type = 'product_added_to_cart' AND stackId IS NOT NULL
+      MERGE (f:FoodStack {id: stackId})
+        SET f.id = stackId,
+            f.title = coalesce($metadata.title, f.title),
+            f.creatorHandle = coalesce($metadata.creator_handle, f.creatorHandle)
+      FOREACH (_ IN CASE WHEN $metadata.creator_handle IS NULL THEN [] ELSE [1] END |
+        MERGE (c:Creator {handle: $metadata.creator_handle})
+        MERGE (c)-[:CURATED_BY]->(f)
+      )
+      CREATE (u)-[:REDEEMED_STACK {
+        savings: coalesce($savings, $metadata.savings, 0),
+        timestamp: timestamp()
+      }]->(f)
+      RETURN count(*) AS redeemedWrites
+    }
+    CALL {
+      WITH u
+      WITH u, coalesce($deal_id, $entity_id, $metadata.stack_id) AS stackId
+      WHERE $event_type = 'deal_viewed'
+        AND coalesce($metadata.skipped, false) = true
+        AND stackId IS NOT NULL
+      MERGE (category:Category {name: coalesce($metadata.category, "household")})
+      MERGE (flash:FlashStack {id: stackId})
+        SET flash.category = coalesce($metadata.category, flash.category, "household")
+      MERGE (flash)-[:IN_CATEGORY]->(category)
+      MERGE (u)-[skip:SKIPPED_STACK {week_key: $week_key}]->(flash)
+        SET skip.timestamp = timestamp(),
+            skip.source = coalesce($metadata.source, "home_feed")
+      WITH u, flash, category
+      MATCH (u)-[allSkips:SKIPPED_STACK]->(flash)
+      WITH u, category, count(DISTINCT allSkips.week_key) AS skipWeeks
+      WHERE skipWeeks >= 3
+      MERGE (u)-[d:DISLIKES_CATEGORY]->(category)
+        SET d.reason = "skipped_household_flash_stack_3_weeks",
+            d.updated_at = datetime()
+      RETURN count(*) AS skipWrites
+    }
   `;
 
   const res = await fetch(cfg.url, {
@@ -263,6 +311,7 @@ Deno.serve(async (req: Request) => {
     ...eventRow,
     event_id: inserted.id,
     created_at: inserted.created_at,
+    week_key: weekKey(new Date(inserted.created_at)),
   });
 
   await db.from('memory_events').update({

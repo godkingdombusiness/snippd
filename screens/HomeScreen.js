@@ -262,10 +262,18 @@ function HeroCard(props) {
   var option        = props.option;
   var householdSize = props.householdSize || 2;
   var onPress       = props.onPress;
+  var featuredStack = props.featuredStack;
 
   var meta     = HERO_MEAL_META[option.optionType] || HERO_MEAL_META.cook_from_pantry;
   var optMeta  = OPTION_META[option.optionType] || OPTION_META.cook_from_pantry;
-  var costCents = scaleCost(PER_PERSON_CENTS[option.optionType] || 0, householdSize);
+  var costCents = featuredStack?.totalCostCents || scaleCost(PER_PERSON_CENTS[option.optionType] || 0, householdSize);
+  var title = featuredStack?.title || optMeta.label;
+  var subtext = featuredStack?.attributionLabel || meta.mealName;
+  var bullets = featuredStack ? [
+    featuredStack.storeName + ' essentials stack',
+    'Estimated savings ' + formatDollarsFull(featuredStack.savingsCents || 0),
+    'Auto-prioritized from your graph profile',
+  ] : meta.bullets;
 
   return (
     <View style={styles.heroCard}>
@@ -275,11 +283,11 @@ function HeroCard(props) {
           <Text style={styles.heroBestMatchText}>BEST MATCH</Text>
         </View>
 
-        <Text style={styles.heroTitle}>{optMeta.label}</Text>
-        <Text style={styles.heroMealName}>{meta.mealName}</Text>
+        <Text style={styles.heroTitle}>{title}</Text>
+        <Text style={styles.heroMealName}>{subtext}</Text>
 
         <View style={styles.heroBullets}>
-          {meta.bullets.map(function (b, i) {
+          {bullets.map(function (b, i) {
             return (
               <View key={i} style={styles.heroBulletRow}>
                 <View style={styles.heroBulletCheck}>
@@ -315,7 +323,7 @@ function HeroCard(props) {
           <View style={styles.heroImageOverlay} />
         </View>
         <TouchableOpacity style={styles.heroCtaBtn} onPress={onPress} activeOpacity={0.85}>
-          <Text style={styles.heroCtaBtnText}>View Meal</Text>
+          <Text style={styles.heroCtaBtnText}>{featuredStack ? 'Build Cart' : 'View Meal'}</Text>
           <Feather name="chevron-right" size={14} color={NAVY} />
         </TouchableOpacity>
       </View>
@@ -390,6 +398,7 @@ function BudgetSimulatorCard(props) {
   var householdSize = props.householdSize || 2;
   var onNavigate    = props.onNavigate;
   var [activeTab, setActiveTab] = useState('cook');
+  var [showSmartBadge, setShowSmartBadge] = useState(false);
 
   var activeGroup  = SIMULATOR_TABS.find(function (t) { return t.id === activeTab; });
   var best = allOptions.find(function (o) {
@@ -423,7 +432,10 @@ function BudgetSimulatorCard(props) {
             <TouchableOpacity
               key={tab.id}
               style={[styles.simTab, isActive && styles.simTabActive]}
-              onPress={function () { setActiveTab(tab.id); }}
+              onPress={function () {
+                setActiveTab(tab.id);
+                setShowSmartBadge(true);
+              }}
               activeOpacity={0.75}
             >
               <Text style={[styles.simTabText, isActive && styles.simTabTextActive]}>
@@ -483,6 +495,13 @@ function BudgetSimulatorCard(props) {
         </View>
       </View>
 
+      {showSmartBadge && (
+        <View style={styles.simSmartBadge}>
+          <Feather name="cpu" size={12} color={GREEN} />
+          <Text style={styles.simSmartBadgeText}>94% SMART MATCH</Text>
+        </View>
+      )}
+
       <TouchableOpacity
         style={styles.simCta}
         onPress={function () { onNavigate && onNavigate(best); }}
@@ -508,6 +527,7 @@ export default function HomeScreen({ navigation }) {
   var [notifCount, setNotifCount] = useState(3);
   var [weeklyDeals, setWeeklyDeals] = useState([]);
   var [layoutAlerts, setLayoutAlerts] = useState([]);
+  var [featuredStack, setFeaturedStack] = useState(null);
   var tapCount = useRef(0);
   var tapTimer = useRef(null);
 
@@ -564,6 +584,9 @@ export default function HomeScreen({ navigation }) {
           if (layoutRes?.data?.alerts && Array.isArray(layoutRes.data.alerts)) {
             setLayoutAlerts(layoutRes.data.alerts);
           }
+          if (layoutRes?.data?.featured_stack) {
+            setFeaturedStack(layoutRes.data.featured_stack);
+          }
         }
       } catch (_) {}
     } catch (e) {
@@ -590,8 +613,16 @@ export default function HomeScreen({ navigation }) {
       var s     = await supabase.auth.getSession();
       var token = s?.data?.session?.access_token;
       if (!token) return;
+      var meta = metadata || {};
       supabase.functions.invoke('record-memory-event', {
-        body:    { event_type: eventType, metadata: metadata || {} },
+        body:    {
+          event_type:  eventType,
+          entity_type: meta.entity_type,
+          entity_id:   meta.stack_id || meta.entity_id,
+          deal_id:     meta.stack_id || meta.deal_id,
+          savings:     meta.savings,
+          metadata:    meta,
+        },
         headers: { Authorization: 'Bearer ' + token },
       });
     } catch (_) {}
@@ -607,6 +638,21 @@ export default function HomeScreen({ navigation }) {
 
   function handleHeroPress() {
     if (!options[0] || !context) return;
+    if (featuredStack) {
+      navigation.navigate('StorePickupHandoff');
+      tracker.track('home_featured_stack_tapped', { stack_id: featuredStack.id });
+      recordMemoryEvent('product_added_to_cart', {
+        entity_type:    'stack',
+        stack_id:       featuredStack.id,
+        title:          featuredStack.title,
+        category:       featuredStack.category,
+        creator_handle: featuredStack.creatorHandle,
+        savings:        featuredStack.savings,
+        source:         'featured_stack_of_week',
+      });
+      return;
+    }
+
     navigateForOption(navigation, options[0].optionType, context);
     tracker.track('home_hero_tapped', { option_type: options[0].optionType });
     // Write INTERACTED_WITH relationship to Neo4j via memory event
@@ -629,6 +675,8 @@ export default function HomeScreen({ navigation }) {
     if (options[0] && options[0].optionType !== option.optionType) {
       recordMemoryEvent('deal_viewed', {
         option_type: options[0].optionType,
+        stack_id:     featuredStack?.id,
+        category:     featuredStack?.category || 'household',
         source:      'skipped_hero',
         skipped:     true,
       });
@@ -821,11 +869,12 @@ export default function HomeScreen({ navigation }) {
         {/* ── Hero: Best Match ── */}
         {hero ? (
           <>
-            <HeroCard
-              option={hero}
-              householdSize={householdSize}
-              onPress={handleHeroPress}
-            />
+          <HeroCard
+            option={hero}
+            householdSize={householdSize}
+            featuredStack={featuredStack}
+            onPress={handleHeroPress}
+          />
           </>
         ) : (
           <TouchableOpacity
@@ -1427,6 +1476,20 @@ var styles = StyleSheet.create({
     marginTop:     8,
   },
   simMetaText: { fontSize: 11, color: GRAY, marginLeft: 3 },
+  simSmartBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: MINT,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: GREEN + '33',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 12,
+  },
+  simSmartBadgeText: { fontSize: 10, fontWeight: '900', color: GREEN, letterSpacing: 0.6 },
   simCta: {
     backgroundColor: GREEN,
     borderRadius:    12,

@@ -4,6 +4,12 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Added - Low-lift Neo4j home loop (2026-05-18)
+- `supabase/functions/get-dynamic-home-layout/index.ts` - Added low-cost graph seed/query path for Dollar General household flash stack, 4 static dietary personas, creator attribution, budget guardrail, household volume filter, and `featured_stack` feed payload fallback.
+- `supabase/functions/record-memory-event/index.ts` - Added direct Neo4j relationship writes for `REDEEMED_STACK`, weekly `SKIPPED_STACK`, and automatic `DISLIKES_CATEGORY` after 3 skipped household stack weeks.
+- `screens/HomeScreen.js` - Bound `featured_stack.attributionLabel` to the featured card subtext, records stack redemption metadata, and shows a 94% Smart Match badge after Budget Simulator tab changes.
+- `scripts/neo4j-low-lift-seed.cypher` - Added production Cypher seed/query script for the low-lift graph shape and creator payout counting.
+
 ### Fixed - Persona reveal Today CTA routing (2026-05-18)
 - `screens/PersonaRevealScreen.js` - Changed the "See What's For Today" CTA to reset into `MainApp` on the `HomeTab` / `Home` screen.
 
