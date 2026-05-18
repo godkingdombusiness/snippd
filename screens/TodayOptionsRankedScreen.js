@@ -441,9 +441,6 @@ var styles = StyleSheet.create({
     justifyContent:    'space-between',
     paddingHorizontal: 16,
     paddingVertical:   10,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-    backgroundColor:   CREAM,
   },
   navBtn: {
     width:           40,
@@ -455,7 +452,7 @@ var styles = StyleSheet.create({
     borderWidth:     1,
     borderColor:     BORDER,
   },
-  navTitle: { fontSize: 15, fontWeight: '700', color: NAVY },
+  navTitle: { fontSize: 17, fontWeight: '700', color: NAVY },
 
   scroll:        { flex: 1 },
   scrollContent: { paddingBottom: 24, paddingTop: 12 },
