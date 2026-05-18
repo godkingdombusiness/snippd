@@ -4,6 +4,9 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Changed — TodayOptionsRankedScreen: nav bar style consistency (2026-05-18)
+- `screens/TodayOptionsRankedScreen.js` — Removed border-bottom and redundant backgroundColor from navBar. Fixed navTitle fontSize 15 → 17. Now matches CookAtHomeTriage and ContextualCookingScreen exactly.
+
 ### Changed — TodayOptionsRankedScreen: add home button to nav bar (2026-05-18)
 - `screens/TodayOptionsRankedScreen.js` — Replaced bare back button with a proper nav bar (back left, "What's the plan?" title center, home icon right). Home button navigates to `MainApp`. Nav bar sits outside the ScrollView so it stays fixed.
 
