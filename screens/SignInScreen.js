@@ -829,7 +829,15 @@ const form = StyleSheet.create({
     minHeight: 46,
   },
   inputWrapFocused: { borderColor: GREEN, backgroundColor: '#FEFFFE' },
-  input: { flex: 1, fontSize: 15, color: NAVY, fontWeight: '400' },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: NAVY,
+    fontWeight: '400',
+    outlineStyle: 'none',
+    outlineWidth: 0,
+    outlineColor: 'transparent',
+  },
   eyeBtn: { padding: 4 },
 
   forgotWrap: { alignItems: 'flex-end', marginBottom: 16, marginTop: 4 },
