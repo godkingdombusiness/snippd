@@ -434,22 +434,22 @@ var styles = StyleSheet.create({
   loadingText: { fontSize: 14, color: GRAY },
 
   scroll:        { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
+  scrollContent: { paddingBottom: 24 },
 
   backBtn: {
     alignSelf:   'flex-start',
-    padding:     20,
-    paddingBottom: 8,
+    padding:     14,
+    paddingBottom: 6,
   },
 
   // Context pills
-  contextRow:        { flexGrow: 0, marginBottom: 20 },
-  contextRowContent: { paddingHorizontal: 20, gap: 8 },
+  contextRow:        { flexGrow: 0, marginBottom: 12 },
+  contextRowContent: { paddingHorizontal: 14, gap: 6 },
   contextPill: {
     backgroundColor: WHITE,
     borderRadius:    20,
-    paddingHorizontal: 12,
-    paddingVertical:   6,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
     borderWidth:     1,
     borderColor:     BORDER,
   },
@@ -457,37 +457,37 @@ var styles = StyleSheet.create({
     borderColor: AMBER,
   },
   contextPillText: {
-    fontSize:   12,
+    fontSize:   11,
     fontWeight: '600',
     color:      NAVY,
   },
 
   // Headline
   headline: {
-    fontSize:      26,
+    fontSize:      22,
     fontWeight:    '800',
     color:         NAVY,
     letterSpacing: -0.5,
-    lineHeight:    32,
-    paddingHorizontal: 20,
-    marginBottom:  8,
+    lineHeight:    27,
+    paddingHorizontal: 14,
+    marginBottom:  6,
   },
   sub: {
-    fontSize:  14,
+    fontSize:  12,
     color:     GRAY,
-    lineHeight: 20,
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    lineHeight: 17,
+    paddingHorizontal: 14,
+    marginBottom: 14,
   },
 
   // Option list
-  optionList: { paddingHorizontal: 20, gap: 12, marginBottom: 24 },
+  optionList: { paddingHorizontal: 14, gap: 9, marginBottom: 16 },
 
   // Option card
   optionCard: {
     backgroundColor: WHITE,
-    borderRadius:    22,
-    padding:         18,
+    borderRadius:    16,
+    padding:         13,
     shadowColor:     '#000',
     shadowOffset:    { width: 0, height: 2 },
     shadowOpacity:   0.06,
@@ -503,7 +503,7 @@ var styles = StyleSheet.create({
     flexDirection:  'row',
     alignItems:     'center',
     gap:            10,
-    marginBottom:   12,
+    marginBottom:   8,
     flexWrap:       'wrap',
   },
   scorePill: {
@@ -526,7 +526,7 @@ var styles = StyleSheet.create({
 
   // Price
   priceText: {
-    fontSize:     22,
+    fontSize:     19,
     fontWeight:   '800',
     color:        NAVY,
     marginBottom: 2,
@@ -535,7 +535,7 @@ var styles = StyleSheet.create({
   perPersonText: {
     fontSize:     13,
     color:        GRAY,
-    marginBottom: 10,
+    marginBottom: 7,
   },
   perPersonTextTop: { color: 'rgba(255,255,255,0.7)' },
 
@@ -544,7 +544,7 @@ var styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems:    'center',
     gap:           6,
-    marginBottom:  10,
+    marginBottom:  7,
   },
   timeText:    { fontSize: 13, color: GRAY },
   timeTextTop: { color: 'rgba(255,255,255,0.75)' },
@@ -554,8 +554,8 @@ var styles = StyleSheet.create({
     fontSize:     13,
     color:        GRAY,
     fontStyle:    'italic',
-    lineHeight:   19,
-    marginBottom: 14,
+    lineHeight:   17,
+    marginBottom: 10,
   },
   whyTextTop: {
     color:     'rgba(255,255,255,0.85)',
@@ -565,7 +565,7 @@ var styles = StyleSheet.create({
   // CTA button
   ctaBtn: {
     borderRadius:    12,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems:      'center',
   },
   ctaBtnTop: {

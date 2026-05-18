@@ -774,16 +774,16 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: Platform.OS === 'ios' ? 110 : 100,
+    height: Platform.OS === 'ios' ? 98 : 88,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
   },
   // The visible pill — no position:absolute, lives inside the shell
   tabBar: {
     width: '92%',
-    height: 70,
-    borderRadius: 30,
+    height: 64,
+    borderRadius: 26,
     backgroundColor: DARK_NAVY,
     borderTopWidth: 0,
     shadowColor: '#000',
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   tabIconWrap: { 
-    width: 36, height: 28, 
+    width: 34, height: 26,
     borderRadius: 8, 
     alignItems: 'center', 
     justifyContent: 'center',
@@ -838,13 +838,13 @@ const styles = StyleSheet.create({
     width: 65,
     alignItems: 'center', 
     justifyContent: 'center', 
-    marginBottom: 35, // Pushes the center button up
+    marginBottom: 30, // Pushes the center button up
     zIndex: 100 
   },
   fabBorder: {
-    width: 68,
-    height: 68,
-    borderRadius: 22,
+    width: 62,
+    height: 62,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
@@ -852,7 +852,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
   },
   fab: {
-    width: 56, height: 56, 
+    width: 52, height: 52,
     borderRadius: 16,
     backgroundColor: GREEN,
     alignItems: 'center', justifyContent: 'center',

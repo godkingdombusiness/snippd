@@ -448,7 +448,7 @@ const s = StyleSheet.create({
   logoRow: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20, paddingVertical: 14,
+    paddingHorizontal: 16, paddingVertical: 10,
     position: 'relative',
     borderBottomWidth: 1, borderBottomColor: BORDER,
     backgroundColor: CREAM,
@@ -459,23 +459,23 @@ const s = StyleSheet.create({
 
   // Screen title
   screenTitle: {
-    fontSize: 22, fontWeight: '800', color: NAVY,
-    letterSpacing: -0.4, marginBottom: 6,
+    fontSize: 20, fontWeight: '800', color: NAVY,
+    letterSpacing: 0, marginBottom: 4,
   },
   screenSub: {
-    fontSize: 14, color: GRAY, lineHeight: 20, marginBottom: 28,
+    fontSize: 12, color: GRAY, lineHeight: 17, marginBottom: 16,
   },
 
   // Scroll
   scroll:        { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24 },
 
   // Sections
-  section: { marginBottom: 28 },
+  section: { marginBottom: 16 },
 
   sectionLabelRow: {
     flexDirection: 'row', alignItems: 'center',
-    gap: 8, marginBottom: 10,
+    gap: 8, marginBottom: 7,
   },
   sectionLabel: {
     fontSize: 11, fontWeight: '700', color: GRAY,
@@ -493,25 +493,25 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: WHITE, borderRadius: 12,
     borderWidth: 1, borderColor: BORDER,
-    paddingHorizontal: 14, paddingVertical: 12,
+    paddingHorizontal: 12, paddingVertical: 10,
   },
   inputPrefix: { fontSize: 18, fontWeight: '700', color: NAVY, marginRight: 4 },
   input: {
     flex: 1, fontSize: 18, fontWeight: '700', color: NAVY,
     padding: 0, margin: 0,
   },
-  inputHint: { marginTop: 6, fontSize: 12, color: GRAY, lineHeight: 16 },
+  inputHint: { marginTop: 5, fontSize: 11, color: GRAY, lineHeight: 15 },
 
   // Stepper
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stepperBtn: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 36, height: 36, borderRadius: 10,
     backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER,
     alignItems: 'center', justifyContent: 'center',
   },
   stepperBtnDisabled: { opacity: 0.4 },
   stepperValue: {
-    fontSize: 24, fontWeight: '800', color: NAVY,
+    fontSize: 22, fontWeight: '800', color: NAVY,
     minWidth: 36, textAlign: 'center',
   },
 
@@ -521,11 +521,11 @@ const s = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 8,
   },
   pillGridItem: {
-    paddingVertical: 10, paddingHorizontal: 16,
+    paddingVertical: 8, paddingHorizontal: 12,
     borderRadius: 20, borderWidth: 1, minWidth: '45%', alignItems: 'center',
   },
   pill: {
-    borderRadius: 20, paddingVertical: 9, paddingHorizontal: 16, borderWidth: 1,
+    borderRadius: 18, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1,
   },
   pillOn:      { backgroundColor: GREEN, borderColor: GREEN },
   pillOff:     { backgroundColor: WHITE, borderColor: BORDER },
@@ -537,16 +537,16 @@ const s = StyleSheet.create({
   routeHint: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: MINT_SOFT, borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 8,
-    marginTop: 10,
+    paddingHorizontal: 9, paddingVertical: 7,
+    marginTop: 8,
   },
   routeHintText: { fontSize: 12, color: GREEN, fontWeight: '600', flex: 1 },
 
   // Behavioral profile tag cloud
-  bTagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  bTagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   bTag: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 9, paddingHorizontal: 14,
+    paddingVertical: 8, paddingHorizontal: 11,
     borderRadius: 20, borderWidth: 1.5, borderColor: GREEN,
     backgroundColor: MINT_SOFT,
   },
@@ -557,7 +557,7 @@ const s = StyleSheet.create({
   // CTA
   ctaBtn: {
     backgroundColor: GREEN, borderRadius: 14,
-    paddingVertical: 16, marginTop: 8,
+    paddingVertical: 14, marginTop: 4,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
   },
   ctaBtnDisabled: { opacity: 0.6 },

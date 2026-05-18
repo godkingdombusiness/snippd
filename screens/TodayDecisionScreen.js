@@ -382,15 +382,15 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14, color: GRAY, fontWeight: '500' },
   navBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER
+    paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: BORDER
   },
   backBtn: {
     width: 40, height: 40, alignItems: 'center', justifyContent: 'center',
     borderRadius: 12, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER
   },
-  navTitle: { fontSize: 17, fontWeight: '800', color: NAVY },
-  scroll: { paddingHorizontal: 16, paddingBottom: 40 },
-  subTitle: { fontSize: 13, color: GRAY, marginTop: 10, marginBottom: 16, lineHeight: 18 },
+  navTitle: { fontSize: 15, fontWeight: '800', color: NAVY },
+  scroll: { paddingHorizontal: 14, paddingBottom: 24 },
+  subTitle: { fontSize: 12, color: GRAY, marginTop: 8, marginBottom: 10, lineHeight: 17 },
 
   // Stacks layouts
   savingsBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: MINT_SOFT, borderRadius: 12, padding: 16, marginBottom: 20 },
@@ -422,55 +422,55 @@ const styles = StyleSheet.create({
   floatingDinnerHubText: { color: WHITE, fontSize: 15, fontWeight: '800' },
 
   // Triage layouts
-  walletCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#A7F3D0', backgroundColor: WHITE, borderRadius: 14, padding: 14, marginBottom: 20 },
+  walletCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#A7F3D0', backgroundColor: WHITE, borderRadius: 12, padding: 11, marginBottom: 12 },
   walletLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  walletIconWrap: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center' },
-  walletTitle: { fontSize: 15, fontWeight: '800', color: NAVY },
-  walletSubtitle: { fontSize: 12, color: GRAY, marginTop: 3, lineHeight: 16 },
-  triageCard: { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', marginBottom: 16 },
-  sideIndicator: { width: 88, alignItems: 'center', justifyContent: 'center', padding: 10, gap: 8, minHeight: 260 },
-  sideIndicatorText: { fontSize: 12, fontWeight: '800', color: WHITE, textAlign: 'center', lineHeight: 16 },
+  walletIconWrap: { width: 34, height: 34, borderRadius: 9, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center' },
+  walletTitle: { fontSize: 14, fontWeight: '800', color: NAVY },
+  walletSubtitle: { fontSize: 11, color: GRAY, marginTop: 2, lineHeight: 15 },
+  triageCard: { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 14, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', marginBottom: 12 },
+  sideIndicator: { width: 74, alignItems: 'center', justifyContent: 'center', padding: 8, gap: 6, minHeight: 206 },
+  sideIndicatorText: { fontSize: 11, fontWeight: '800', color: WHITE, textAlign: 'center', lineHeight: 14 },
   tagPill: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
   tagPillText: { fontSize: 8, fontWeight: '800', color: WHITE, letterSpacing: 0.3 },
-  triageCardMain: { flex: 1, padding: 16, justifyContent: 'space-between' },
-  cardInfoSplit: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  imgPlaceholder: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: BORDER, flexShrink: 0 },
-  mealTitle: { fontSize: 15, fontWeight: '700', color: NAVY, lineHeight: 20 },
-  mealDesc: { fontSize: 12, color: GRAY, marginTop: 2 },
+  triageCardMain: { flex: 1, padding: 12, justifyContent: 'space-between' },
+  cardInfoSplit: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  imgPlaceholder: { width: 46, height: 46, borderRadius: 10, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: BORDER, flexShrink: 0 },
+  mealTitle: { fontSize: 14, fontWeight: '700', color: NAVY, lineHeight: 18 },
+  mealDesc: { fontSize: 11, color: GRAY, marginTop: 1 },
   overlayTag: { alignSelf: 'flex-start', backgroundColor: '#F1F5F9', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginTop: 6 },
   overlayTagText: { fontSize: 10, fontWeight: '700', color: SLATE },
-  metricsContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 14, gap: 16 },
+  metricsContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 6, marginBottom: 10, gap: 12 },
   metricStack: { flex: 1 },
-  metricValue: { fontSize: 18, fontWeight: '800', color: NAVY },
+  metricValue: { fontSize: 16, fontWeight: '800', color: NAVY },
   metricLabel: { fontSize: 9, fontWeight: '700', color: GRAY, letterSpacing: 0.5, marginTop: 2 },
   metricDivider: { width: 1, height: 24, backgroundColor: BORDER },
   heroSavingsBadge: {
     backgroundColor: MINT_SOFT,
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     marginTop: 4,
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#DCFCE7'
   },
   heroSavingsBadgeText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
     color: GREEN,
     textTransform: 'uppercase',
     letterSpacing: 0.3
   },
   heroSavingsSubText: {
-    fontSize: 11,
+    fontSize: 10,
     color: SLATE,
     marginTop: 2,
-    lineHeight: 15,
+    lineHeight: 14,
     fontWeight: '500'
   },
   nestedCouponCard: { backgroundColor: '#E8F5E9', borderRadius: 10, padding: 12, marginBottom: 16, gap: 4 },
   couponHeader: { fontSize: 11, fontWeight: '700', color: GREEN },
   couponLine: { fontSize: 11, color: SLATE },
-  actionButton: { borderRadius: 12, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  actionButton: { borderRadius: 12, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   actionButtonText: { fontSize: 14, fontWeight: '800', color: WHITE }
 });
