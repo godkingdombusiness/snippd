@@ -208,21 +208,17 @@ function LeftPanel() {
 function MobileHero() {
   return (
     <View style={hero.wrap}>
-      <Text style={hero.wordmark}>snipp<Text style={{ color: GREEN }}>d</Text></Text>
-      <Text style={hero.headline}>Smarter food decisions, before the money is spent.</Text>
-      <Text style={hero.sub}>
-        Plan groceries, meals, savings, and eat-out options around your real weekly budget.
-      </Text>
-      <View style={hero.statsRow}>
-        {STATS.map(function (s) {
-          return (
-            <View key={s.value} style={hero.statCard}>
-              <Text style={hero.statValue}>{s.value}</Text>
-              <Text style={hero.statLabel}>{s.label}</Text>
-            </View>
-          );
-        })}
+      <View style={hero.brandRow}>
+        <Text style={hero.wordmark}>snipp<Text style={{ color: GREEN }}>d</Text></Text>
+        <View style={hero.securePill}>
+          <Feather name="shield" size={12} color={GREEN} />
+          <Text style={hero.securePillText}>Secure</Text>
+        </View>
       </View>
+      <Text style={hero.headline}>Your budget-smart food plan starts here.</Text>
+      <Text style={hero.sub}>
+        Create your profile once. Snippd handles the meal, store, and savings math.
+      </Text>
     </View>
   );
 }
@@ -520,11 +516,11 @@ export default function SignInScreen({ navigation, route }) {
 
             {/* Header */}
             <View style={form.header}>
-              <Text style={form.eyebrow}>Your weekly food plan</Text>
+              <Text style={form.eyebrow}>{tab === 'signin' ? 'Welcome back' : 'Start in under a minute'}</Text>
               <Text style={form.title}>
                 {tab === 'signin'
-                  ? <Text>Welcome{'\n'}<Text style={form.titleAccent}>back.</Text></Text>
-                  : <Text>Get{'\n'}<Text style={form.titleAccent}>started.</Text></Text>
+                  ? <Text>Sign in</Text>
+                  : <Text>Create account</Text>
                 }
               </Text>
               <Text style={form.headerSub}>
@@ -730,17 +726,18 @@ const left = StyleSheet.create({
 
 // ── Mobile hero styles ─────────────────────────────────────────────────────────
 const hero = StyleSheet.create({
-  wrap: { paddingBottom: 28 },
-  wordmark: { fontFamily: 'Sublima-ExtraBold', fontSize: 26, color: NAVY, letterSpacing: -0.5, marginBottom: 16 },
-  headline: { fontSize: 22, fontWeight: '800', color: NAVY, letterSpacing: -0.5, lineHeight: 28, marginBottom: 8 },
-  sub: { fontSize: 13, color: GRAY, lineHeight: 19, marginBottom: 18 },
-  statsRow: { flexDirection: 'row', gap: 8 },
-  statCard: {
-    flex: 1, backgroundColor: WHITE, borderRadius: 12,
-    borderWidth: 1, borderColor: BORDER, padding: 10, alignItems: 'center',
+  wrap: { paddingBottom: 18 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  wordmark: { fontFamily: 'Sublima-ExtraBold', fontSize: 25, color: NAVY, letterSpacing: 0 },
+  securePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: MINT_BG, borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#C8E6C9',
   },
-  statValue: { fontSize: 11, fontWeight: '800', color: GREEN, textAlign: 'center', marginBottom: 2 },
-  statLabel: { fontSize: 9, color: GRAY, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center' },
+  securePillText: { fontSize: 11, fontWeight: '800', color: GREEN },
+  headline: { fontSize: 21, fontWeight: '900', color: NAVY, letterSpacing: 0, lineHeight: 27, marginBottom: 6 },
+  sub: { fontSize: 13, color: GRAY, lineHeight: 19 },
 });
 
 // ── Welcome landing styles ─────────────────────────────────────────────────────
@@ -798,28 +795,28 @@ const welcome = StyleSheet.create({
 // ── Form styles ────────────────────────────────────────────────────────────────
 const form = StyleSheet.create({
   scroll:       { flexGrow: 1, justifyContent: 'center', padding: 48 },
-  scrollPhone:  { padding: 24, paddingTop: 16 },
+  scrollPhone:  { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28 },
   card:         { width: '100%' },
   cardTablet:   { maxWidth: 420, alignSelf: 'center' },
 
-  backBtn:    { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 6 },
-  backBtnTxt: { fontSize: 14, color: NAVY, fontWeight: '500' },
+  backBtn:    { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 6 },
+  backBtnTxt: { fontSize: 13, color: NAVY, fontWeight: '700' },
 
-  header:     { marginBottom: 28 },
-  eyebrow:    { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2, color: GREEN, marginBottom: 10 },
+  header:     { marginBottom: 18 },
+  eyebrow:    { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.6, color: GREEN, marginBottom: 8 },
   title: {
-    fontFamily: 'Sublima-ExtraBold', fontSize: 36,
-    color: NAVY, letterSpacing: -1.2, lineHeight: 40, marginBottom: 8,
+    fontFamily: 'Sublima-ExtraBold', fontSize: 30,
+    color: NAVY, letterSpacing: 0, lineHeight: 34, marginBottom: 6,
   },
   titleAccent:   { fontFamily: 'Sublima-ExtraLight', color: GREEN },
-  headerSub:     { fontSize: 14, color: GRAY, fontWeight: '300' },
-  headerSubLink: { color: GREEN, fontWeight: '600' },
+  headerSub:     { fontSize: 13, color: GRAY, fontWeight: '500' },
+  headerSubLink: { color: GREEN, fontWeight: '800' },
 
   tabToggle: {
     flexDirection: 'row', backgroundColor: 'rgba(12,158,84,0.08)',
-    borderRadius: 12, padding: 4, marginBottom: 28,
+    borderRadius: 14, padding: 4, marginBottom: 18,
   },
-  tabBtn:         { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: 'center' },
+  tabBtn:         { flex: 1, paddingVertical: 10, borderRadius: 11, alignItems: 'center' },
   tabBtnActive: {
     backgroundColor: WHITE,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
@@ -828,29 +825,29 @@ const form = StyleSheet.create({
   tabBtnTxt:       { fontSize: 12, fontWeight: '500', color: GRAY },
   tabBtnTxtActive: { color: GREEN, fontWeight: '700' },
 
-  socialGroup: { gap: 10, marginBottom: 24 },
+  socialGroup: { gap: 10, marginBottom: 18 },
   socialBtn: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: 20,
+    paddingVertical: 13, paddingHorizontal: 18,
     borderWidth: 1.5, borderColor: BORDER, borderRadius: 14,
     backgroundColor: GLASS, gap: 14,
   },
   socialIcon:  { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
   socialLabel: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '500', color: NAVY },
 
-  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   dividerLine: { flex: 1, height: 1, backgroundColor: BORDER },
   dividerTxt:  { fontSize: 10, fontWeight: '600', color: GRAY, letterSpacing: 1, textTransform: 'uppercase' },
 
-  fieldGroup: { gap: 12, marginBottom: 8 },
+  fieldGroup: { gap: 10, marginBottom: 8 },
   fieldWrap:  {},
   fieldLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: GRAY, marginBottom: 6 },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
+    borderWidth: 1.5, borderColor: BORDER, borderRadius: 14,
     backgroundColor: WHITE, paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    minHeight: 52,
+    paddingVertical: Platform.OS === 'ios' ? 13 : 9,
+    minHeight: 50,
   },
   inputWrapFocused: { borderColor: GREEN },
   input: { flex: 1, fontSize: 15, color: NAVY, fontWeight: '400' },
@@ -861,7 +858,8 @@ const form = StyleSheet.create({
 
   trialNote: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    marginBottom: 16, backgroundColor: MINT_BG, borderRadius: 10, padding: 12,
+    marginBottom: 14, backgroundColor: MINT_BG, borderRadius: 14, padding: 12,
+    borderWidth: 1, borderColor: '#D8F3DC',
   },
   trialNoteText: { flex: 1, fontSize: 12, color: NAVY, lineHeight: 18 },
 
@@ -870,16 +868,16 @@ const form = StyleSheet.create({
 
   submitBtn: {
     backgroundColor: GREEN, borderRadius: 14,
-    paddingVertical: 16, alignItems: 'center', marginTop: 16,
+    paddingVertical: 15, alignItems: 'center', marginTop: 12,
     shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
   submitBtnDisabled: { opacity: 0.6 },
   submitBtnTxt:      { color: WHITE, fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
 
-  trustCopy:   { fontSize: 12, color: GRAY, textAlign: 'center', marginTop: 16, lineHeight: 17 },
-  bottomLink:  { fontSize: 13, color: GRAY, textAlign: 'center', marginTop: 12 },
-  bottomLinkA: { color: GREEN, fontWeight: '600' },
+  trustCopy:   { fontSize: 11, color: GRAY, textAlign: 'center', marginTop: 14, lineHeight: 16, paddingHorizontal: 10 },
+  bottomLink:  { fontSize: 12, color: GRAY, textAlign: 'center', marginTop: 10 },
+  bottomLinkA: { color: GREEN, fontWeight: '800' },
 });
 
 // ── Root / container styles ────────────────────────────────────────────────────
