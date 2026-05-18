@@ -215,7 +215,7 @@ function MobileHero() {
           <Text style={hero.securePillText}>Secure</Text>
         </View>
       </View>
-      <Text style={hero.headline}>Your budget-smart food plan starts here.</Text>
+      <Text style={hero.headline}>Budget-smart meals start here.</Text>
       <Text style={hero.sub}>
         Create your profile once. Snippd handles the meal, store, and savings math.
       </Text>
@@ -726,18 +726,18 @@ const left = StyleSheet.create({
 
 // ── Mobile hero styles ─────────────────────────────────────────────────────────
 const hero = StyleSheet.create({
-  wrap: { paddingBottom: 18 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  wrap: { paddingBottom: 14 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   wordmark: { fontFamily: 'Sublima-ExtraBold', fontSize: 25, color: NAVY, letterSpacing: 0 },
   securePill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: MINT_BG, borderRadius: 999,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: '#C8E6C9',
+    backgroundColor: '#F3FBF6', borderRadius: 999,
+    paddingHorizontal: 9, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#D8F3DC',
   },
-  securePillText: { fontSize: 11, fontWeight: '800', color: GREEN },
-  headline: { fontSize: 21, fontWeight: '900', color: NAVY, letterSpacing: 0, lineHeight: 27, marginBottom: 6 },
-  sub: { fontSize: 13, color: GRAY, lineHeight: 19 },
+  securePillText: { fontSize: 10, fontWeight: '800', color: GREEN },
+  headline: { fontSize: 20, fontWeight: '900', color: NAVY, letterSpacing: 0, lineHeight: 25, marginBottom: 6 },
+  sub: { fontSize: 12, color: GRAY, lineHeight: 18, maxWidth: 310 },
 });
 
 // ── Welcome landing styles ─────────────────────────────────────────────────────
@@ -795,18 +795,18 @@ const welcome = StyleSheet.create({
 // ── Form styles ────────────────────────────────────────────────────────────────
 const form = StyleSheet.create({
   scroll:       { flexGrow: 1, justifyContent: 'center', padding: 48 },
-  scrollPhone:  { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28 },
+  scrollPhone:  { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
   card:         { width: '100%' },
   cardTablet:   { maxWidth: 420, alignSelf: 'center' },
 
-  backBtn:    { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 6 },
+  backBtn:    { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 },
   backBtnTxt: { fontSize: 13, color: NAVY, fontWeight: '700' },
 
-  header:     { marginBottom: 18 },
-  eyebrow:    { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.6, color: GREEN, marginBottom: 8 },
+  header:     { marginBottom: 16 },
+  eyebrow:    { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.8, color: GREEN, marginBottom: 7 },
   title: {
-    fontFamily: 'Sublima-ExtraBold', fontSize: 30,
-    color: NAVY, letterSpacing: 0, lineHeight: 34, marginBottom: 6,
+    fontFamily: 'Sublima-ExtraBold', fontSize: 29,
+    color: NAVY, letterSpacing: 0, lineHeight: 33, marginBottom: 5,
   },
   titleAccent:   { fontFamily: 'Sublima-ExtraLight', color: GREEN },
   headerSub:     { fontSize: 13, color: GRAY, fontWeight: '500' },
@@ -814,7 +814,8 @@ const form = StyleSheet.create({
 
   tabToggle: {
     flexDirection: 'row', backgroundColor: 'rgba(12,158,84,0.08)',
-    borderRadius: 14, padding: 4, marginBottom: 18,
+    borderRadius: 14, padding: 4, marginBottom: 16,
+    borderWidth: 1, borderColor: '#E4F3EA',
   },
   tabBtn:         { flex: 1, paddingVertical: 10, borderRadius: 11, alignItems: 'center' },
   tabBtnActive: {
@@ -822,34 +823,34 @@ const form = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 4, elevation: 2,
   },
-  tabBtnTxt:       { fontSize: 12, fontWeight: '500', color: GRAY },
-  tabBtnTxtActive: { color: GREEN, fontWeight: '700' },
+  tabBtnTxt:       { fontSize: 12, fontWeight: '600', color: GRAY },
+  tabBtnTxtActive: { color: GREEN, fontWeight: '800' },
 
-  socialGroup: { gap: 10, marginBottom: 18 },
+  socialGroup: { gap: 10, marginBottom: 16 },
   socialBtn: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 13, paddingHorizontal: 18,
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 18,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 14,
     backgroundColor: GLASS, gap: 14,
   },
   socialIcon:  { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
   socialLabel: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '500', color: NAVY },
 
-  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   dividerLine: { flex: 1, height: 1, backgroundColor: BORDER },
   dividerTxt:  { fontSize: 10, fontWeight: '600', color: GRAY, letterSpacing: 1, textTransform: 'uppercase' },
 
-  fieldGroup: { gap: 10, marginBottom: 8 },
+  fieldGroup: { gap: 9, marginBottom: 8 },
   fieldWrap:  {},
   fieldLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: GRAY, marginBottom: 6 },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 14,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 14,
     backgroundColor: WHITE, paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 13 : 9,
-    minHeight: 50,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    minHeight: 48,
   },
-  inputWrapFocused: { borderColor: GREEN },
+  inputWrapFocused: { borderColor: GREEN, backgroundColor: '#FEFFFE' },
   input: { flex: 1, fontSize: 15, color: NAVY, fontWeight: '400' },
   eyeBtn: { padding: 4 },
 
@@ -858,19 +859,19 @@ const form = StyleSheet.create({
 
   trialNote: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    marginBottom: 14, backgroundColor: MINT_BG, borderRadius: 14, padding: 12,
+    marginBottom: 12, backgroundColor: MINT_BG, borderRadius: 14, padding: 11,
     borderWidth: 1, borderColor: '#D8F3DC',
   },
-  trialNoteText: { flex: 1, fontSize: 12, color: NAVY, lineHeight: 18 },
+  trialNoteText: { flex: 1, fontSize: 11, color: NAVY, lineHeight: 17 },
 
   errorTxt: { color: ERROR_RED, fontSize: 13, marginBottom: 12, textAlign: 'center' },
   infoTxt:  { color: GREEN,     fontSize: 13, marginBottom: 12, textAlign: 'center' },
 
   submitBtn: {
     backgroundColor: GREEN, borderRadius: 14,
-    paddingVertical: 15, alignItems: 'center', marginTop: 12,
-    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    paddingVertical: 15, alignItems: 'center', marginTop: 10,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.24, shadowRadius: 10, elevation: 5,
   },
   submitBtnDisabled: { opacity: 0.6 },
   submitBtnTxt:      { color: WHITE, fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
