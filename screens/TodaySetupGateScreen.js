@@ -16,7 +16,7 @@ import { tracker } from '../src/lib/eventTracker';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const GREEN      = '#0C9E54';
-const NAVY       = '#0A192F';
+const NAVY       = '#172250';
 const WHITE      = '#FFFFFF';
 const CREAM      = '#FAF8F1';
 const SLATE      = '#475569';

@@ -4,6 +4,14 @@ Format: [version] — YYYY-MM-DD
 
 ## [Unreleased]
 
+### Fixed — TodayOptionsRankedScreen: correct data flow from gate to engine (2026-05-18)
+- `screens/TodayOptionsRankedScreen.js` — `buildEngineContext()` now resolves both field naming conventions: `timeWindow`→`cookingTimeMin`, `shoppingStatus`→pantry count, `checkPantryFirst`→pantry preference, `behaviorProfile[]`→`foodGoals[]`+`preferenceStyle`, `tonightEatersCount`→`peopleEatingToday`. All previously defaulted to fallback values because field names didn't match what the gate sent.
+- Switched from `rankOptions()` to `generateTodayOptions()` so cost estimates (per `estimateCosts()`) are included — cost display now uses actual `tonightEatersCount` instead of the screen's own hardcoded table.
+- `buildContextPills()` fixed same field name aliases so pills show real values instead of estimated placeholders.
+- Added `not_yet` as a valid `shoppingStatus` value (maps to sparse pantry, same as `no`).
+- Removed dead `COST_RANGES`, `PER_PERSON_CENTS`, `getCostRange`, `formatCostRange`, `formatPerPerson` helpers — all replaced by engine output.
+- `screens/TodaySetupGateScreen.js` — Fixed NAVY color `#0A192F` → `#172250`.
+
 ### Changed — CookAtHomeTriage: visual alignment with design system (2026-05-18)
 - `screens/CookAtHomeTriage.js` — Rebuilt to match system-wide design language: cream background (#FAF8F1), bordered back button (arrow-left, 40×40, borderRadius 10), standard navBar structure. Replaced oversized icons (74px/46px) with 48×12 mint-background icon tiles (24px). Reduced budget banner icon to 40×40 rounded square. Standardized buttons to borderRadius 14/paddingVertical 16/fontSize 15/fontWeight 800 (was pill-shaped 32/64px/19). Fixed NAVY to #172250, reduced pathTitle to 20px/800 weight, pathBody to 14px, letterSpacing -0.3/-0.4 throughout.
 
