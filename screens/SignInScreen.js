@@ -287,6 +287,7 @@ export default function SignInScreen({ navigation, route }) {
 
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
+  const signupRoutingRef = useRef(false);
 
   useEffect(function () {
     tracker.track('signin_screen_viewed', {});
@@ -295,6 +296,12 @@ export default function SignInScreen({ navigation, route }) {
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start();
   }, []);
+
+  useEffect(function () {
+    if (!openForm) return;
+    setTab(openForm);
+    setMode('form');
+  }, [openForm]);
 
   const clearError = useCallback(function () { setErrorMsg(''); setInfoMsg(''); }, []);
 
@@ -338,9 +345,11 @@ export default function SignInScreen({ navigation, route }) {
           setLoading(false);
           return;
         }
+        signupRoutingRef.current = true;
         const { data: signUpData, error: signUpErr } = await signUpWithEmail(trimmedEmail, password);
         if (signUpErr) throw signUpErr;
         if (!signUpData?.session) {
+          signupRoutingRef.current = false;
           setInfoMsg('Check your inbox to confirm your email, then sign in.');
           setLoading(false);
           return;
@@ -356,11 +365,15 @@ export default function SignInScreen({ navigation, route }) {
           }, { onConflict: 'user_id' });
         }
         navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+        return;
       }
     } catch (err) {
+      signupRoutingRef.current = false;
       setErrorMsg(formatAuthError(err));
     } finally {
-      setLoading(false);
+      if (!signupRoutingRef.current) {
+        setLoading(false);
+      }
     }
   }, [tab, name, email, password, navigation, clearError]);
 
